@@ -2,7 +2,7 @@ import CryptoJS from 'crypto-js';
 import { SongItem } from '../types/media';
 
 const SAAVN_API_BASE =
-  typeof window !== 'undefined' && window.location.origin.includes('localhost')
+  typeof window !== 'undefined' && window.location.protocol.startsWith('http')
     ? '/api/saavn'
     : 'https://www.jiosaavn.com/api.php';
 const DES_KEY = '38346591';
