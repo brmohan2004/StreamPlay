@@ -32,10 +32,22 @@ export default defineConfig(() => ({
       "/api/saavn": {
         target: "https://www.jiosaavn.com",
         changeOrigin: true,
+        secure: false,
         rewrite: (path) => path.replace(/^\/api\/saavn/, "/api.php"),
         headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-          "Referer": "https://www.jiosaavn.com/"
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "Referer": "https://www.jiosaavn.com/",
+          "Accept": "application/json, text/plain, */*",
+          "Accept-Language": "en-US,en;q=0.9"
+        },
+        configure: (proxy) => {
+          proxy.on('error', (err, _req, res) => {
+            // Gracefully handle intermittent socket drops from JioSaavn CDN
+            if (res && 'writeHead' in res && !(res as any).headersSent) {
+              (res as any).writeHead(502, { 'Content-Type': 'application/json' });
+              (res as any).end(JSON.stringify({ results: [], error: err.message }));
+            }
+          });
         }
       }
     }
@@ -46,10 +58,21 @@ export default defineConfig(() => ({
       "/api/saavn": {
         target: "https://www.jiosaavn.com",
         changeOrigin: true,
+        secure: false,
         rewrite: (path) => path.replace(/^\/api\/saavn/, "/api.php"),
         headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-          "Referer": "https://www.jiosaavn.com/"
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "Referer": "https://www.jiosaavn.com/",
+          "Accept": "application/json, text/plain, */*",
+          "Accept-Language": "en-US,en;q=0.9"
+        },
+        configure: (proxy) => {
+          proxy.on('error', (err, _req, res) => {
+            if (res && 'writeHead' in res && !(res as any).headersSent) {
+              (res as any).writeHead(502, { 'Content-Type': 'application/json' });
+              (res as any).end(JSON.stringify({ results: [], error: err.message }));
+            }
+          });
         }
       }
     }
