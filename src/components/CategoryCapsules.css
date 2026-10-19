@@ -1,0 +1,43 @@
+/* 2. Category Capsules Horizontal Scroll */
+.capsules-header-wrapper {
+  padding: 0.75rem 1rem 0.5rem;
+  background: #000000;
+}
+
+.category-capsules-scroll {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 0.25rem;
+}
+
+.category-capsules-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.capsule-pill {
+  padding: 0.45rem 1.1rem;
+  border-radius: var(--radius-xl);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.capsule-pill:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.capsule-pill.active {
+  background: #ffffff;
+  color: #000000;
+  border-color: #ffffff;
+  font-weight: 700;
+  box-shadow: 0 0 14px rgba(255, 255, 255, 0.35);
+}

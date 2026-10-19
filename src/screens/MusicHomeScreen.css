@@ -1,0 +1,484 @@
+/* Music Home Screen Styling (Matching Uploaded Image 1) */
+.music-home-screen {
+  min-height: 100vh;
+  background: radial-gradient(circle at 50% 0%, #101c0b 0%, #070d05 35%, #000000 85%);
+  color: #ffffff;
+}
+
+.music-home-scrollable {
+  padding: 0.5rem 1rem 8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.8rem;
+}
+
+.music-section-title {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  color: #ffffff;
+}
+
+.section-head-split {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.85rem;
+}
+
+.see-all-link {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.see-all-link:hover {
+  color: #c8ff00;
+}
+
+.head-with-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* 1. Select Categories Pills (Matches Image 1) */
+.select-categories-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.categories-pill-scroll {
+  display: flex;
+  gap: 0.65rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 4px;
+}
+
+.categories-pill-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.category-pill-item {
+  flex: 0 0 auto;
+  padding: 0.6rem 1.4rem;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: #d1d5db;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.category-pill-item:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+/* Vibrant Lime Green Active Pill (Matching Image 1) */
+.category-pill-item.active-lime {
+  background: #d4ff00;
+  color: #000000;
+  font-weight: 800;
+  border-color: #d4ff00;
+  box-shadow: 0 0 16px rgba(212, 255, 0, 0.45);
+}
+
+/* 2. Popular Songs Carousel with Vertical Accent Bar (Matches Image 1) */
+.popular-songs-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.popular-songs-scroll {
+  display: flex;
+  gap: 0.95rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 6px;
+}
+
+.popular-songs-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.popular-song-card {
+  flex: 0 0 145px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  transition: transform 0.2s ease;
+}
+
+.popular-song-card:hover {
+  transform: translateY(-4px);
+}
+
+.popular-card-art-wrap {
+  position: relative;
+  width: 145px;
+  height: 145px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #111111;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.popular-card-art {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.popular-card-play-btn {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: scale(0.85);
+  transition: all 0.2s ease;
+}
+
+.popular-song-card:hover .popular-card-play-btn {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.popular-song-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Vertical Accent Bar (Matches Image 1: orange, cyan, etc.) */
+.song-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vertical-accent-bar {
+  display: inline-block;
+  width: 3px;
+  height: 13px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.popular-song-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #ffffff;
+}
+
+.popular-song-artist {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 3. New Collection Wide Landscape Cards (Matches Image 1) */
+.new-collection-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.new-collection-scroll {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 6px;
+}
+
+.new-collection-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.collection-wide-card {
+  flex: 0 0 270px;
+  height: 145px;
+  border-radius: 22px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.1rem 1.25rem;
+  cursor: pointer;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  position: relative;
+}
+
+.collection-wide-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.8);
+}
+
+.collection-card-left {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+  max-width: 55%;
+  z-index: 2;
+}
+
+.collection-card-title {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: #ffffff;
+}
+
+.collection-card-sub {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.2rem;
+}
+
+.collection-arrow-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  border: none;
+  color: #c8ff00;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.collection-wide-card:hover .collection-arrow-btn {
+  background: #c8ff00;
+  color: #000000;
+  transform: translateX(3px);
+}
+
+.collection-card-right {
+  width: 100px;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.collection-artist-img {
+  width: 95px;
+  height: 95px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+  border: 2px solid rgba(255, 255, 255, 0.15);
+}
+
+/* 4. Video Songs Section (Widescreen 16:9) */
+.video-songs-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.video-4k-badge {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #d4ff00;
+  background: rgba(212, 255, 0, 0.15);
+  border: 1px solid rgba(212, 255, 0, 0.35);
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+
+.video-songs-scroll {
+  display: flex;
+  gap: 0.95rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 6px;
+}
+
+.video-songs-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.video-song-card-item {
+  flex: 0 0 200px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.video-thumb-container {
+  position: relative;
+  width: 200px;
+  height: 115px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #111111;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.video-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.video-play-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.video-play-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(212, 255, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 15px rgba(212, 255, 0, 0.6);
+}
+
+.video-play-circle svg {
+  fill: #000000;
+  color: #000000;
+}
+
+.video-duration-tag {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  background: rgba(0, 0, 0, 0.75);
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: #ffffff;
+}
+
+.video-song-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #ffffff;
+}
+
+.video-song-artist {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 5. Language Tag Badges */
+.lang-tag-pill {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+
+/* 6. Recent Mini Cards */
+.music-recent-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.recent-songs-row {
+  display: flex;
+  gap: 0.6rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.recent-song-mini-card {
+  flex: 0 0 200px;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0.6rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.recent-mini-thumb {
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.recent-mini-text {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex: 1;
+}
+
+.recent-mini-text .mini-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recent-mini-text .mini-artist {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recent-mini-play {
+  background: transparent;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  padding: 4px;
+}
+
+/* 7. Infinite Scroll Loader */
+.music-bottom-loader-anchor {
+  padding: 1.5rem 0;
+  display: flex;
+  justify-content: center;
+}

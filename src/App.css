@@ -1,0 +1,61 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap');
+
+:root {
+  /* PURE BLACK OLED THEME */
+  --bg-main: #000000;
+  --bg-surface: #0a0a0a;
+  --bg-card: #111111;
+  --bg-glass: rgba(10, 10, 10, 0.85);
+
+  --primary-accent: #00d2ff;
+  --hotstar-blue: #0f52ba;
+  --spotify-green: #1ed760;
+  --gold-accent: #ffb703;
+  --gold-glow: rgba(255, 183, 3, 0.4);
+
+  --text-main: #ffffff;
+  --text-muted: #a1a1aa;
+  --text-dim: #71717a;
+
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-glow: rgba(0, 210, 255, 0.35);
+
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 30px;
+
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-display: 'Outfit', var(--font-sans);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background-color: #000000;
+  color: #ffffff;
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Master App Container */
+.streamplay-app.pure-black-theme {
+  min-height: 100vh;
+  background-color: #000000;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-main-content {
+  flex: 1;
+  padding-bottom: 120px; /* Space for persistent floating nav + mini audio bar */
+}

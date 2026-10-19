@@ -1,0 +1,369 @@
+/* 3. Trending Flip Card Section (Uploaded Design Match) */
+.trending-flip-card-section {
+  padding: 1rem 1rem 1.5rem;
+}
+
+.section-title-wrap {
+  margin-bottom: 0.85rem;
+}
+
+.section-super-title {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+  display: block;
+}
+
+.section-heading {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.flip-card-viewport {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.flip-nav-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.flip-nav-arrow.left {
+  left: -8px;
+}
+
+.flip-nav-arrow.right {
+  right: -8px;
+}
+
+.flip-nav-arrow:hover {
+  background: rgba(0, 0, 0, 0.9);
+  border-color: #fff;
+}
+
+.flip-card-perspective-container {
+  width: 100%;
+  height: 460px;
+  perspective: 1200px;
+  cursor: grab;
+}
+
+.flip-card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1);
+}
+
+.flip-card-face {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  backface-visibility: hidden;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Card FRONT (Matches Uploaded Mockup) */
+.card-front {
+  background: #111;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.flip-card-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.card-face-gradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.1) 0%,
+    rgba(0, 0, 0, 0.5) 50%,
+    rgba(0, 0, 0, 0.95) 100%
+  );
+}
+
+.flip-card-top-bar {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  right: 14px;
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-genre-tag {
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.card-bookmark-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.card-bookmark-btn.bookmarked {
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.flip-card-bottom-content {
+  position: relative;
+  z-index: 2;
+  padding: 1.25rem 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.card-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.card-title-text {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 78%;
+}
+
+.card-rating-pill {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #ffffff;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.card-meta-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.card-ott-tag {
+  color: var(--primary-accent);
+  font-weight: 700;
+}
+
+.card-cta-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.6rem;
+}
+
+/* Uploaded Screenshot Matching Button */
+.pill-watch-now-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-xl);
+  background: linear-gradient(135deg, #ffb703 0%, #fb8500 100%);
+  color: #000000;
+  font-weight: 800;
+  font-size: 0.95rem;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 18px rgba(255, 183, 3, 0.45);
+  transition: all 0.2s ease;
+}
+
+.pill-watch-now-btn:hover {
+  filter: brightness(1.1);
+  transform: translateY(-2px);
+}
+
+.flip-prompt-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: var(--radius-xl);
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Card BACK (Overview & Details) */
+.card-back {
+  background: #0d0d0d;
+  transform: rotateY(180deg);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.card-back-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-back-badge {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--primary-accent);
+  letter-spacing: 0.5px;
+}
+
+.card-back-close {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.card-back-close:hover {
+  color: #fff;
+}
+
+.back-title {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 800;
+  margin: 0.5rem 0;
+}
+
+.back-desc {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.back-genres {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin: 0.5rem 0;
+}
+
+.back-genre-pill {
+  font-size: 0.7rem;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.back-specs {
+  display: flex;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--radius-sm);
+  margin-bottom: 0.75rem;
+}
+
+.spec-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.spec-label {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+}
+
+.spec-val {
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.flip-card-dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 1rem;
+}
+
+.flip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.flip-dot.active {
+  width: 18px;
+  border-radius: 4px;
+  background: #ffffff;
+}

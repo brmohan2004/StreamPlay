@@ -1,0 +1,104 @@
+/* Music Player Screen Styling */
+.music-player-container {
+  width: 100%;
+  max-width: 480px;
+  min-height: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 1.2rem 1.25rem 2rem;
+  background: radial-gradient(circle at 50% 15%, #15240e 0%, #081005 45%, #000000 90%);
+  color: #ffffff;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 1. Top Navigation Bar */
+.player-top-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  z-index: 10;
+}
+
+.player-round-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.player-round-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  transform: scale(1.05);
+}
+
+.audio-video-toggle-pill {
+  display: flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 30px;
+  padding: 3px;
+  gap: 3px;
+}
+
+.mode-pill-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0.35rem 0.85rem;
+  border-radius: 20px;
+  border: none;
+  background: transparent;
+  color: #a1a1aa;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mode-pill-btn.active {
+  background: #c8ff00;
+  color: #000000;
+  box-shadow: 0 0 12px rgba(200, 255, 0, 0.4);
+}
+
+/* Options dropdown */
+.player-options-menu {
+  position: absolute;
+  top: 60px;
+  right: 1.25rem;
+  background: #111a0c;
+  border: 1px solid rgba(200, 255, 0, 0.2);
+  border-radius: 14px;
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  z-index: 50;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+  font-size: 0.8rem;
+  min-width: 200px;
+}
+
+.player-options-menu .option-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  color: #d1d5db;
+}
+
+.player-options-menu .text-lime {
+  color: #c8ff00;
+}

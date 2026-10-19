@@ -1,0 +1,56 @@
+/* 11. Watch Later Screen */
+.watchlater-hero-summary {
+  margin-bottom: 0.75rem;
+}
+
+.summary-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.summary-count {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.watchlater-empty {
+  text-align: center;
+  padding: 4rem 1.5rem;
+  color: var(--text-dim);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.empty-icon {
+  color: var(--text-dim);
+  opacity: 0.5;
+}
+
+.watchlater-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 1rem;
+}
+
+.watchlater-card-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.remove-watchlater-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  padding: 0.35rem;
+  border-radius: var(--radius-sm);
+  background: rgba(229, 9, 20, 0.15);
+  color: #e50914;
+  font-size: 0.7rem;
+  font-weight: 700;
+  border: 1px solid rgba(229, 9, 20, 0.3);
+  cursor: pointer;
+}

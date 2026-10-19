@@ -1,0 +1,117 @@
+/* 6. Persistent Audio Player Adjustment */
+.audio-player-bar {
+  position: fixed;
+  bottom: 74px; /* Stacked right above floating pill */
+  left: 12px;
+  right: 12px;
+  max-width: 600px;
+  margin: 0 auto;
+  z-index: 700;
+  background: rgba(18, 18, 18, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-lg);
+  padding: 0.5rem 1rem 0.6rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.9);
+}
+
+.audio-progress-bar-container {
+  position: relative;
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  margin-bottom: 0.4rem;
+}
+
+.audio-progress-filled {
+  height: 100%;
+  background: var(--spotify-green);
+  border-radius: 2px;
+}
+
+.audio-progress-slider {
+  position: absolute;
+  inset: -4px 0;
+  width: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.player-bar-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.player-track-info {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  max-width: 180px;
+}
+
+.player-album-art {
+  width: 38px;
+  height: 38px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.player-text-details {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.player-song-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.player-artist-name {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.player-controls-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.controls-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.ctrl-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.ctrl-play-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #fff;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.time-display,
+.player-extra-controls {
+  display: none; /* Hide clutter on compact mobile */
+}

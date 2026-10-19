@@ -1,0 +1,74 @@
+.arc-scrubber-deck {
+  position: relative;
+  width: 320px;
+  height: 150px;
+  margin: 0.3rem auto 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+}
+
+.arc-progress-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.arc-center-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 1.2rem;
+  z-index: 5;
+}
+
+.arc-heart-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.arc-heart-btn:hover {
+  transform: scale(1.18);
+}
+
+.arc-heart-btn.liked {
+  transform: scale(1.1);
+  filter: drop-shadow(0 0 10px rgba(200, 255, 0, 0.6));
+}
+
+.arc-time-counter {
+  font-family: var(--font-display, 'Outfit', monospace);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 3px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.time-divider {
+  color: #71717a;
+}
+
+.neon-lime-accent-arc {
+  position: absolute;
+  bottom: 0;
+  width: 90px;
+  height: 2px;
+  background: radial-gradient(circle, #c8ff00 0%, transparent 80%);
+  filter: drop-shadow(0 0 6px #c8ff00);
+}
