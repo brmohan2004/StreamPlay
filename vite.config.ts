@@ -40,12 +40,12 @@ export default defineConfig(() => ({
           "Accept": "application/json, text/plain, */*",
           "Accept-Language": "en-US,en;q=0.9"
         },
-        configure: (proxy) => {
-          proxy.on('error', (err, _req, res) => {
+        configure: (proxy: any) => {
+          proxy.on?.('error', (err: any, _req: any, res: any) => {
             // Gracefully handle intermittent socket drops from JioSaavn CDN
-            if (res && 'writeHead' in res && !(res as any).headersSent) {
-              (res as any).writeHead(502, { 'Content-Type': 'application/json' });
-              (res as any).end(JSON.stringify({ results: [], error: err.message }));
+            if (res && typeof res.writeHead === 'function' && !res.headersSent) {
+              res.writeHead(502, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ results: [], error: err?.message || 'Proxy error' }));
             }
           });
         }
@@ -66,11 +66,11 @@ export default defineConfig(() => ({
           "Accept": "application/json, text/plain, */*",
           "Accept-Language": "en-US,en;q=0.9"
         },
-        configure: (proxy) => {
-          proxy.on('error', (err, _req, res) => {
-            if (res && 'writeHead' in res && !(res as any).headersSent) {
-              (res as any).writeHead(502, { 'Content-Type': 'application/json' });
-              (res as any).end(JSON.stringify({ results: [], error: err.message }));
+        configure: (proxy: any) => {
+          proxy.on?.('error', (err: any, _req: any, res: any) => {
+            if (res && typeof res.writeHead === 'function' && !res.headersSent) {
+              res.writeHead(502, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ results: [], error: err?.message || 'Proxy error' }));
             }
           });
         }
