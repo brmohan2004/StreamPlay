@@ -259,12 +259,11 @@ export const CustomVideoPlayer: React.FC = () => {
           src={currentEmbedUrl}
           className="custom-stream-iframe"
           title={activeMovie.name}
-          sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
           allowFullScreen
-          allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-          referrerPolicy="no-referrer"
+          allow="autoplay; encrypted-media; gyroscope; picture-in-picture; fullscreen"
           onLoad={() => setIsLoading(false)}
         />
+
       </div>
 
       {/* 2. "HOLD TO 2X PLAY" Floating Pill Indicator */}

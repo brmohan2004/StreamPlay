@@ -1,13 +1,12 @@
 import './AudioPlayerBar.css';
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Play,
   Pause,
   SkipForward,
   SkipBack,
-  Volume2,
-  VolumeX
+  X
 } from 'lucide-react';
 import { useMedia } from '../context/MediaContext';
 
@@ -16,122 +15,133 @@ export const AudioPlayerBar: React.FC = () => {
     currentSong,
     isPlayingSong,
     toggleSongPlay,
+    stopSong,
     nextSong,
     prevSong,
     songProgress,
     songDuration,
     seekSong,
-    songVolume,
-    setSongVolume,
     openMusicPlayer
   } = useMedia();
 
   if (!currentSong) return null;
 
-  const formatTime = (secs: number) => {
-    if (!secs || isNaN(secs)) return '0:00';
-    const m = Math.floor(secs / 60);
-    const s = Math.floor(secs % 60);
-    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  const progressPercent = songDuration ? Math.min(100, Math.max(0, (songProgress / songDuration) * 100)) : 0;
+
+  const handleCancel = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    stopSong();
   };
 
-  const progressPercent = songDuration ? (songProgress / songDuration) * 100 : 0;
-
   return (
-    <motion.div
-      className="audio-player-bar"
-      initial={{ y: 80, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ type: 'spring', damping: 20 }}
-    >
-      <div className="audio-progress-bar-container">
-        <input
-          type="range"
-          min={0}
-          max={songDuration || 100}
-          value={songProgress}
-          onChange={e => seekSong(parseFloat(e.target.value))}
-          className="audio-progress-slider"
-        />
-        <div className="audio-progress-filled" style={{ width: `${progressPercent}%` }} />
-      </div>
-
-      <div className="player-bar-content">
-        {/* Track Info (Click to open full player) */}
-        <div className="player-track-info" onClick={openMusicPlayer} title="Expand Player">
-          <img
-            src={currentSong.image}
-            alt={currentSong.title}
-            className="player-album-art"
-            onError={e => {
-              (e.target as HTMLImageElement).src =
-                'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=150&q=80';
-            }}
+    <AnimatePresence>
+      <motion.div
+        className="audio-player-bar"
+        initial={{ y: 90, opacity: 0, scale: 0.95 }}
+        animate={{ y: 0, opacity: 1, scale: 1 }}
+        exit={{ y: 90, opacity: 0, scale: 0.95 }}
+        transition={{ type: 'spring', damping: 22, stiffness: 300 }}
+      >
+        {/* Top Progress Track */}
+        <div className="audio-progress-bar-container">
+          <input
+            type="range"
+            min={0}
+            max={songDuration || 100}
+            value={songProgress}
+            onChange={e => seekSong(parseFloat(e.target.value))}
+            className="audio-progress-slider"
           />
-          <div className="player-text-details">
-            <h4 className="player-song-title" title={currentSong.title}>
-              {currentSong.title}
-            </h4>
-            <p className="player-artist-name" title={currentSong.artist}>
-              {currentSong.artist}
-            </p>
-          </div>
-          <span className="audio-quality-badge">{currentSong.quality || '320kbps'}</span>
-        </div>
-
-        {/* Playback Controls */}
-        <div className="player-controls-group">
-          <div className="controls-buttons">
-            <button className="ctrl-btn" onClick={prevSong} title="Previous Track">
-              <SkipBack size={18} />
-            </button>
-
-            <motion.button
-              className="ctrl-play-btn"
-              whileTap={{ scale: 0.92 }}
-              onClick={toggleSongPlay}
-              title={isPlayingSong ? 'Pause' : 'Play'}
-            >
-              {isPlayingSong ? (
-                <Pause size={20} fill="#090b13" color="#090b13" />
-              ) : (
-                <Play size={20} fill="#090b13" color="#090b13" />
-              )}
-            </motion.button>
-
-            <button className="ctrl-btn" onClick={nextSong} title="Next Track">
-              <SkipForward size={18} />
-            </button>
-          </div>
-
-          <div className="time-display">
-            <span>{formatTime(songProgress)}</span>
-            <span>/</span>
-            <span>{formatTime(songDuration)}</span>
+          <div className="audio-progress-filled" style={{ width: `${progressPercent}%` }}>
+            <span className="audio-progress-knob" />
           </div>
         </div>
 
-        {/* Volume & Extras */}
-        <div className="player-extra-controls">
-          <div className="volume-control-box">
+        <div className="player-bar-content">
+          {/* Track Info (Click opens full player) */}
+          <div className="player-track-info" onClick={openMusicPlayer} title="Tap to open full player">
+            <div className="player-album-art-wrap">
+              <img
+                src={currentSong.image}
+                alt={currentSong.title}
+                className="player-album-art"
+                onError={e => {
+                  (e.target as HTMLImageElement).src =
+                    'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=150&q=80';
+                }}
+              />
+            </div>
+
+            <div className="player-text-details">
+              <h4 className="player-song-title" title={currentSong.title}>
+                {currentSong.title}
+              </h4>
+              <p className="player-artist-name" title={currentSong.artist}>
+                {currentSong.artist}
+              </p>
+            </div>
+
+            <div className="audio-badge-stack">
+              <span className="audio-quality-num">320kbps</span>
+              <span className="audio-quality-type">Ultra-HD</span>
+            </div>
+          </div>
+
+          {/* Right Playback Controls + Cancel Button */}
+          <div className="player-controls-group">
+            <div className="controls-buttons">
+              <button
+                className="ctrl-skip-btn-mini"
+                onClick={e => {
+                  e.stopPropagation();
+                  prevSong();
+                }}
+                title="Previous Track"
+              >
+                <SkipBack size={18} />
+              </button>
+
+              <motion.button
+                className="ctrl-play-btn-mini"
+                whileTap={{ scale: 0.9 }}
+                onClick={e => {
+                  e.stopPropagation();
+                  toggleSongPlay();
+                }}
+                title={isPlayingSong ? 'Pause' : 'Play'}
+              >
+                {isPlayingSong ? (
+                  <Pause size={18} fill="#000000" color="#000000" />
+                ) : (
+                  <Play size={18} fill="#000000" color="#000000" style={{ marginLeft: 2 }} />
+                )}
+              </motion.button>
+
+              <button
+                className="ctrl-skip-btn-mini"
+                onClick={e => {
+                  e.stopPropagation();
+                  nextSong();
+                }}
+                title="Next Track"
+              >
+                <SkipForward size={18} />
+              </button>
+            </div>
+
+            {/* Cancel / Dismiss Button */}
             <button
-              className="vol-icon-btn"
-              onClick={() => setSongVolume(songVolume > 0 ? 0 : 0.85)}
+              className="player-cancel-dismiss-btn"
+              onClick={handleCancel}
+              title="Close Player"
+              aria-label="Close Music Player"
             >
-              {songVolume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
+              <X size={15} />
             </button>
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.01}
-              value={songVolume}
-              onChange={e => setSongVolume(parseFloat(e.target.value))}
-              className="volume-slider"
-            />
           </div>
         </div>
-      </div>
-    </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 };
+

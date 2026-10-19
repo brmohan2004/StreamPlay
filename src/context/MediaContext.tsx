@@ -29,6 +29,7 @@ interface MediaContextType {
   songVolume: number;
   playSong: (song: SongItem, queue?: SongItem[]) => void;
   toggleSongPlay: () => void;
+  stopSong: () => void;
   nextSong: () => void;
   prevSong: () => void;
   seekSong: (timeInSeconds: number) => void;
@@ -344,6 +345,14 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  const stopSong = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
+    setIsPlayingSong(false);
+    setCurrentSong(null);
+  };
+
   const nextSong = () => {
     if (!currentSong || songQueue.length === 0) return;
     const currentIndex = songQueue.findIndex(s => s.id === currentSong.id);
@@ -403,10 +412,12 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         songVolume,
         playSong,
         toggleSongPlay,
+        stopSong,
         nextSong,
         prevSong,
         seekSong,
         setSongVolume,
+
         isMusicPlayerOpen,
         openMusicPlayer,
         closeMusicPlayer,

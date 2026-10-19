@@ -71,33 +71,40 @@ export const FloatingNavBar: React.FC = () => {
           {activeScreen === 'profile' && <span className="nav-glow-dot" />}
         </button>
 
-        {/* 5. Mode Switch Button (Movies -> Music or Music -> Movies) */}
+        {/* 5. Big Size Circular Mode Switch Button */}
         {appMode === 'movies' ? (
-          <button
-            className="floating-nav-btn mode-switch-btn music-theme"
+          <motion.button
+            className="floating-nav-btn big-circular-mode-btn to-music"
+            whileHover={{ scale: 1.12 }}
+            whileTap={{ scale: 0.9 }}
             onClick={() => {
               setAppMode('music');
               setActiveScreen('home');
             }}
             aria-label="Switch to Music Mode"
-            title="Switch to Music"
+            title="Switch to Music Mode"
           >
-            <Music size={20} />
-          </button>
+            <Music size={23} strokeWidth={2.4} />
+            <span className="mode-btn-glow-ring" />
+          </motion.button>
         ) : (
-          <button
-            className="floating-nav-btn mode-switch-btn movie-theme"
+          <motion.button
+            className="floating-nav-btn big-circular-mode-btn to-movies"
+            whileHover={{ scale: 1.12 }}
+            whileTap={{ scale: 0.9 }}
             onClick={() => {
               setAppMode('movies');
               setActiveScreen('home');
             }}
             aria-label="Switch to Movies Mode"
-            title="Switch to Movies"
+            title="Switch to Movies Mode"
           >
-            <Film size={20} />
-          </button>
+            <Film size={23} strokeWidth={2.4} />
+            <span className="mode-btn-glow-ring" />
+          </motion.button>
         )}
       </motion.div>
     </div>
   );
 };
+
