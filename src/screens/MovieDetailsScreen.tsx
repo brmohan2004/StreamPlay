@@ -161,7 +161,7 @@ export const MovieDetailsScreen: React.FC = () => {
               className="details-main-poster"
               onError={e => {
                 (e.target as HTMLImageElement).src =
-                  'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=500&q=80';
+                  'https://images.metahub.space/poster/small/default/img';
               }}
             />
             {movieData.ottProvider && (

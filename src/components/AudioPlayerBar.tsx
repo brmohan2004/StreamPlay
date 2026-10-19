@@ -67,7 +67,7 @@ export const AudioPlayerBar: React.FC = () => {
                 className="player-album-art"
                 onError={e => {
                   (e.target as HTMLImageElement).src =
-                    'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=150&q=80';
+                    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 18V5l12-2v13'%3E%3C/path%3E%3Ccircle cx='6' cy='18' r='3'%3E%3C/circle%3E%3Ccircle cx='18' cy='16' r='3'%3E%3C/circle%3E%3C/svg%3E";
                 }}
               />
             </div>

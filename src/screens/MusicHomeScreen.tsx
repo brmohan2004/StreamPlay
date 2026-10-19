@@ -11,8 +11,6 @@ interface MusicHomeScreenProps {
   trendingSongs: SongItem[];
   newSongs: SongItem[];
   recentSongs: SongItem[];
-  topAlbums: { title: string; artist: string; image: string; songs: SongItem[] }[];
-  genrePlaylists: { title: string; desc: string; image: string; songs: SongItem[] }[];
 }
 
 export const MusicHomeScreen: React.FC<MusicHomeScreenProps> = ({
@@ -59,29 +57,29 @@ export const MusicHomeScreen: React.FC<MusicHomeScreenProps> = ({
     'Romance'
   ];
 
-  // New Collection Wide Cards matching Image 1
+  // New Collection Wide Cards dynamically using real music artwork
   const newCollections = [
     {
       id: 'coll-1',
       title: 'Top Songs Global',
-      subtitle: 'Discover 86 songs',
-      image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&q=80',
+      subtitle: 'Global viral hits',
+      image: trendingSongs[0]?.image || '',
       gradient: 'linear-gradient(135deg, #0b1f36 0%, #06111f 100%)',
-      query: 'Billboard Hot 100 2026'
+      query: 'Global Pop Hits'
     },
     {
       id: 'coll-2',
-      title: 'Popular Songs India',
-      subtitle: 'Discover 94 songs',
-      image: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500&q=80',
+      title: `${primaryLanguage} Blockbusters`,
+      subtitle: `Curated ${primaryLanguage} tracks`,
+      image: primaryLangSongs[0]?.image || trendingSongs[1]?.image || '',
       gradient: 'linear-gradient(135deg, #1b2612 0%, #0c1407 100%)',
-      query: 'Indian Pop Trending 2026'
+      query: `${primaryLanguage} Top Hits 2026`
     },
     {
       id: 'coll-3',
       title: 'Viral Club Classics',
-      subtitle: 'Discover 52 songs',
-      image: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=500&q=80',
+      subtitle: 'High energy dance beats',
+      image: secondaryLangSongs[0]?.image || trendingSongs[2]?.image || '',
       gradient: 'linear-gradient(135deg, #2b1238 0%, #15061c 100%)',
       query: 'Club Dance Hits'
     }
@@ -238,7 +236,13 @@ export const MusicHomeScreen: React.FC<MusicHomeScreenProps> = ({
                   </button>
                 </div>
                 <div className="collection-card-right">
-                  <img src={coll.image} alt={coll.title} className="collection-artist-img" />
+                  {coll.image ? (
+                    <img src={coll.image} alt={coll.title} className="collection-artist-img" />
+                  ) : (
+                    <div className="collection-artist-img" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.08)' }}>
+                      <Sparkles size={24} style={{ opacity: 0.6 }} />
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

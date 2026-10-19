@@ -18,7 +18,24 @@ export const TrendingFlipCards: React.FC<TrendingFlipCardsProps> = ({ movies }) 
   const { openMoviePlayer, openMovieDetails, toggleWatchLater, isWatchLater } = useMedia();
   const { setActiveScreen } = useNavigation();
 
-  if (movies.length === 0) return null;
+  if (movies.length === 0) {
+    return (
+      <div className="trending-flip-card-section">
+        <div className="section-title-wrap">
+          <h2 className="section-heading">Trending</h2>
+        </div>
+        <div className="flip-card-viewport">
+          <div className="flip-card-perspective-container">
+            <div className="flip-card-inner">
+              <div className="flip-card-face card-front" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))', animation: 'pulse 1.5s infinite ease-in-out' }}>
+                <div className="card-face-gradient" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const currentMovie = movies[currentIndex] || movies[0];
 
@@ -81,7 +98,7 @@ export const TrendingFlipCards: React.FC<TrendingFlipCardsProps> = ({ movies }) 
                   className="flip-card-img"
                   onError={e => {
                     (e.target as HTMLImageElement).src =
-                      'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=800&q=80';
+                      'https://images.metahub.space/poster/small/default/img';
                   }}
                 />
 

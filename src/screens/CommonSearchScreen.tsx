@@ -18,9 +18,9 @@ export const CommonSearchScreen: React.FC = () => {
 
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
     try {
-      return JSON.parse(localStorage.getItem('streamplay_recent_searches') || '["Stranger Things", "Kesariya", "Loki", "Arijit Singh"]');
+      return JSON.parse(localStorage.getItem('streamplay_recent_searches') || '[]');
     } catch {
-      return ['Stranger Things', 'Kesariya', 'Loki', 'Arijit Singh'];
+      return [];
     }
   });
 

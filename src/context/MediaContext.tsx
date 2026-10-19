@@ -182,21 +182,7 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [playlists, setPlaylists] = useState<{ id: string; name: string; songs: SongItem[]; cover?: string }[]>(() => {
     try {
       const stored = localStorage.getItem('streamplay_playlists');
-      if (stored) return JSON.parse(stored);
-      return [
-        {
-          id: 'fav-1',
-          name: 'My Favorites',
-          songs: [],
-          cover: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&q=80'
-        },
-        {
-          id: 'vibe-2',
-          name: 'Late Night Chill',
-          songs: [],
-          cover: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500&q=80'
-        }
-      ];
+      return stored ? JSON.parse(stored) : [];
     } catch {
       return [];
     }
@@ -227,8 +213,7 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const newPl = {
       id: `pl-${Date.now()}`,
       name: name.trim(),
-      songs: [],
-      cover: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=500&q=80'
+      songs: []
     };
     setPlaylists(prev => {
       const updated = [...prev, newPl];

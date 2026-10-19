@@ -39,8 +39,6 @@ export function AppContent() {
   const [trendingSongs, setTrendingSongs] = useState<SongItem[]>([]);
   const [newSongs, setNewSongs] = useState<SongItem[]>([]);
   const [recentSongs, setRecentSongs] = useState<SongItem[]>([]);
-  const [topAlbums, setTopAlbums] = useState<{ title: string; artist: string; image: string; songs: SongItem[] }[]>([]);
-  const [genrePlaylists, setGenrePlaylists] = useState<{ title: string; desc: string; image: string; songs: SongItem[] }[]>([]);
 
   // Infinite Scroll State
   const [loadedGenreRows, setLoadedGenreRows] = useState<{ title: string; subtitle: string; items: MovieItem[] }[]>([]);
@@ -59,88 +57,43 @@ export function AppContent() {
     { name: 'Adventure', desc: 'Epic journeys across uncharted worlds' }
   ];
 
-  // Initial Content Load
+  // Initial Content Load: Fast progressive loading so Trending cards render within ~200ms
   useEffect(() => {
-    async function loadInitialData() {
-      const [
-        movies,
-        series,
-        netflix,
-        hotstar,
-        prime,
-        apple,
-        sony,
-        zee,
-        trending,
-        fresh,
-        recents
-      ] = await Promise.all([
-        fetchTopMovies(),
-        fetchTopSeries(),
-        fetchByOTT('Netflix'),
-        fetchByOTT('JioHotstar'),
-        fetchByOTT('Prime Video'),
-        fetchByOTT('Apple TV+'),
-        fetchByOTT('Sony LIV'),
-        fetchByOTT('Zee5'),
-        searchSongs('Top Bollywood Hits 2026', 15),
-        searchSongs('Global Pop Hits', 12),
-        searchSongs('Arijit Singh', 8)
-      ]);
+    let isMounted = true;
 
-      setTopMovies(movies);
-      setTopSeries(series);
-      setNetflixHits(netflix);
-      setHotstarHits(hotstar);
-      setPrimeHits(prime);
-      setAppleHits(apple);
-      setSonyHits(sony);
-      setZeeHits(zee);
+    // 1. Immediately fetch Top Movies (powers Trending Flip Cards) and Top Series
+    fetchTopMovies().then(movies => {
+      if (isMounted) setTopMovies(movies);
+    });
 
-      setTrendingSongs(trending);
-      setNewSongs(fresh);
-      setRecentSongs(recents);
+    fetchTopSeries().then(series => {
+      if (isMounted) setTopSeries(series);
+    });
 
-      // Preload sample featured albums
-      setTopAlbums([
-        {
-          title: 'Arijit Singh: All Time Hits',
-          artist: 'Arijit Singh',
-          image: trending[0]?.image || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&q=80',
-          songs: trending.slice(0, 5)
-        },
-        {
-          title: 'Midnight Lofi Chill',
-          artist: 'Various Artists',
-          image: fresh[0]?.image || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500&q=80',
-          songs: fresh.slice(0, 5)
-        },
-        {
-          title: 'Global Top 50 Dance',
-          artist: 'EDM World',
-          image: recents[0]?.image || 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=500&q=80',
-          songs: recents.slice(0, 5)
-        }
-      ]);
+    // 2. Concurrently load Music rows
+    searchSongs('Top Bollywood Hits 2026', 15).then(trending => {
+      if (isMounted) setTrendingSongs(trending);
+    });
 
-      // Preload curated playlists
-      setGenrePlaylists([
-        {
-          title: 'Party & Dance Vibes',
-          desc: 'High energy tracks to get you moving',
-          image: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=500&q=80',
-          songs: fresh.slice(0, 6)
-        },
-        {
-          title: 'Acoustic & Coffee',
-          desc: 'Calm unplugged acoustic sounds',
-          image: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=500&q=80',
-          songs: trending.slice(0, 6)
-        }
-      ]);
-    }
+    searchSongs('Global Pop Hits', 12).then(fresh => {
+      if (isMounted) setNewSongs(fresh);
+    });
 
-    loadInitialData();
+    searchSongs('Arijit Singh', 8).then(recents => {
+      if (isMounted) setRecentSongs(recents);
+    });
+
+    // 3. Concurrently load OTT brand catalog rows without blocking the Trending section
+    fetchByOTT('Netflix').then(data => isMounted && setNetflixHits(data));
+    fetchByOTT('JioHotstar').then(data => isMounted && setHotstarHits(data));
+    fetchByOTT('Prime Video').then(data => isMounted && setPrimeHits(data));
+    fetchByOTT('Apple TV+').then(data => isMounted && setAppleHits(data));
+    fetchByOTT('Sony LIV').then(data => isMounted && setSonyHits(data));
+    fetchByOTT('Zee5').then(data => isMounted && setZeeHits(data));
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Infinite Scroll Handler
@@ -223,8 +176,6 @@ export function AppContent() {
             trendingSongs={trendingSongs}
             newSongs={newSongs}
             recentSongs={recentSongs}
-            topAlbums={topAlbums}
-            genrePlaylists={genrePlaylists}
           />
         )}
       </main>

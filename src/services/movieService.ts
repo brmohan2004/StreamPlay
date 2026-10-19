@@ -61,11 +61,20 @@ export const OTT_PLATFORMS: OTTMetadata[] = [
   }
 ];
 
+let cachedTopMovies: MovieItem[] | null = null;
+let cachedTopSeries: MovieItem[] | null = null;
+const ottCache = new Map<string, MovieItem[]>();
+
 export async function fetchTopMovies(): Promise<MovieItem[]> {
+  if (cachedTopMovies && cachedTopMovies.length > 0) {
+    return cachedTopMovies;
+  }
   try {
     const res = await fetch(`${CINEMETA_BASE}/catalog/movie/top.json`);
     const data = await res.json();
-    return (data.metas || []).map((m: any) => formatMovie(m, 'movie'));
+    const result = (data.metas || []).map((m: any) => formatMovie(m, 'movie'));
+    if (result.length > 0) cachedTopMovies = result;
+    return result;
   } catch (err) {
     console.error('Failed to fetch top movies:', err);
     return [];
@@ -73,10 +82,15 @@ export async function fetchTopMovies(): Promise<MovieItem[]> {
 }
 
 export async function fetchTopSeries(): Promise<MovieItem[]> {
+  if (cachedTopSeries && cachedTopSeries.length > 0) {
+    return cachedTopSeries;
+  }
   try {
     const res = await fetch(`${CINEMETA_BASE}/catalog/series/top.json`);
     const data = await res.json();
-    return (data.metas || []).map((m: any) => formatMovie(m, 'series'));
+    const result = (data.metas || []).map((m: any) => formatMovie(m, 'series'));
+    if (result.length > 0) cachedTopSeries = result;
+    return result;
   } catch (err) {
     console.error('Failed to fetch top series:', err);
     return [];
@@ -84,11 +98,12 @@ export async function fetchTopSeries(): Promise<MovieItem[]> {
 }
 
 export async function searchMoviesAndShows(query: string): Promise<MovieItem[]> {
-  if (!query.trim()) return [];
+  const trimmed = query.trim();
+  if (!trimmed) return [];
   try {
     const [movieRes, seriesRes] = await Promise.all([
-      fetch(`${CINEMETA_BASE}/catalog/movie/top/search=${encodeURIComponent(query)}.json`).then(r => r.json()),
-      fetch(`${CINEMETA_BASE}/catalog/series/top/search=${encodeURIComponent(query)}.json`).then(r => r.json())
+      fetch(`${CINEMETA_BASE}/catalog/movie/top/search=${encodeURIComponent(trimmed)}.json`).then(r => r.json()).catch(() => ({ metas: [] })),
+      fetch(`${CINEMETA_BASE}/catalog/series/top/search=${encodeURIComponent(trimmed)}.json`).then(r => r.json()).catch(() => ({ metas: [] }))
     ]);
 
     const movies = (movieRes.metas || []).map((m: any) => formatMovie(m, 'movie'));
@@ -101,26 +116,44 @@ export async function searchMoviesAndShows(query: string): Promise<MovieItem[]> 
 }
 
 export async function fetchByOTT(brand: OTTBrand): Promise<MovieItem[]> {
+  if (ottCache.has(brand)) {
+    return ottCache.get(brand)!;
+  }
+
   if (brand === 'All') {
     const [movies, series] = await Promise.all([fetchTopMovies(), fetchTopSeries()]);
-    return [...movies.slice(0, 15), ...series.slice(0, 15)];
+    const combined = [...movies.slice(0, 15), ...series.slice(0, 15)];
+    ottCache.set('All', combined);
+    return combined;
   }
 
   const platform = OTT_PLATFORMS.find(p => p.brand === brand);
   if (!platform) return [];
 
-  const results: MovieItem[] = [];
-  for (const q of platform.popularQueries) {
-    const items = await searchMoviesAndShows(q);
-    if (items.length > 0) {
-      const top = items[0];
-      top.ottProvider = brand;
-      if (!results.some(r => r.id === top.id)) {
-        results.push(top);
+  try {
+    // Run all OTT popular queries in parallel rather than sequentially
+    const queryResults = await Promise.all(
+      platform.popularQueries.map(async q => {
+        const items = await searchMoviesAndShows(q);
+        return items[0] || null;
+      })
+    );
+
+    const results: MovieItem[] = [];
+    for (const item of queryResults) {
+      if (item && !results.some(r => r.id === item.id)) {
+        results.push({ ...item, ottProvider: brand });
       }
     }
+
+    if (results.length > 0) {
+      ottCache.set(brand, results);
+    }
+    return results;
+  } catch (err) {
+    console.error(`Failed to fetch OTT brand ${brand}:`, err);
+    return [];
   }
-  return results;
 }
 
 function formatMovie(item: any, type: 'movie' | 'series'): MovieItem {
