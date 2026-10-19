@@ -50,7 +50,7 @@ interface MediaContextType {
   isLikedSong: (id: string) => boolean;
 
   // Video Songs Support
-  openVideoSong: (song: SongItem) => void;
+  openVideoSong: (song: SongItem, queue?: SongItem[]) => void;
 
   // Language Preferences (Primary & Secondary)
   primaryLanguage: string;
@@ -68,6 +68,9 @@ interface MediaContextType {
   // Playlists
   playlists: { id: string; name: string; songs: SongItem[]; cover?: string }[];
   createPlaylist: (name: string) => void;
+  editPlaylist: (playlistId: string, newName: string) => void;
+  deletePlaylist: (playlistId: string) => void;
+  removeSongFromPlaylist: (playlistId: string, songId: string) => void;
   addSongToPlaylist: (playlistId: string, song: SongItem) => void;
 }
 
@@ -150,7 +153,7 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const isLikedSong = (songId: string) => likedSongs.includes(songId);
 
-  const openVideoSong = (song: SongItem) => {
+  const openVideoSong = (song: SongItem, queue?: SongItem[]) => {
     // If song has no videoUrl, assign a high-def video stream embed or fallback
     const videoSongItem = {
       ...song,
@@ -158,7 +161,7 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       videoUrl: song.videoUrl || `https://www.youtube-nocookie.com/embed?listType=search&list=${encodeURIComponent(song.title + ' ' + song.artist + ' official video')}`
     };
     setPlaybackMode('video');
-    playSong(videoSongItem);
+    playSong(videoSongItem, queue);
     setIsMusicPlayerOpen(true);
   };
 
@@ -222,10 +225,42 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
   };
 
+  const editPlaylist = (playlistId: string, newName: string) => {
+    if (!newName.trim()) return;
+    setPlaylists(prev => {
+      const updated = prev.map(p => (p.id === playlistId ? { ...p, name: newName.trim() } : p));
+      localStorage.setItem('streamplay_playlists', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const deletePlaylist = (playlistId: string) => {
+    setPlaylists(prev => {
+      const updated = prev.filter(p => p.id !== playlistId);
+      localStorage.setItem('streamplay_playlists', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const removeSongFromPlaylist = (playlistId: string, songId: string) => {
+    setPlaylists(prev => {
+      const updated = prev.map(p => {
+        if (p.id === playlistId) {
+          const filteredSongs = p.songs.filter(s => String(s.id) !== String(songId));
+          const newCover = filteredSongs.length > 0 ? (filteredSongs[0].image || p.cover) : undefined;
+          return { ...p, songs: filteredSongs, cover: newCover };
+        }
+        return p;
+      });
+      localStorage.setItem('streamplay_playlists', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
   const addSongToPlaylist = (playlistId: string, song: SongItem) => {
     setPlaylists(prev => {
       const updated = prev.map(p => {
-        if (p.id === playlistId && !p.songs.some(s => s.id === song.id)) {
+        if (p.id === playlistId && !p.songs.some(s => String(s.id) === String(song.id))) {
           return { ...p, songs: [...p.songs, song], cover: song.image || p.cover };
         }
         return p;
@@ -236,6 +271,27 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const currentSongRef = useRef<SongItem | null>(null);
+  const songQueueRef = useRef<SongItem[]>([]);
+  const isShuffleRef = useRef(false);
+  const isRepeatRef = useRef(false);
+  const nextSongRef = useRef<() => void>(() => {});
+
+  useEffect(() => {
+    currentSongRef.current = currentSong;
+  }, [currentSong]);
+
+  useEffect(() => {
+    songQueueRef.current = songQueue;
+  }, [songQueue]);
+
+  useEffect(() => {
+    isShuffleRef.current = isShuffle;
+  }, [isShuffle]);
+
+  useEffect(() => {
+    isRepeatRef.current = isRepeat;
+  }, [isRepeat]);
 
   useEffect(() => {
     const audio = new Audio();
@@ -251,7 +307,9 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     const handleEnded = () => {
-      nextSong();
+      if (nextSongRef.current) {
+        nextSongRef.current();
+      }
     };
 
     const handlePlay = () => setIsPlayingSong(true);
@@ -304,10 +362,20 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const playSong = (song: SongItem, queue?: SongItem[]) => {
     setCurrentSong(song);
+    currentSongRef.current = song;
+
     if (queue && queue.length > 0) {
       setSongQueue(queue);
-    } else if (!songQueue.some(s => s.id === song.id)) {
-      setSongQueue(prev => [song, ...prev]);
+      songQueueRef.current = queue;
+    } else {
+      setSongQueue(prev => {
+        if (!prev.some(s => String(s.id) === String(song.id))) {
+          const updated = [...prev, song];
+          songQueueRef.current = updated;
+          return updated;
+        }
+        return prev;
+      });
     }
 
     if (audioRef.current) {
@@ -339,23 +407,56 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const nextSong = () => {
-    if (!currentSong || songQueue.length === 0) return;
-    const currentIndex = songQueue.findIndex(s => s.id === currentSong.id);
-    if (currentIndex >= 0 && currentIndex < songQueue.length - 1) {
-      playSong(songQueue[currentIndex + 1]);
-    } else if (songQueue.length > 0) {
+    const queue = songQueueRef.current.length > 0 ? songQueueRef.current : songQueue;
+    const current = currentSongRef.current || currentSong;
+    if (!current || queue.length === 0) return;
+
+    if (isRepeatRef.current && audioRef.current) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.play().catch(console.error);
+      return;
+    }
+
+    if (isShuffleRef.current && queue.length > 1) {
+      const candidates = queue.filter(s => String(s.id) !== String(current.id));
+      const randomSong = candidates[Math.floor(Math.random() * candidates.length)];
+      playSong(randomSong, queue);
+      return;
+    }
+
+    const currentIndex = queue.findIndex(s => String(s.id) === String(current.id));
+    if (currentIndex >= 0 && currentIndex < queue.length - 1) {
+      playSong(queue[currentIndex + 1], queue);
+    } else if (queue.length > 0) {
       // Loop to beginning
-      playSong(songQueue[0]);
+      playSong(queue[0], queue);
     }
   };
 
   const prevSong = () => {
-    if (!currentSong || songQueue.length === 0) return;
-    const currentIndex = songQueue.findIndex(s => s.id === currentSong.id);
+    const queue = songQueueRef.current.length > 0 ? songQueueRef.current : songQueue;
+    const current = currentSongRef.current || currentSong;
+    if (!current || queue.length === 0) return;
+
+    // If more than 3s in, restart the song
+    if (audioRef.current && audioRef.current.currentTime > 3) {
+      audioRef.current.currentTime = 0;
+      setSongProgress(0);
+      return;
+    }
+
+    const currentIndex = queue.findIndex(s => String(s.id) === String(current.id));
     if (currentIndex > 0) {
-      playSong(songQueue[currentIndex - 1]);
+      playSong(queue[currentIndex - 1], queue);
+    } else if (queue.length > 0) {
+      // Loop to last song
+      playSong(queue[queue.length - 1], queue);
     }
   };
+
+  useEffect(() => {
+    nextSongRef.current = nextSong;
+  });
 
   const seekSong = (timeInSeconds: number) => {
     if (audioRef.current) {
@@ -427,6 +528,9 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         addToContinueWatching,
         playlists,
         createPlaylist,
+        editPlaylist,
+        deletePlaylist,
+        removeSongFromPlaylist,
         addSongToPlaylist
       }}
     >

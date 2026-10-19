@@ -7,6 +7,11 @@ import { useNavigation } from '../context/NavigationContext';
 export const FloatingNavBar: React.FC = () => {
   const { appMode, setAppMode, activeScreen, setActiveScreen } = useNavigation();
 
+  // Hide bottom nav bar on search screen and profile screen
+  if (activeScreen === 'search' || activeScreen === 'profile') {
+    return null;
+  }
+
   return (
     <div className="floating-navbar-container">
       <motion.div
@@ -51,24 +56,22 @@ export const FloatingNavBar: React.FC = () => {
 
         {/* 3. Search Button */}
         <button
-          className={`floating-nav-btn ${activeScreen === 'search' ? 'active' : ''}`}
+          className="floating-nav-btn"
           onClick={() => setActiveScreen('search')}
           aria-label="Search"
           title="Search"
         >
           <Search size={21} />
-          {activeScreen === 'search' && <span className="nav-glow-dot" />}
         </button>
 
         {/* 4. Profile Button */}
         <button
-          className={`floating-nav-btn ${activeScreen === 'profile' ? 'active' : ''}`}
+          className="floating-nav-btn"
           onClick={() => setActiveScreen('profile')}
           aria-label="Profile"
           title="Profile"
         >
           <User size={21} />
-          {activeScreen === 'profile' && <span className="nav-glow-dot" />}
         </button>
 
         {/* 5. Big Size Circular Mode Switch Button */}

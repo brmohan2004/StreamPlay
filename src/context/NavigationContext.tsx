@@ -21,7 +21,27 @@ interface NavigationContextType {
 const NavigationContext = createContext<NavigationContextType | undefined>(undefined);
 
 export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [appMode, setAppMode] = useState<AppMode>('movies');
+  const [appMode, setAppModeState] = useState<AppMode>(() => {
+    try {
+      const saved = localStorage.getItem('streamplay_app_mode');
+      if (saved === 'movies' || saved === 'music') {
+        return saved;
+      }
+    } catch {
+      // Fallback if localStorage is inaccessible
+    }
+    return 'movies';
+  });
+
+  const setAppMode = (mode: AppMode) => {
+    setAppModeState(mode);
+    try {
+      localStorage.setItem('streamplay_app_mode', mode);
+    } catch (e) {
+      console.warn('Failed to persist streamplay_app_mode:', e);
+    }
+  };
+
   const [activeScreen, setActiveScreen] = useState<ScreenName>('home');
   const [selectedOTT, setSelectedOTT] = useState<OTTBrand>('All');
   const [searchQuery, setSearchQuery] = useState('');

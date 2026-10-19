@@ -484,3 +484,205 @@
   display: flex;
   justify-content: center;
 }
+
+/* 8. Dynamic Capsule-Based Music Listing View */
+.music-capsule-listing-view {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.music-capsule-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.2rem;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(200, 255, 0, 0.08) 0%, rgba(0, 0, 0, 0.6) 100%);
+  border: 1px solid rgba(200, 255, 0, 0.2);
+}
+
+.music-capsule-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #c8ff00;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.25rem;
+}
+
+.music-capsule-heading {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0.15rem 0;
+}
+
+.music-capsule-sub {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.music-capsule-play-all-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+  padding: 0.45rem 1rem;
+  border-radius: 20px;
+  background: #c8ff00;
+  color: #000000;
+  font-weight: 800;
+  font-size: 0.8rem;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(200, 255, 0, 0.35);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.music-capsule-play-all-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(200, 255, 0, 0.5);
+}
+
+.music-capsule-reset-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.music-capsule-reset-btn:hover {
+  background: rgba(200, 255, 0, 0.18);
+  border-color: rgba(200, 255, 0, 0.4);
+  color: #c8ff00;
+}
+
+.music-capsule-tracks-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 1rem;
+}
+
+.music-capsule-track-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.music-capsule-track-card:hover {
+  transform: translateY(-3px);
+}
+
+.track-art-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #111;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.track-art-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.track-play-hover-btn {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #c8ff00;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  transform: translateY(4px);
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.music-capsule-track-card:hover .track-play-hover-btn {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.track-card-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #c8ff00;
+  border: 1px solid rgba(200, 255, 0, 0.3);
+  backdrop-filter: blur(4px);
+}
+
+.track-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.track-card-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.track-card-artist {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.55);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.music-capsule-loading,
+.music-capsule-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+  padding: 3rem 1rem;
+  color: rgba(255, 255, 255, 0.6);
+  text-align: center;
+}
+
+.music-capsule-back-btn {
+  padding: 0.5rem 1.1rem;
+  border-radius: 20px;
+  background: #c8ff00;
+  color: #000;
+  font-weight: 700;
+  font-size: 0.82rem;
+  border: none;
+  cursor: pointer;
+}
+

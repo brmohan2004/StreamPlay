@@ -48,7 +48,7 @@ export const MusicPlayerScreen: React.FC<MusicPlayerScreenProps> = ({ onClose })
   const progressRatio = songDuration ? Math.min(1, Math.max(0, songProgress / songDuration)) : 0;
 
   // Track dial indices
-  const currentIndex = songQueue.findIndex(s => s.id === currentSong.id);
+  const currentIndex = songQueue.findIndex(s => String(s.id) === String(currentSong.id));
   const prevTrack = currentIndex > 0 ? songQueue[currentIndex - 1] : (songQueue.length > 0 ? songQueue[songQueue.length - 1] : null);
   const nextTrack = currentIndex >= 0 && currentIndex < songQueue.length - 1 ? songQueue[currentIndex + 1] : (songQueue.length > 0 ? songQueue[0] : null);
 
