@@ -440,6 +440,26 @@ export const MovieDetailsScreen: React.FC = () => {
 
         {/* 3. Primary Full-Width Action Button */}
         <div className="details-clean-action-section">
+          {movieData.isTheaterPrint && (
+            <div className="details-theater-warning-pill">
+              <span className="theater-pill-icon">⚡</span>
+              <div className="theater-pill-text">
+                <strong>IN THEATERS EARLY ACCESS (CAM-HD)</strong>
+                <p>Cinema audio recorded live. Official 4K Digital Master will automatically update when released by studio.</p>
+              </div>
+            </div>
+          )}
+
+          {movieData.streamUrl && (
+            <div className="details-live-stream-pill">
+              <span className="live-stream-dot" />
+              <div className="theater-pill-text">
+                <strong>DIRECT LIVE STREAM FEED (ZERO ADS)</strong>
+                <p>Instant low-latency HLS stream with adaptive bitrate and in-player audio selection.</p>
+              </div>
+            </div>
+          )}
+
           <motion.button
             className="details-bold-play-btn"
             whileHover={{ scale: 1.01 }}
@@ -447,7 +467,13 @@ export const MovieDetailsScreen: React.FC = () => {
             onClick={() => openMoviePlayer(movieData, 1, 1)}
           >
             <Play size={20} fill="#000000" color="#000000" style={{ marginLeft: 2 }} />
-            <span>{movieData.type === 'series' ? 'Watch Season 1 : Ep 1' : 'Play Movie Full Screen'}</span>
+            <span>
+              {movieData.streamUrl
+                ? 'Watch Live Stream Now'
+                : movieData.type === 'series'
+                ? 'Watch Season 1 : Ep 1'
+                : 'Play Movie Full Screen'}
+            </span>
           </motion.button>
 
           {/* Clean Secondary Action Bar: Watchlist & Share */}

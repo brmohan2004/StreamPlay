@@ -63,7 +63,13 @@ export function getProfile(): UserPreferenceProfile {
     const raw = localStorage.getItem(PROFILE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as UserPreferenceProfile;
-      if (parsed.profileVersion) return parsed;
+      if (parsed.profileVersion) {
+        // Sanitize out any sports or invalid "Untitled" anchors
+        parsed.lastWatchedMovies = (parsed.lastWatchedMovies || []).filter(
+          m => m && m.name && m.name !== 'Untitled' && !m.id.startsWith('sports-') && !m.name.toLowerCase().includes('sports')
+        );
+        return parsed;
+      }
     }
   } catch {
     // Corrupted data – fall through to default
@@ -157,13 +163,21 @@ export function logSignal(signal: BehaviorSignal): void {
 
     // Last watched (for "Because You Watched" row)
     if (signal.type === 'watch_complete' || signal.type === 'watch_start') {
-      profile.lastWatchedMovies = boundArray(
-        [
-          { id: itemId, name: meta.query || itemId, genres: meta.genres || [], timestamp: signal.timestamp },
-          ...profile.lastWatchedMovies.filter(m => m.id !== itemId),
-        ],
-        MAX_LAST_WATCHED
-      );
+      const movieTitle = meta.query || '';
+      if (
+        movieTitle &&
+        movieTitle !== 'Untitled' &&
+        !itemId.startsWith('sports-') &&
+        !movieTitle.toLowerCase().includes('sports')
+      ) {
+        profile.lastWatchedMovies = boundArray(
+          [
+            { id: itemId, name: movieTitle, genres: meta.genres || [], timestamp: signal.timestamp },
+            ...profile.lastWatchedMovies.filter(m => m.id !== itemId),
+          ],
+          MAX_LAST_WATCHED
+        );
+      }
     }
   }
 

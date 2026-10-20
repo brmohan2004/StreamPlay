@@ -86,12 +86,28 @@ export const RecommendationProvider: React.FC<RecommendationProviderProps> = ({
     if (movieCatalog.length > 0) {
       setForYouMovies(getMovieRecommendations(movieCatalog, 12));
 
-      // "Because You Watched" rows — up to 2 anchor movies
+      // "Because You Watched" rows — up to 2 distinct anchor movies
       const bywEntries: BecauseYouWatchedEntry[] = [];
-      for (const anchor of profile.lastWatchedMovies.slice(0, 2)) {
-        const recs = getBecauseYouWatched(anchor, movieCatalog, 8);
-        if (recs.length >= 3) {
+      const usedRecMovieIds = new Set<string>();
+
+      for (const anchor of profile.lastWatchedMovies) {
+        if (
+          !anchor ||
+          !anchor.name ||
+          anchor.name === 'Untitled' ||
+          anchor.id.startsWith('sports-') ||
+          anchor.name.toLowerCase().includes('sports')
+        ) {
+          continue;
+        }
+
+        const recs = getBecauseYouWatched(anchor, movieCatalog, 8)
+          .filter(m => !usedRecMovieIds.has(m.id));
+
+        if (recs.length >= 2) {
+          recs.forEach(m => usedRecMovieIds.add(m.id));
           bywEntries.push({ anchor, movies: recs });
+          if (bywEntries.length >= 2) break;
         }
       }
       setBecauseYouWatched(bywEntries);

@@ -25,6 +25,11 @@ export interface MovieItem {
   runtime?: string;
   trailer?: string;
   videos?: EpisodeItem[];
+  isTheaterPrint?: boolean;
+  theaterPrint?: string;
+  streamUrl?: string; // Direct HLS .m3u8 stream URL if available
+  language?: string;
+  released?: string; // ISO date string of theatrical/digital premiere
 }
 
 

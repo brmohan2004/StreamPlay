@@ -45,7 +45,7 @@ export const FloatingFilterPill: React.FC = () => {
           title="Open Filters & Categories"
         >
           {appMode === 'movies' ? (
-            /* Movie Mode: TV | Movies | Sports / OTTs | ^ */
+            /* Movie Mode: TV | Movies | ^ */
             <>
               <button
                 type="button"
@@ -69,19 +69,6 @@ export const FloatingFilterPill: React.FC = () => {
                 }}
               >
                 Movies
-              </button>
-
-              <span className="pill-divider" />
-
-              <button
-                type="button"
-                className={`filter-pill-segment ${activeCategory === 'Sports' ? 'active-seg' : ''}`}
-                onClick={e => {
-                  e.stopPropagation();
-                  setActiveCategory(activeCategory === 'Sports' ? 'All' : 'Sports');
-                }}
-              >
-                Sports
               </button>
 
               <span className="pill-divider" />

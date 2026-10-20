@@ -22,7 +22,8 @@ import {
   fetchLanguageMovies,
   fetchInfiniteLanguageMovies,
   fetchGenreMovies,
-  fetchByOTT
+  fetchByOTT,
+  fetchTheaterReleases
 } from '../services/movieService';
 
 interface MoviesHomeScreenProps {
@@ -79,6 +80,19 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
   // OTT Universe State
   const [ottUniverseMovies, setOttUniverseMovies] = useState<MovieItem[]>([]);
   const [isLoadingOtt, setIsLoadingOtt] = useState(false);
+
+  // Theatrical Releases
+  const [theaterReleases, setTheaterReleases] = useState<MovieItem[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetchTheaterReleases().then(res => {
+      if (isMounted) setTheaterReleases(res);
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Fetch OTT Universe Catalog when selectedOTT changes
   useEffect(() => {
@@ -242,6 +256,130 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
 
   const categoryFilteredMovies = getCategoryMovies();
 
+  // =========================================================================
+  // GLOBAL CROSS-SECTION DEDUPLICATION
+  // Guarantees that NO movie ever repeats across any section on the Home screen!
+  // =========================================================================
+  const globalSeenIds = new Set<string>();
+
+  // 1. Trending Fanned Deck
+  const deduplicatedTopMovies: MovieItem[] = [];
+  for (const m of topMovies) {
+    if (m && m.id && !globalSeenIds.has(m.id)) {
+      globalSeenIds.add(m.id);
+      deduplicatedTopMovies.push(m);
+    }
+  }
+
+  // 2. In Theaters Now
+  const deduplicatedTheaterReleases: MovieItem[] = [];
+  for (const m of theaterReleases) {
+    if (m && m.id && !globalSeenIds.has(m.id)) {
+      globalSeenIds.add(m.id);
+      deduplicatedTheaterReleases.push(m);
+    }
+  }
+
+  // 3. Top Picks For You
+  const deduplicatedForYou: MovieItem[] = [];
+  for (const m of forYouMovies) {
+    if (m && m.id && !globalSeenIds.has(m.id)) {
+      globalSeenIds.add(m.id);
+      deduplicatedForYou.push(m);
+    }
+  }
+
+  // 4. Because You Watched Rows
+  const deduplicatedBecauseYouWatched = becauseYouWatched
+    .map(entry => {
+      if (
+        !entry ||
+        !entry.anchor ||
+        !entry.anchor.name ||
+        entry.anchor.name === 'Untitled' ||
+        entry.anchor.id.startsWith('sports-') ||
+        entry.anchor.genres?.some(g => g.toLowerCase() === 'sports')
+      ) {
+        return null;
+      }
+      const uniqueMovies: MovieItem[] = [];
+      for (const m of entry.movies) {
+        if (m && m.id && !globalSeenIds.has(m.id)) {
+          globalSeenIds.add(m.id);
+          uniqueMovies.push(m);
+        }
+      }
+      return {
+        ...entry,
+        movies: uniqueMovies
+      };
+    })
+    .filter((entry): entry is NonNullable<typeof entry> => entry !== null && entry.movies.length >= 2);
+
+  // 5. New Releases
+  const deduplicatedNewReleases: MovieItem[] = [];
+  for (const m of newMoviesWithTags) {
+    if (m && m.id && !globalSeenIds.has(m.id)) {
+      globalSeenIds.add(m.id);
+      deduplicatedNewReleases.push(m);
+    }
+  }
+
+  // 6. Regional Languages
+  const deduplicatedPrimaryLang: MovieItem[] = [];
+  for (const m of primaryLangMovies) {
+    if (m && m.id && !globalSeenIds.has(m.id)) {
+      globalSeenIds.add(m.id);
+      deduplicatedPrimaryLang.push(m);
+    }
+  }
+
+  const deduplicatedSecondaryLang: MovieItem[] = [];
+  for (const m of secondaryLangMovies) {
+    if (m && m.id && !globalSeenIds.has(m.id)) {
+      globalSeenIds.add(m.id);
+      deduplicatedSecondaryLang.push(m);
+    }
+  }
+
+  // 7. Exploration Picks
+  const deduplicatedExploration: MovieItem[] = [];
+  for (const m of explorationMovies) {
+    if (m && m.id && !globalSeenIds.has(m.id)) {
+      globalSeenIds.add(m.id);
+      deduplicatedExploration.push(m);
+    }
+  }
+
+  // Helper for OTT and Genre rows
+  const deduplicateRow = (items: MovieItem[]): MovieItem[] => {
+    const unique: MovieItem[] = [];
+    for (const m of items) {
+      if (m && m.id && !globalSeenIds.has(m.id)) {
+        globalSeenIds.add(m.id);
+        unique.push(m);
+      }
+    }
+    return unique;
+  };
+
+  // 8. OTT Brand Rows & Series
+  const deduplicatedSeries = deduplicateRow(topSeries);
+  const deduplicatedHotstar = deduplicateRow(hotstarHits);
+  const deduplicatedNetflix = deduplicateRow(netflixHits);
+  const deduplicatedPrime = deduplicateRow(primeHits);
+  const deduplicatedApple = deduplicateRow(appleHits);
+  const deduplicatedSony = deduplicateRow(sonyHits);
+  const deduplicatedZee = deduplicateRow(zeeHits);
+
+  // 9. Infinite Scrolling Genre Rows
+  const deduplicatedGenreRows = loadedGenreRows
+    .map(row => ({
+      ...row,
+      items: deduplicateRow(row.items)
+    }))
+    .filter(row => row.items.length >= 2);
+
   return (
     <div className="movies-home-screen">
       {/* 1. Top Header */}
@@ -372,7 +510,9 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
           /* ========================================================================= */
           <>
             {/* 2. Trending Fanned Cards Deck */}
-            <MovieTrendingFannedDeck movies={topMovies} />
+            {deduplicatedTopMovies.length > 0 && (
+              <MovieTrendingFannedDeck movies={deduplicatedTopMovies} />
+            )}
 
             {/* 3. Continue Watching */}
             {continueWatching.length > 0 && (
@@ -388,17 +528,25 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
               </div>
             )}
 
+            {/* 3b. IN THEATERS ONLY (Strictly without OTT Releases) */}
+            {deduplicatedTheaterReleases.length > 0 && (
+              <MediaRow
+                title="In Theaters Now • Cinema Exclusive"
+                items={deduplicatedTheaterReleases}
+              />
+            )}
+
             {/* Top Picks For You - DESIGN: Spotlight Cards with IMDb pill & neon glow */}
-            {forYouMovies.length > 0 && (
+            {deduplicatedForYou.length > 0 && (
               <MovieSectionRow title="Top Picks For You">
-                {forYouMovies.map(item => (
+                {deduplicatedForYou.map(item => (
                   <MovieSpotlightCard key={item.id} item={item} />
                 ))}
               </MovieSectionRow>
             )}
 
             {/* Because You Watched - DESIGN: 16:9 Landscape Cinematic Backdrop Cards */}
-            {becauseYouWatched.map((entry, idx) => (
+            {deduplicatedBecauseYouWatched.map((entry, idx) => (
               <MovieSectionRow
                 key={`byw-${entry.anchor.id}-${idx}`}
                 title={`Because You Watched "${entry.anchor.name}"`}
@@ -410,33 +558,35 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
             ))}
 
             {/* New Releases - DESIGN: #1, #2, #3 Podium Ranked Cards */}
-            <MovieSectionRow title="New Releases">
-              {newMoviesWithTags.map((movie, idx) => (
-                <MovieRankedCard key={movie.id} item={movie} rank={idx + 1} />
-              ))}
-            </MovieSectionRow>
+            {deduplicatedNewReleases.length > 0 && (
+              <MovieSectionRow title="New Releases">
+                {deduplicatedNewReleases.map((movie, idx) => (
+                  <MovieRankedCard key={movie.id} item={movie} rank={idx + 1} />
+                ))}
+              </MovieSectionRow>
+            )}
 
             {/* Primary Language Blockbusters - DESIGN: 2-Row Horizontal Quick Tile Grid */}
-            {primaryLangMovies.length > 0 && (
+            {deduplicatedPrimaryLang.length > 0 && (
               <MovieTwoRowSection title={`${primaryLanguage} Blockbusters`}>
-                {primaryLangMovies.map(movie => (
+                {deduplicatedPrimaryLang.map(movie => (
                   <MovieTileCard key={movie.id} item={movie} />
                 ))}
               </MovieTwoRowSection>
             )}
 
             {/* Secondary Language Hits - DESIGN: MediaRow Poster Cards */}
-            {secondaryLangMovies.length > 0 && (
+            {deduplicatedSecondaryLang.length > 0 && (
               <MediaRow
                 title={`${secondaryLanguage} Hits`}
-                items={secondaryLangMovies}
+                items={deduplicatedSecondaryLang}
               />
             )}
 
             {/* Exploration Picks: Anti-Filter-Bubble - DESIGN: Panorama Feature Banners */}
-            {explorationMovies.length > 0 && (
+            {deduplicatedExploration.length > 0 && (
               <MovieSectionRow title="Discover Something New">
-                {explorationMovies.map(movie => (
+                {deduplicatedExploration.map(movie => (
                   <MoviePanoramaCard key={movie.id} item={movie} />
                 ))}
               </MovieSectionRow>
@@ -444,17 +594,17 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
 
             {/* OTT Brand Catalogs & Series */}
             <div className="ott-branded-sections">
-              <MediaRow title="Web Series" items={topSeries} />
-              <MediaRow title="JioHotstar" items={hotstarHits} />
-              <MediaRow title="Netflix" items={netflixHits} />
-              <MediaRow title="Prime Video" items={primeHits} />
-              <MediaRow title="Apple TV+" items={appleHits} />
-              <MediaRow title="Sony LIV" items={sonyHits} />
-              <MediaRow title="Zee5" items={zeeHits} />
+              {deduplicatedSeries.length > 0 && <MediaRow title="Web Series" items={deduplicatedSeries} />}
+              {deduplicatedHotstar.length > 0 && <MediaRow title="JioHotstar" items={deduplicatedHotstar} />}
+              {deduplicatedNetflix.length > 0 && <MediaRow title="Netflix" items={deduplicatedNetflix} />}
+              {deduplicatedPrime.length > 0 && <MediaRow title="Prime Video" items={deduplicatedPrime} />}
+              {deduplicatedApple.length > 0 && <MediaRow title="Apple TV+" items={deduplicatedApple} />}
+              {deduplicatedSony.length > 0 && <MediaRow title="Sony LIV" items={deduplicatedSony} />}
+              {deduplicatedZee.length > 0 && <MediaRow title="Zee5" items={deduplicatedZee} />}
             </div>
 
             {/* Infinite Scrolling Dynamic Movie Categories */}
-            {loadedGenreRows.map((row, idx) => (
+            {deduplicatedGenreRows.map((row, idx) => (
               <MediaRow
                 key={idx}
                 title={row.title}

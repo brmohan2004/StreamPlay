@@ -1,0 +1,163 @@
+/* OTT Dedicated Universe View */
+.ott-view-container {
+  padding: 1rem 1.25rem 3rem;
+  min-height: 100vh;
+}
+
+.ott-view-header {
+  position: relative;
+  padding: 2rem 1.5rem 1.5rem;
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(20, 20, 25, 0.7) 0%, rgba(10, 10, 12, 0.95) 100%);
+  border-bottom: 2px solid #00d2ff;
+  margin-bottom: 1.75rem;
+  overflow: hidden;
+}
+
+.ott-view-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.ott-brand-info {
+  position: relative;
+  z-index: 2;
+  margin-bottom: 1.25rem;
+}
+
+.ott-brand-badge {
+  display: inline-block;
+  font-family: var(--font-display, 'Outfit', sans-serif);
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 6px;
+  letter-spacing: 0.8px;
+  margin-bottom: 0.5rem;
+}
+
+.ott-brand-name {
+  font-family: var(--font-display, 'Outfit', sans-serif);
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0 0 0.35rem;
+  letter-spacing: -0.02em;
+}
+
+.ott-brand-desc {
+  font-size: 0.88rem;
+  color: #a1a1aa;
+  margin: 0;
+}
+
+.ott-tabs-scroll {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  gap: 0.6rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 4px;
+}
+
+.ott-tabs-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.ott-filter-tab {
+  padding: 0.45rem 1rem;
+  border-radius: 30px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.ott-filter-tab:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff !important;
+}
+
+.ott-filter-tab.active {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.ott-filter-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ott-type-pills {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.ott-type-pill {
+  padding: 0.35rem 0.85rem;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #a1a1aa;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ott-type-pill.active {
+  background: #ffffff;
+  color: #000000;
+  border-color: #ffffff;
+}
+
+.ott-sort-select {
+  padding: 0.35rem 0.85rem;
+  border-radius: 8px;
+  background: #18181b;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+}
+
+.ott-media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1rem;
+}
+
+.ott-load-more-btn {
+  display: block;
+  margin: 2rem auto;
+  padding: 0.75rem 2rem;
+  border-radius: 30px;
+  background: linear-gradient(135deg, rgba(0, 210, 255, 0.15), rgba(200, 255, 0, 0.15));
+  border: 1px solid rgba(0, 210, 255, 0.4);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ott-load-more-btn:hover {
+  background: linear-gradient(135deg, rgba(0, 210, 255, 0.3), rgba(200, 255, 0, 0.3));
+  border-color: #00d2ff;
+  transform: translateY(-2px);
+}

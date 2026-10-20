@@ -8,7 +8,10 @@ import {
   Send,
   Sparkles,
   LogOut,
-  Radio
+  Radio,
+  QrCode,
+  MessageSquare,
+  Link as LinkIcon
 } from 'lucide-react';
 import { useParty } from '../context/PartyContext';
 import { useMedia } from '../context/MediaContext';
@@ -36,6 +39,8 @@ export const PartyRoomModal: React.FC = () => {
   const [inputCode, setInputCode] = useState('');
   const [chatInput, setChatInput] = useState('');
   const [copied, setCopied] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [activeTab, setActiveTab] = useState<'qr' | 'chat'>('qr');
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll chat to latest message
@@ -47,11 +52,22 @@ export const PartyRoomModal: React.FC = () => {
 
   if (!isPartyModalOpen) return null;
 
+  const inviteUrl =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}/?party=${roomCode || ''}${activeMovie ? '&media=' + activeMovie.id : ''}`
+      : `https://streamplay.app/?party=${roomCode || ''}`;
+
   const handleCopyCode = () => {
     if (!roomCode) return;
     navigator.clipboard.writeText(roomCode);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleCopyInviteLink = () => {
+    navigator.clipboard.writeText(inviteUrl);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2000);
   };
 
   const handleJoin = (e: React.FormEvent) => {
@@ -123,7 +139,7 @@ export const PartyRoomModal: React.FC = () => {
                   <Sparkles size={24} className="text-cyan" />
                 </div>
                 <h4>Host a Watch & Listen Party</h4>
-                <p>Generate a room code and invite friends to stream in perfect sync (under 150ms drift).</p>
+                <p>Generate a room code & QR code for friends to stream in perfect sync across mobile, TV & laptop.</p>
                 <button className="party-primary-btn" onClick={() => createPartyRoom()}>
                   Create Party Room
                 </button>
@@ -135,7 +151,7 @@ export const PartyRoomModal: React.FC = () => {
 
               <div className="party-setup-card join-card">
                 <h4>Join Friend's Room</h4>
-                <p>Enter the 6-character room code shared by your friend.</p>
+                <p>Enter the room code shared by your friend.</p>
                 <form onSubmit={handleJoin} className="party-join-form">
                   <input
                     type="text"
@@ -163,62 +179,109 @@ export const PartyRoomModal: React.FC = () => {
                 </div>
                 <button className="party-copy-btn" onClick={handleCopyCode}>
                   {copied ? <Check size={16} color="#c8ff00" /> : <Copy size={16} />}
-                  <span>{copied ? 'Copied!' : 'Copy Code'}</span>
+                  <span>{copied ? 'Copied' : 'Copy Code'}</span>
                 </button>
               </div>
 
-              {/* Floating Reaction Bar */}
-              <div className="party-reaction-bar">
-                <span className="reaction-bar-label">Send Reaction:</span>
-                <div className="reaction-buttons-list">
-                  {PARTY_REACTIONS.map((emoji, idx) => (
-                    <motion.button
-                      key={idx}
-                      className="reaction-emoji-btn"
-                      whileHover={{ scale: 1.25 }}
-                      whileTap={{ scale: 0.85 }}
-                      onClick={() => sendReaction(emoji)}
-                    >
-                      {emoji}
-                    </motion.button>
-                  ))}
-                </div>
+              {/* View Switcher Tabs (QR Code vs Live Chat) */}
+              <div className="party-active-tabs">
+                <button
+                  className={`party-active-tab-btn ${activeTab === 'qr' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('qr')}
+                >
+                  <QrCode size={14} />
+                  <span>Mobile QR Code</span>
+                </button>
+                <button
+                  className={`party-active-tab-btn ${activeTab === 'chat' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('chat')}
+                >
+                  <MessageSquare size={14} />
+                  <span>Live Chat {chatMessages.length > 0 ? `(${chatMessages.length})` : ''}</span>
+                </button>
               </div>
 
-              {/* Live Chat Box */}
-              <div className="party-chat-container">
-                <div className="party-chat-scroll">
-                  {chatMessages.length === 0 ? (
-                    <div className="chat-empty-state">
-                      <p>No messages yet. Say hello to your friends!</p>
+              {activeTab === 'qr' ? (
+                /* QR Code Scanner View */
+                <div className="party-qr-container">
+                  <div className="party-qr-frame">
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=8&color=000000&bgcolor=ffffff&data=${encodeURIComponent(
+                        inviteUrl
+                      )}`}
+                      alt="Scan QR code to join"
+                      className="party-qr-image"
+                    />
+                  </div>
+
+                  <p className="party-qr-instructions">
+                    Point your phone camera at this QR code to join this party room instantly with synchronized playback!
+                  </p>
+
+                  <div className="party-qr-link-row">
+                    <button className="party-link-copy-btn" onClick={handleCopyInviteLink}>
+                      {copiedLink ? <Check size={16} color="#c8ff00" /> : <LinkIcon size={16} />}
+                      <span>{copiedLink ? 'Link Copied!' : 'Copy Direct Invite Link'}</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* Chat & Reactions View */
+                <>
+                  {/* Floating Reaction Bar */}
+                  <div className="party-reaction-bar">
+                    <span className="reaction-bar-label">Send Reaction:</span>
+                    <div className="reaction-buttons-list">
+                      {PARTY_REACTIONS.map((emoji, idx) => (
+                        <motion.button
+                          key={idx}
+                          className="reaction-emoji-btn"
+                          whileHover={{ scale: 1.25 }}
+                          whileTap={{ scale: 0.85 }}
+                          onClick={() => sendReaction(emoji)}
+                        >
+                          {emoji}
+                        </motion.button>
+                      ))}
                     </div>
-                  ) : (
-                    chatMessages.map(msg => (
-                      <div key={msg.id} className="party-chat-bubble">
-                        <div className="chat-bubble-sender">{msg.senderName}</div>
-                        <div className="chat-bubble-text">{msg.text}</div>
-                      </div>
-                    ))
-                  )}
-                  <div ref={chatBottomRef} />
-                </div>
+                  </div>
 
-                <form onSubmit={handleSendChat} className="party-chat-input-row">
-                  <input
-                    type="text"
-                    className="party-chat-input"
-                    placeholder="Chat with friends..."
-                    value={chatInput}
-                    onChange={e => setChatInput(e.target.value)}
-                  />
-                  <button type="submit" className="party-chat-send-btn" disabled={!chatInput.trim()}>
-                    <Send size={15} />
-                  </button>
-                </form>
-              </div>
+                  {/* Live Chat Box */}
+                  <div className="party-chat-container">
+                    <div className="party-chat-scroll">
+                      {chatMessages.length === 0 ? (
+                        <div className="chat-empty-state">
+                          <p>No messages yet. Say hello to your friends!</p>
+                        </div>
+                      ) : (
+                        chatMessages.map(msg => (
+                          <div key={msg.id} className="party-chat-bubble">
+                            <div className="chat-bubble-sender">{msg.senderName}</div>
+                            <div className="chat-bubble-text">{msg.text}</div>
+                          </div>
+                        ))
+                      )}
+                      <div ref={chatBottomRef} />
+                    </div>
+
+                    <form onSubmit={handleSendChat} className="party-chat-input-row">
+                      <input
+                        type="text"
+                        className="party-chat-input"
+                        placeholder="Chat with friends..."
+                        value={chatInput}
+                        onChange={e => setChatInput(e.target.value)}
+                      />
+                      <button type="submit" className="party-chat-send-btn" disabled={!chatInput.trim()}>
+                        <Send size={15} />
+                      </button>
+                    </form>
+                  </div>
+                </>
+              )}
 
               {/* Footer controls */}
-              <div className="party-active-footer">
+              <div className="party-active-footer" style={{ padding: '0.75rem 1.4rem' }}>
                 <button className="party-leave-btn" onClick={leavePartyRoom}>
                   <LogOut size={15} />
                   <span>Leave Party</span>

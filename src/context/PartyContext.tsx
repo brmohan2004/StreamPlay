@@ -88,8 +88,24 @@ export const PartyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   );
 
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
 
-  // Initialize BroadcastChannel
+  // Auto-detect ?party= & ?media= URL parameters on initial launch (Mobile scan QR join)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const partyFromUrl = urlParams.get('party');
+      if (partyFromUrl) {
+        joinPartyRoom(partyFromUrl);
+        setIsPartyModalOpen(true);
+      }
+    } catch (e) {
+      console.warn('Failed to parse URL party params:', e);
+    }
+  }, []);
+
+  // Initialize Multi-Device Cross-Device Sync (SSE + BroadcastChannel)
   useEffect(() => {
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
       const channel = new BroadcastChannel('streamplay_party_sync');
@@ -103,6 +119,51 @@ export const PartyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         channel.close();
       };
     }
+  }, [roomCode, isInParty]);
+
+  // Real-time Cloud Cross-Device Peer Sync (Connects Phone to Desktop across internet)
+  useEffect(() => {
+    if (!isInParty || !roomCode) {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+      return;
+    }
+
+    const sanitizedRoom = roomCode.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const sseUrl = `https://ntfy.sh/streamplay_sync_${sanitizedRoom}/sse`;
+    let sse: EventSource | null = null;
+
+    try {
+      sse = new EventSource(sseUrl);
+      eventSourceRef.current = sse;
+
+      sse.onmessage = event => {
+        try {
+          const payload = JSON.parse(event.data);
+          if (payload.event === 'message' && payload.message) {
+            const packet: PartySyncPacket = JSON.parse(payload.message);
+            handleIncomingPacket(packet);
+          }
+        } catch {
+          // Keep stream alive on non-JSON heartbeats
+        }
+      };
+
+      sse.onerror = () => {
+        // SSE will reconnect automatically
+      };
+    } catch (err) {
+      console.warn('SSE multi-device connection error:', err);
+    }
+
+    return () => {
+      if (sse) {
+        sse.close();
+        eventSourceRef.current = null;
+      }
+    };
   }, [roomCode, isInParty]);
 
   // Handle incoming party broadcast packets
@@ -194,6 +255,18 @@ export const PartyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       localStorage.setItem('streamplay_party_event', JSON.stringify({ ...packet, _t: Date.now() }));
     } catch {
       // Ignored
+    }
+
+    // Cloud Multi-Device Broadcast (delivers to mobile phones, TVs, separate computers)
+    if (packet.roomCode) {
+      const sanitizedRoom = packet.roomCode.toLowerCase().replace(/[^a-z0-9]/g, '_');
+      fetch(`https://ntfy.sh/streamplay_sync_${sanitizedRoom}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(packet)
+      }).catch(() => {
+        // Fail gracefully offline
+      });
     }
   };
 

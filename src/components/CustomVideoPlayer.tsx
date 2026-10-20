@@ -1,6 +1,7 @@
 import './CustomVideoPlayer.css';
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Hls from 'hls.js';
 import {
   X,
   Volume2,
@@ -16,7 +17,9 @@ import {
   Lock,
   Check,
   List,
-  Server
+  Server,
+  Play,
+  Pause
 } from 'lucide-react';
 import { useMedia } from '../context/MediaContext';
 import { getStreamEmbedUrl, STREAMING_SERVERS } from '../services/movieService';
@@ -37,8 +40,12 @@ export const CustomVideoPlayer: React.FC = () => {
   // Fullscreen container ref
   const playerContainerRef = useRef<HTMLDivElement | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const hlsRef = useRef<Hls | null>(null);
+  const [nativeAudioTracks, setNativeAudioTracks] = useState<{ id: number; name: string; lang: string }[]>([]);
 
   // Player UI states
+  const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
@@ -139,6 +146,99 @@ export const CustomVideoPlayer: React.FC = () => {
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
+  // Native HLS Video Stream Mounting Lifecycle
+  useEffect(() => {
+    if (!isVideoModalOpen || !activeMovie?.streamUrl || !videoRef.current) return;
+
+    const video = videoRef.current;
+    let hls: Hls | null = null;
+    setIsLoading(true);
+
+    if (Hls.isSupported()) {
+      hls = new Hls({
+        enableWorker: true,
+        lowLatencyMode: true,
+        backBufferLength: 90
+      });
+      hlsRef.current = hls;
+
+      hls.loadSource(activeMovie.streamUrl);
+      hls.attachMedia(video);
+
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        setIsLoading(false);
+        video.play().catch(e => console.warn('Autoplay prevented:', e));
+
+        if (hls && hls.audioTracks && hls.audioTracks.length > 0) {
+          const tracks = hls.audioTracks.map((t, idx) => ({
+            id: idx,
+            name: t.name || `Audio Track ${idx + 1}`,
+            lang: t.lang || 'default'
+          }));
+          setNativeAudioTracks(tracks);
+          if (tracks[0]) {
+            setSelectedAudioLang(tracks[0].name);
+          }
+        }
+      });
+
+      hls.on(Hls.Events.AUDIO_TRACK_SWITCHED, (_, data) => {
+        const currentTrack = hls?.audioTracks[data.id];
+        if (currentTrack) {
+          setSelectedAudioLang(currentTrack.name || currentTrack.lang || `Track ${data.id + 1}`);
+        }
+      });
+
+      hls.on(Hls.Events.ERROR, (_, data) => {
+        if (data.fatal) {
+          switch (data.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              hls?.startLoad();
+              break;
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              hls?.recoverMediaError();
+              break;
+            default:
+              hls?.destroy();
+              break;
+          }
+        }
+      });
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = activeMovie.streamUrl;
+      video.addEventListener('loadedmetadata', () => {
+        setIsLoading(false);
+        video.play().catch(e => console.warn('Autoplay prevented:', e));
+      });
+    }
+
+    return () => {
+      if (hls) {
+        hls.destroy();
+        hlsRef.current = null;
+      }
+    };
+  }, [isVideoModalOpen, activeMovie?.streamUrl, activeMovie?.id]);
+
+  const togglePlayPause = () => {
+    if (activeMovie?.streamUrl && videoRef.current) {
+      if (videoRef.current.paused) {
+        videoRef.current.play();
+        setIsPlaying(true);
+      } else {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      }
+    }
+  };
+
+  const toggleMute = () => {
+    if (videoRef.current) {
+      videoRef.current.muted = !isMuted;
+    }
+    setIsMuted(prev => !prev);
+  };
+
   if (!isVideoModalOpen || !activeMovie) return null;
 
   const currentEmbedUrl = getStreamEmbedUrl(
@@ -218,18 +318,35 @@ export const CustomVideoPlayer: React.FC = () => {
           </div>
         )}
 
-        <iframe
-          ref={iframeRef}
-          key={`${activeMovie.id}-${videoProviderIndex}-${activeSeason}-${activeEpisode}`}
-          src={currentEmbedUrl}
-          className="custom-stream-iframe"
-          title={activeMovie.name}
-          allowFullScreen
-          allow="autoplay; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-          onLoad={() => {
-            setIsLoading(false);
-          }}
-        />
+        {activeMovie.streamUrl ? (
+          <video
+            ref={videoRef}
+            className="custom-stream-video"
+            playsInline
+            autoPlay
+            muted={isMuted}
+            onClick={togglePlayPause}
+            onPlay={() => setIsPlaying(true)}
+            onPause={() => setIsPlaying(false)}
+            onWaiting={() => setIsLoading(true)}
+            onPlaying={() => setIsLoading(false)}
+          />
+        ) : (
+          <iframe
+            ref={iframeRef}
+            key={`${activeMovie.id}-${videoProviderIndex}-${activeSeason}-${activeEpisode}`}
+            src={currentEmbedUrl}
+            className="custom-stream-iframe"
+            title={activeMovie.name}
+            sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
+            referrerPolicy="no-referrer"
+            allowFullScreen
+            allow="autoplay; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+            onLoad={() => {
+              setIsLoading(false);
+            }}
+          />
+        )}
       </div>
 
       {/* 2. "HOLD TO 2X PLAY" Floating Pill Indicator */}
@@ -304,10 +421,22 @@ export const CustomVideoPlayer: React.FC = () => {
       {/* 5. Bottom Controls Bar — ALL OPTIONS IN BOTTOM BAR (LOGO ONLY) */}
       <div className={`player-bottom-bar ${showControls && !isLocked ? 'visible' : 'hidden'}`}>
         <div className="bottom-left-controls">
+          {/* Play/Pause toggle (Native Video) — logo only */}
+          {activeMovie.streamUrl && (
+            <button
+              className="player-ctrl-round-btn small"
+              onClick={togglePlayPause}
+              title={isPlaying ? 'Pause' : 'Play'}
+              aria-label="Play or Pause"
+            >
+              {isPlaying ? <Pause size={18} /> : <Play size={18} fill="#ffffff" />}
+            </button>
+          )}
+
           {/* Mute toggle — logo only */}
           <button
             className="player-ctrl-round-btn small"
-            onClick={() => setIsMuted(prev => !prev)}
+            onClick={toggleMute}
             title={isMuted ? 'Unmute' : 'Mute'}
             aria-label="Mute"
           >
@@ -483,18 +612,38 @@ export const CustomVideoPlayer: React.FC = () => {
             </div>
             <div className="lang-split-sections">
               <div className="lang-col">
-                <span className="lang-col-title">Audio Track</span>
+                <span className="lang-col-title">
+                  Audio Track {nativeAudioTracks.length > 0 ? `(${nativeAudioTracks.length} Detected)` : ''}
+                </span>
                 <div className="menu-options-list compact">
-                  {AUDIO_LANGUAGES.map((lang, idx) => (
-                    <div
-                      key={idx}
-                      className={`menu-option-item ${selectedAudioLang === lang ? 'active' : ''}`}
-                      onClick={() => setSelectedAudioLang(lang)}
-                    >
-                      <span className="option-title">{lang}</span>
-                      {selectedAudioLang === lang && <Check size={16} color="#c8ff00" />}
-                    </div>
-                  ))}
+                  {nativeAudioTracks.length > 0 ? (
+                    nativeAudioTracks.map(track => (
+                      <div
+                        key={track.id}
+                        className={`menu-option-item ${selectedAudioLang === track.name ? 'active' : ''}`}
+                        onClick={() => {
+                          setSelectedAudioLang(track.name);
+                          if (hlsRef.current) {
+                            hlsRef.current.audioTrack = track.id;
+                          }
+                        }}
+                      >
+                        <span className="option-title">{track.name}</span>
+                        {selectedAudioLang === track.name && <Check size={16} color="#c8ff00" />}
+                      </div>
+                    ))
+                  ) : (
+                    AUDIO_LANGUAGES.map((lang, idx) => (
+                      <div
+                        key={idx}
+                        className={`menu-option-item ${selectedAudioLang === lang ? 'active' : ''}`}
+                        onClick={() => setSelectedAudioLang(lang)}
+                      >
+                        <span className="option-title">{lang}</span>
+                        {selectedAudioLang === lang && <Check size={16} color="#c8ff00" />}
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
 

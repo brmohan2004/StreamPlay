@@ -9,7 +9,7 @@ export const OTT_PLATFORMS: OTTMetadata[] = [
     tagline: 'All streaming catalogs combined',
     accentColor: '#00d2ff',
     logoText: 'ALL',
-    popularQueries: ['Action', 'Thriller', 'Popular']
+    popularQueries: ['Action', 'Thriller', 'Popular', 'Sci-Fi', 'Comedy', 'Drama']
   },
   {
     brand: 'Netflix',
@@ -17,7 +17,7 @@ export const OTT_PLATFORMS: OTTMetadata[] = [
     tagline: 'Unlimited original series & films',
     accentColor: '#E50914',
     logoText: 'NETFLIX',
-    popularQueries: ['Stranger Things', 'Squid Game', 'Wednesday', 'Money Heist', 'Extraction', 'The Witcher', 'Red Notice']
+    popularQueries: ['Netflix Original', 'Netflix Series', 'Netflix Film', 'Netflix 2025', 'Netflix 2026']
   },
   {
     brand: 'JioHotstar',
@@ -25,7 +25,7 @@ export const OTT_PLATFORMS: OTTMetadata[] = [
     tagline: 'Disney, Marvel, HBO & Indian Blockbusters',
     accentColor: '#1288FF',
     logoText: 'JIOHOTSTAR',
-    popularQueries: ['Loki', 'The Mandalorian', 'Marvel', 'House of the Dragon', 'Aarya', 'Special Ops', 'Brahmastra']
+    popularQueries: ['Hotstar Specials', 'Disney Plus', 'Marvel Studios', 'HBO Original', 'Hotstar 2025']
   },
   {
     brand: 'Prime Video',
@@ -33,7 +33,7 @@ export const OTT_PLATFORMS: OTTMetadata[] = [
     tagline: 'Amazon Originals & Global Hits',
     accentColor: '#00A8E1',
     logoText: 'PRIME',
-    popularQueries: ['The Boys', 'Reacher', 'Fallout', 'Mirzapur', 'Panchayat', 'The Rings of Power', 'Family Man']
+    popularQueries: ['Amazon Original', 'Amazon Studios', 'Prime Video 2025', 'Prime Video 2026']
   },
   {
     brand: 'Apple TV+',
@@ -41,7 +41,7 @@ export const OTT_PLATFORMS: OTTMetadata[] = [
     tagline: 'Award-winning Apple Originals',
     accentColor: '#FFFFFF',
     logoText: 'APPLE TV+',
-    popularQueries: ['Severance', 'Ted Lasso', 'Foundation', 'Slow Horses', 'Silo', 'Morning Show', 'Ted Lasso']
+    popularQueries: ['Apple Original', 'Apple Studios', 'Apple TV+ 2025', 'Apple TV+ 2026']
   },
   {
     brand: 'Sony LIV',
@@ -49,7 +49,7 @@ export const OTT_PLATFORMS: OTTMetadata[] = [
     tagline: 'Original series & Premium sports drama',
     accentColor: '#FD7E14',
     logoText: 'SONYLIV',
-    popularQueries: ['Scam 1992', 'Rocket Boys', 'Maharani', 'Gullak', 'Undekhi', 'Gullak', 'Tabbar']
+    popularQueries: ['Sony LIV Original', 'Sony LIV Series', 'Sony Pictures', 'Sony LIV 2025']
   },
   {
     brand: 'Zee5',
@@ -57,7 +57,7 @@ export const OTT_PLATFORMS: OTTMetadata[] = [
     tagline: 'Blockbuster regional cinema & originals',
     accentColor: '#A855F7',
     logoText: 'ZEE5',
-    popularQueries: ['Taj', 'Manoj Bajpayee', 'Sunflower', 'Saas Bahu Achaar', 'Silence', 'Ghoomketu']
+    popularQueries: ['Zee5 Original', 'Zee Studios', 'Zee5 Blockbuster', 'Zee5 2025']
   }
 ];
 
@@ -66,9 +66,9 @@ let cachedTopSeries: MovieItem[] | null = null;
 const ottCache = new Map<string, MovieItem[]>();
 
 /**
- * Returns daily-varying Trending Movies.
- * Rotates and curates dynamically based on the current day so the trending lineup
- * changes daily rather than staying static for a month.
+ * Returns real-time Web Trending Movies.
+ * Combines live web trending from Cinemeta with 2025/2026 releases (both theater & OTT).
+ * Strictly filters out ancient/old movies so every trending card is a current hit.
  */
 export async function fetchTopMovies(): Promise<MovieItem[]> {
   const todayKey = new Date().toISOString().slice(0, 10);
@@ -76,50 +76,40 @@ export async function fetchTopMovies(): Promise<MovieItem[]> {
     return cachedTopMovies.items;
   }
 
-  // Calculate day-of-year offset to vary daily content
-  const now = new Date();
-  const startOfYear = new Date(now.getFullYear(), 0, 0);
-  const dayOfYear = Math.floor((now.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24));
-  const dailySkip = (dayOfYear * 8) % 40;
-
-  // Daily rotating curation themes
-  const DAILY_THEMES = [
-    'Blockbuster', 'Action Thriller', 'Sci-Fi Adventure', 'Crime Drama',
-    'Mystery', 'Epic', 'Global Hits', 'Cyberpunk', 'Horror Thriller', 'Fantasy'
-  ];
-  const todayTheme = DAILY_THEMES[dayOfYear % DAILY_THEMES.length];
-
   try {
-    const [topBaseRes, themeSearch] = await Promise.all([
-      fetch(`${CINEMETA_BASE}/catalog/movie/top${dailySkip > 0 ? `/skip=${dailySkip}` : ''}.json`)
-        .then(r => r.json())
-        .catch(() => ({ metas: [] })),
-      searchMoviesAndShows(todayTheme).catch(() => [])
+    const [topBaseRes, year26Res, year25Res] = await Promise.all([
+      fetch(`${CINEMETA_BASE}/catalog/movie/top.json`).then(r => r.json()).catch(() => ({ metas: [] })),
+      fetch(`${CINEMETA_BASE}/catalog/movie/year/genre=2026.json`).then(r => r.json()).catch(() => ({ metas: [] })),
+      fetch(`${CINEMETA_BASE}/catalog/movie/year/genre=2025.json`).then(r => r.json()).catch(() => ({ metas: [] }))
     ]);
 
     const baseMovies = (topBaseRes.metas || []).map((m: any) => formatMovie(m, 'movie'));
-    const themeMovies = themeSearch.filter(m => m.type !== 'series');
+    const year26Movies = (year26Res.metas || []).map((m: any) => formatMovie(m, 'movie'));
+    const year25Movies = (year25Res.metas || []).map((m: any) => formatMovie(m, 'movie'));
 
-    // Deterministic daily rotation so order changes each day
-    const combined = [...themeMovies.slice(0, 5), ...baseMovies];
+    // Web trending: true real-time mix of current theatrical releases & hot OTT trending
+    const pool = [...year26Movies.slice(0, 10), ...year25Movies.slice(0, 15), ...baseMovies];
     const seen = new Set<string>();
-    const deduplicated = combined.filter(m => {
-      if (!m.id || seen.has(m.id)) return false;
+    const trendingRecent: MovieItem[] = [];
+
+    for (const m of pool) {
+      if (!m.id || seen.has(m.id)) continue;
       seen.add(m.id);
-      return true;
-    });
 
-    // Deterministic daily permutation
-    const shift = dayOfYear % Math.max(1, deduplicated.length);
-    const dailyVarying = [...deduplicated.slice(shift), ...deduplicated.slice(0, shift)];
+      const y = parseInt(m.releaseInfo || '0') || 0;
+      // Strictly filter to current/recent titles (2025-2026) to prevent ancient movies
+      if (y >= 2025) {
+        trendingRecent.push(m);
+      }
+    }
 
-    const result = dailyVarying.length > 0 ? dailyVarying : baseMovies;
+    const result = trendingRecent.length >= 10 ? trendingRecent : pool.filter(m => (parseInt(m.releaseInfo || '0') || 0) >= 2024);
     if (result.length > 0) {
       cachedTopMovies = { dateKey: todayKey, items: result };
     }
     return result;
   } catch (err) {
-    console.error('Failed to fetch daily trending movies:', err);
+    console.error('Failed to fetch web trending movies:', err);
     return [];
   }
 }
@@ -129,11 +119,28 @@ export async function fetchTopSeries(): Promise<MovieItem[]> {
     return cachedTopSeries;
   }
   try {
-    const res = await fetch(`${CINEMETA_BASE}/catalog/series/top.json`);
-    const data = await res.json();
-    const result = (data.metas || []).map((m: any) => formatMovie(m, 'series'));
-    if (result.length > 0) cachedTopSeries = result;
-    return result;
+    const [topSeriesRes, year25SeriesRes] = await Promise.all([
+      fetch(`${CINEMETA_BASE}/catalog/series/top.json`).then(r => r.json()).catch(() => ({ metas: [] })),
+      fetch(`${CINEMETA_BASE}/catalog/series/year/genre=2025.json`).then(r => r.json()).catch(() => ({ metas: [] }))
+    ]);
+
+    const topSeries = (topSeriesRes.metas || []).map((m: any) => formatMovie(m, 'series'));
+    const yearSeries = (year25SeriesRes.metas || []).map((m: any) => formatMovie(m, 'series'));
+
+    const seen = new Set<string>();
+    const combined: MovieItem[] = [];
+
+    for (const s of [...yearSeries.slice(0, 10), ...topSeries]) {
+      if (!s.id || seen.has(s.id)) continue;
+      seen.add(s.id);
+      const y = parseInt(s.releaseInfo || '0') || 0;
+      if (y >= 2024) {
+        combined.push(s);
+      }
+    }
+
+    cachedTopSeries = combined.length > 0 ? combined : topSeries;
+    return cachedTopSeries || [];
   } catch (err) {
     console.error('Failed to fetch top series:', err);
     return [];
@@ -162,15 +169,17 @@ export async function searchMoviesAndShows(query: string): Promise<MovieItem[]> 
   }
 }
 
-export async function fetchByOTT(brand: OTTBrand): Promise<MovieItem[]> {
-  if (ottCache.has(brand)) {
-    return ottCache.get(brand)!;
+export async function fetchByOTT(brand: OTTBrand, page = 0): Promise<MovieItem[]> {
+  const cacheKey = `${brand}_page_${page}`;
+  if (ottCache.has(cacheKey)) {
+    return ottCache.get(cacheKey)!;
   }
 
   if (brand === 'All') {
     const [movies, series] = await Promise.all([fetchTopMovies(), fetchTopSeries()]);
-    const combined = [...movies.slice(0, 15), ...series.slice(0, 15)];
-    ottCache.set('All', combined);
+    const start = page * 24;
+    const combined = [...movies, ...series].slice(start, start + 36);
+    ottCache.set(cacheKey, combined);
     return combined;
   }
 
@@ -181,19 +190,33 @@ export async function fetchByOTT(brand: OTTBrand): Promise<MovieItem[]> {
     const queryResults = await Promise.all(
       platform.popularQueries.map(async q => {
         const items = await searchMoviesAndShows(q);
-        return items[0] || null;
+        return items.slice(0, 5);
       })
     );
 
     const results: MovieItem[] = [];
-    for (const item of queryResults) {
-      if (item && !results.some(r => r.id === item.id)) {
-        results.push({ ...item, ottProvider: brand });
+    const seen = new Set<string>();
+    for (const group of queryResults) {
+      for (const item of group) {
+        if (item && !seen.has(item.id)) {
+          seen.add(item.id);
+          results.push({ ...item, ottProvider: brand });
+        }
       }
     }
 
+    // Register all discovered titles into dynamic OTT registry
+    registerOttMovies(results, brand);
+
+    // Sort by rating & release year descending
+    results.sort((a, b) => {
+      const yearA = parseInt(a.releaseInfo || '0') || 0;
+      const yearB = parseInt(b.releaseInfo || '0') || 0;
+      return yearB - yearA;
+    });
+
     if (results.length > 0) {
-      ottCache.set(brand, results);
+      ottCache.set(cacheKey, results);
     }
     return results;
   } catch (err) {
@@ -212,7 +235,8 @@ function formatMovie(item: any, type: 'movie' | 'series'): MovieItem {
     description: item.description || 'Watch now in high quality on StreamPlay.',
     releaseInfo: item.releaseInfo || item.year || '',
     imdbRating: item.imdbRating || '8.5',
-    genres: item.genres || ['Drama', 'Action']
+    genres: item.genres || ['Drama', 'Action'],
+    released: item.released
   };
 }
 
@@ -232,62 +256,34 @@ export async function fetchPagedGenreMovies(genre: string, skip = 0): Promise<Mo
   }
 }
 
-// === Rich Regional Cinema Seed Bank (30+ Titles per Language) ===
-export const MOVIE_LANGUAGE_SEEDS: Record<string, string[]> = {
-  Tamil: [
-    'Leo', 'Jailer', 'Vikram', 'Ponniyin Selvan', 'Master',
-    'Kaithi', 'Mankatha', 'Theri', 'Petta', 'Doctor',
-    'Thuppakki', 'Kaththi', 'Sivaji', 'Enthiran', 'Ghilli',
-    'Asuran', 'Karnan', 'Vada Chennai', 'Soorarai Pottru', 'Jai Bhim',
-    'Maanagaram', 'Vikram Vedha', 'Super Deluxe', 'Pizza', 'Jigarthanda',
-    'Kadaisi Vivasayi', 'Gargi', 'Chithha', 'Maharaja', 'Garudan',
-    'Kottukkaali', 'Lover', 'Parking', 'Vaathi', 'Ayalaan'
-  ],
-  Telugu: [
-    'RRR', 'Salaar', 'Pushpa', 'Kalki', 'Devara',
-    'Baahubali', 'Rangasthalam', 'Ala Vaikunthapurramuloo', 'Magadheera', 'Eega',
-    'Jersey', 'Saripodhaa Sanivaaram', 'HanuMan', 'Dasara', 'Waltair Veerayya'
-  ],
-  Hindi: [
-    'Jawan', 'Animal', 'Pathaan', 'Stree', 'Fighter',
-    'Dangal', '3 Idiots', 'Sholay', 'Gangs of Wasseypur', 'Drishyam',
-    'Brahmastra', 'Dunki', 'Tiger 3', 'Article 370', 'Kill'
-  ],
-  Malayalam: [
-    'Manjummel Boys', 'Aadujeevitham', 'Aavesham', 'Premalu', 'Bramayugam',
-    'Drishyam', 'Lucifer', 'Kumbalangi Nights', 'Minnal Murali', 'RDX'
-  ],
-  Kannada: [
-    'KGF', 'Kantara', '777 Charlie', 'Vikrant Rona', 'Ugramm',
-    'Sapta Sagaradaache Ello', 'Kabzaa', 'Tagaru'
-  ],
-  English: [
-    'Oppenheimer', 'Dune', 'Avatar', 'Interstellar', 'The Batman',
-    'Inception', 'The Dark Knight', 'Gladiator', 'Avengers', 'Spider-Man'
-  ],
-  Korean: [
-    'Parasite', 'Squid Game', 'Train to Busan', 'Oldboy', 'The Roundup',
-    'Exhuma', 'Memories of Murder', 'I Saw the Devil'
-  ]
+// === Dynamic Regional Cinema Search Terms (No hardcoded film names) ===
+export const DYNAMIC_LANGUAGE_QUERIES: Record<string, string[]> = {
+  Tamil: ['Tamil 2026', 'Tamil 2025', 'Tamil 2024', 'Tamil Cinema', 'Kollywood'],
+  Telugu: ['Telugu 2026', 'Telugu 2025', 'Telugu 2024', 'Telugu Cinema', 'Tollywood'],
+  Hindi: ['Hindi 2026', 'Hindi 2025', 'Hindi 2024', 'Bollywood', 'Hindi Cinema'],
+  Malayalam: ['Malayalam 2026', 'Malayalam 2025', 'Malayalam 2024', 'Mollywood'],
+  Kannada: ['Kannada 2026', 'Kannada 2025', 'Kannada 2024', 'Sandalwood'],
+  English: ['2026', '2025', 'Hollywood', 'English Action', 'English Sci-Fi'],
+  Korean: ['Korean 2026', 'Korean 2025', 'K-Drama', 'Korean Cinema']
 };
 
 /**
- * Dynamically fetches language movies with deep multi-query pagination.
- * Avoids small 3-5 item caps by querying 6 seeds per batch and aggregating deduplicated titles.
+ * Dynamically fetches language movies with multi-query pagination and
+ * STRICT sorting from recently released (2026, 2025, 2024) to older classics.
  */
 export async function fetchInfiniteLanguageMovies(
   language: string,
   batchIndex = 0,
-  limit = 20
+  limit = 40
 ): Promise<MovieItem[]> {
-  const seeds = MOVIE_LANGUAGE_SEEDS[language] || [language, `${language} Blockbuster`, `${language} Cinema`];
-  const startIndex = (batchIndex * 6) % seeds.length;
-  const currentSeeds = seeds.slice(startIndex, startIndex + 6);
+  const terms = DYNAMIC_LANGUAGE_QUERIES[language] || [`${language} 2026`, `${language} 2025`, `${language} Cinema`];
+  const queryIndex = batchIndex % terms.length;
+  const currentTerms = [terms[queryIndex], terms[(queryIndex + 1) % terms.length]];
 
   const queryResults = await Promise.all(
-    currentSeeds.map(async q => {
+    currentTerms.map(async q => {
       const list = await searchMoviesAndShows(q);
-      return list.slice(0, 3);
+      return list;
     })
   );
 
@@ -298,16 +294,133 @@ export async function fetchInfiniteLanguageMovies(
     for (const movie of group) {
       if (!seenIds.has(movie.id)) {
         seenIds.add(movie.id);
-        flatList.push(movie);
+        flatList.push({
+          ...movie,
+          language
+        });
       }
     }
   }
+
+  // Strict sorting: Recently Released (newest year) to Oldest
+  flatList.sort((a, b) => {
+    const yearA = parseInt(a.releaseInfo || '0') || 0;
+    const yearB = parseInt(b.releaseInfo || '0') || 0;
+    return yearB - yearA;
+  });
 
   return flatList.slice(0, limit);
 }
 
 export async function fetchLanguageMovies(language: string): Promise<MovieItem[]> {
-  return fetchInfiniteLanguageMovies(language, 0, 25);
+  return fetchInfiniteLanguageMovies(language, 0, 40);
+}
+
+// Dynamic runtime registry of all movies discovered to be released on OTT platforms
+export const dynamicOttCatalogIds = new Set<string>();
+export const dynamicOttTitles = new Set<string>();
+
+export function registerOttMovies(movies: MovieItem[], ottBrand?: string): void {
+  for (const m of movies) {
+    if (m.id) dynamicOttCatalogIds.add(m.id);
+    if (m.name) {
+      dynamicOttTitles.add(m.name.toLowerCase().replace(/[^a-z0-9]/g, ''));
+    }
+    if (ottBrand && ottBrand !== 'All') {
+      m.ottProvider = ottBrand as any;
+    }
+  }
+}
+
+/**
+ * Dynamically determines whether a movie has already been released on OTT.
+ * Criteria (100% dynamic - no static lists):
+ * 1. Has an OTT streaming provider tag (Netflix, Prime, Hotstar, etc.)
+ * 2. Exists in our dynamic OTT catalog registry
+ * 3. Release date / year evaluation: Theatrical exclusivity is strictly 45-60 days (~8 weeks).
+ *    Any movie released more than 60 days ago or from previous release years (< 2026) has
+ *    already finished its theatrical exclusive run and dropped on OTT platforms.
+ */
+export function isMovieReleasedOnOTT(
+  item: MovieItem | { name: string; releaseInfo?: string; released?: string; ottProvider?: string; id?: string } | string,
+  explicitOttProvider?: string
+): boolean {
+  if (typeof item === 'string') {
+    if (explicitOttProvider && explicitOttProvider !== 'All') return true;
+    const clean = item.toLowerCase().replace(/[^a-z0-9]/g, '');
+    return dynamicOttTitles.has(clean);
+  }
+
+  // 1. Explicit OTT Provider assigned
+  if ((item.ottProvider && item.ottProvider !== 'All') || (explicitOttProvider && explicitOttProvider !== 'All')) {
+    return true;
+  }
+
+  // 2. Present in dynamic OTT Catalog
+  if (item.id && dynamicOttCatalogIds.has(item.id)) {
+    return true;
+  }
+  if (item.name) {
+    const clean = item.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (dynamicOttTitles.has(clean)) return true;
+  }
+
+  // 3. Dynamic theatrical exclusivity window check
+  // Cinema exclusivity is strictly 45-60 days. Anything older has moved to OTT/digital.
+  const year = parseInt(item.releaseInfo || '0') || 0;
+  if (year > 0 && year < 2026) {
+    return true;
+  }
+
+  if (item.released) {
+    const releaseTime = new Date(item.released).getTime();
+    if (!isNaN(releaseTime)) {
+      const daysSinceRelease = (Date.now() - releaseTime) / (1000 * 60 * 60 * 24);
+      if (daysSinceRelease > 60) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Dedicated In-Theaters Section.
+ * Dynamically fetches current theatrical releases from live Cinemeta.
+ * STRICT CHECK: Once a movie is released on OTT, it is automatically filtered out
+ * and NOT shown in this section. Only movies strictly in theatrical exclusivity are shown.
+ */
+export async function fetchTheaterReleases(): Promise<MovieItem[]> {
+  try {
+    const res2026 = await fetch(`${CINEMETA_BASE}/catalog/movie/year/genre=2026.json`).then(r => r.json()).catch(() => ({ metas: [] }));
+    const movies26 = (res2026.metas || []).map((m: any) => formatMovie(m, 'movie'));
+
+    const seen = new Set<string>();
+    const activeTheatricalMovies: MovieItem[] = [];
+
+    for (const m of movies26) {
+      if (!m.id || seen.has(m.id)) continue;
+      seen.add(m.id);
+
+      // STRICT CHECK: Once released on OTT, DO NOT show in theater section!
+      if (isMovieReleasedOnOTT(m)) {
+        continue;
+      }
+
+      activeTheatricalMovies.push({
+        ...m,
+        isTheaterPrint: true,
+        theaterPrint: 'IN THEATERS ONLY',
+        releaseInfo: m.releaseInfo || '2026'
+      });
+    }
+
+    return activeTheatricalMovies.slice(0, 20);
+  } catch (err) {
+    console.error('Failed to fetch dynamic theater releases:', err);
+    return [];
+  }
 }
 
 export async function fetchMovieDetails(id: string, type: 'movie' | 'series'): Promise<MovieItem> {

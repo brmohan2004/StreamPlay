@@ -1,7 +1,7 @@
 import './MovieSearchScreen.css';
 import React, { useState, useEffect, useRef } from 'react';
 import { Mic, MicOff, Film, Music, X, ArrowLeft, History, Flame, Play, SlidersHorizontal } from 'lucide-react';
-import { searchMoviesAndShows } from '../services/movieService';
+import { searchMoviesAndShows, fetchTopMovies } from '../services/movieService';
 import { searchSongs } from '../services/musicService';
 import { MovieItem, SongItem } from '../types/media';
 import { useNavigation } from '../context/NavigationContext';
@@ -20,17 +20,6 @@ const MOVIE_GENRES = [
   'Animation',
   'Crime',
   'Adventure'
-];
-
-const POPULAR_MOVIE_TAGS = [
-  'Oppenheimer',
-  'Stranger Things',
-  'Squid Game',
-  'The Batman',
-  'Interstellar',
-  'Avatar',
-  'Breaking Bad',
-  'Game of Thrones'
 ];
 
 export const MovieSearchScreen: React.FC = () => {
@@ -59,11 +48,22 @@ export const MovieSearchScreen: React.FC = () => {
     }
   });
 
+  const [popularTags, setPopularTags] = useState<string[]>([
+    'Spider-Man', 'Action', 'Thriller', 'Sci-Fi', 'Comedy', 'Drama'
+  ]);
+
   const hasActiveFilters = selectedOTT !== 'All' || activeCategory !== 'All';
 
-  // Focus input on mount
+  // Focus input on mount & dynamically fetch top trending search tags
   useEffect(() => {
     inputRef.current?.focus();
+    fetchTopMovies()
+      .then(movies => {
+        if (movies && movies.length > 0) {
+          setPopularTags(movies.slice(0, 10).map(m => m.name));
+        }
+      })
+      .catch(() => {});
   }, []);
 
   // Perform search (Dedicated movie search engine + related music)
@@ -348,14 +348,14 @@ export const MovieSearchScreen: React.FC = () => {
         )}
 
         {/* Popular Trending Tags (when no query) */}
-        {!query && (
+        {!query && popularTags.length > 0 && (
           <div className="popular-tags-section">
             <div className="section-label">
               <Flame size={15} className="text-cyan" />
               <span>Trending Cinema Searches</span>
             </div>
             <div className="popular-tags-flow">
-              {POPULAR_MOVIE_TAGS.map(tag => (
+              {popularTags.map(tag => (
                 <button
                   key={tag}
                   className="popular-tag-btn"

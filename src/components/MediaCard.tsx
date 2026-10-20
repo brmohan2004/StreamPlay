@@ -41,11 +41,17 @@ export const MediaCard: React.FC<MediaCardProps> = ({ item, rank }) => {
 
           {rank && <div className="media-rank-badge">#{rank}</div>}
 
-          {item.ottProvider && item.ottProvider !== 'All' && (
+          {item.isTheaterPrint ? (
+            <div className="theater-badge">THEATERS</div>
+          ) : item.streamUrl ? (
+            <div className="live-stream-badge">
+              <span className="live-stream-dot" /> LIVE HD
+            </div>
+          ) : item.ottProvider && item.ottProvider !== 'All' ? (
             <div className={`ott-badge ${item.ottProvider.toLowerCase().replace(/[^a-z]/g, '')}`}>
               {item.ottProvider}
             </div>
-          )}
+          ) : null}
 
           <div className="card-overlay">
             <motion.button

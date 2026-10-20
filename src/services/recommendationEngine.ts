@@ -166,17 +166,34 @@ export function getBecauseYouWatched(
   catalog: MovieItem[],
   limit = 8
 ): (MovieItem & { _recReason: string })[] {
+  if (!anchorMovie.genres || anchorMovie.genres.length === 0 || !anchorMovie.name || anchorMovie.name === 'Untitled') {
+    return [];
+  }
+
   const anchorGenres = new Set(anchorMovie.genres.map(g => g.toLowerCase()));
 
   const scored = catalog
     .filter(m => m.id !== anchorMovie.id)
     .map(movie => {
       let score = 0;
+      let matched = false;
       for (const genre of movie.genres || []) {
         if (anchorGenres.has(genre.toLowerCase())) {
           score += 3;
+          matched = true;
         }
       }
+
+      if (!matched) {
+        return {
+          item: movie,
+          score: 0,
+          reason: '',
+          reasonType: 'similar_item' as RecommendationResult['reasonType'],
+          primaryGenre: ''
+        };
+      }
+
       // Popularity boost
       score += parseFloat(movie.imdbRating || '0') * 0.2;
       return {
