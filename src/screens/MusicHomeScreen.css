@@ -203,3 +203,148 @@
     transform: rotate(360deg);
   }
 }
+
+/* Music Language Capsules Bar (Popular 20 Songs) */
+.music-lang-capsules-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 0.25rem 0 0.5rem;
+}
+
+.music-lang-capsules-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.music-lang-capsule {
+  padding: 4px 13px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.music-lang-capsule:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.music-lang-capsule.active {
+  background: #c8ff00;
+  color: #000000;
+  border-color: #c8ff00;
+  box-shadow: 0 0 12px rgba(200, 255, 0, 0.4);
+}
+
+/* Artist Songs Section */
+.artist-capsules-scroll {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 0.3rem 0;
+}
+
+.artist-capsules-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.artist-capsule-chip {
+  padding: 6px 14px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.artist-capsule-chip:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.artist-capsule-chip.active {
+  background: #c8ff00;
+  color: #000000;
+  border-color: #c8ff00;
+  box-shadow: 0 0 14px rgba(200, 255, 0, 0.45);
+}
+
+/* Music Filter Universe Layout */
+.music-universe-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.5rem 0;
+}
+
+.music-universe-title {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: #c8ff00;
+  margin: 0;
+}
+
+.music-universe-sub {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0;
+}
+
+/* Load More & Infinite Scroll Pill */
+.music-load-more-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 0;
+}
+
+.music-paged-load-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(200, 255, 0, 0.08);
+  border: 1px solid rgba(200, 255, 0, 0.28);
+  color: #c8ff00;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 8px 18px;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.music-paged-load-btn:hover:not(:disabled) {
+  background: rgba(200, 255, 0, 0.18);
+  border-color: #c8ff00;
+  box-shadow: 0 0 14px rgba(200, 255, 0, 0.3);
+  transform: translateY(-1px);
+}
+
+.music-paged-load-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.music-spin-icon {
+  animation: spin 1s linear infinite;
+}
+
+/* Universe Tracks Grid */
+.universe-tracks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}

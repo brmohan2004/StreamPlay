@@ -82,13 +82,13 @@ export function useSwipeNavigation() {
 
       // 1. Movies Mode Swipe Gestures
       if (appMode === 'movies') {
-        // Swipe Right (deltaX > 0): Home -> Watch Later
-        if (deltaX > 0 && activeScreen === 'home') {
+        // Swipe Left (deltaX < 0): Home -> Watch Later
+        if (deltaX < 0 && activeScreen === 'home') {
           setActiveScreen('watchlater');
           return;
         }
-        // Swipe Left (deltaX < 0): Watch Later -> Home
-        if (deltaX < 0 && activeScreen === 'watchlater') {
+        // Swipe Right (deltaX > 0): Watch Later -> Home
+        if (deltaX > 0 && activeScreen === 'watchlater') {
           setActiveScreen('home');
           return;
         }
@@ -96,13 +96,13 @@ export function useSwipeNavigation() {
 
       // 2. Music Mode Swipe Gestures
       if (appMode === 'music') {
-        // Swipe Right (deltaX > 0): Home -> Playlist
-        if (deltaX > 0 && activeScreen === 'home') {
+        // Swipe Left (deltaX < 0): Home -> Playlist
+        if (deltaX < 0 && activeScreen === 'home') {
           setActiveScreen('playlist');
           return;
         }
-        // Swipe Left (deltaX < 0): Playlist -> Home
-        if (deltaX < 0 && activeScreen === 'playlist') {
+        // Swipe Right (deltaX > 0): Playlist -> Home
+        if (deltaX > 0 && activeScreen === 'playlist') {
           setActiveScreen('home');
           return;
         }
@@ -141,22 +141,22 @@ export function useSwipeNavigation() {
       }
 
       if (appMode === 'movies') {
-        if (deltaX > 0 && activeScreen === 'home') {
+        if (deltaX < 0 && activeScreen === 'home') {
           setActiveScreen('watchlater');
           return;
         }
-        if (deltaX < 0 && activeScreen === 'watchlater') {
+        if (deltaX > 0 && activeScreen === 'watchlater') {
           setActiveScreen('home');
           return;
         }
       }
 
       if (appMode === 'music') {
-        if (deltaX > 0 && activeScreen === 'home') {
+        if (deltaX < 0 && activeScreen === 'home') {
           setActiveScreen('playlist');
           return;
         }
-        if (deltaX < 0 && activeScreen === 'playlist') {
+        if (deltaX > 0 && activeScreen === 'playlist') {
           setActiveScreen('home');
           return;
         }

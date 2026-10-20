@@ -178,6 +178,203 @@ export async function searchMoviesAndShows(query: string): Promise<MovieItem[]> 
   }
 }
 
+/**
+ * Paged multi-query search with 25-by-25 batching and dynamic filtering support.
+ */
+export async function searchMoviesAndShowsPaged(
+  query: string,
+  page = 0,
+  limit = 25,
+  activeFilter?: string
+): Promise<{ items: MovieItem[]; totalAvailable: number }> {
+  const trimmed = query.trim();
+  if (!trimmed) return { items: [], totalAvailable: 0 };
+
+  try {
+    // Generate related queries to pull a rich, comprehensive pool of content
+    const expandedQueries = [
+      trimmed,
+      `${trimmed} 2026`,
+      `${trimmed} 2025`,
+      `${trimmed} 2024`,
+      `${trimmed} series`,
+      `${trimmed} movie`
+    ];
+
+    const resultsByQuery = await Promise.all(
+      expandedQueries.slice(0, 3).map(q => searchMoviesAndShows(q))
+    );
+
+    const seen = new Set<string>();
+    let pool: MovieItem[] = [];
+    for (const group of resultsByQuery) {
+      for (const item of group) {
+        if (item && item.id && !seen.has(item.id)) {
+          seen.add(item.id);
+          pool.push(item);
+        }
+      }
+    }
+
+    // Apply active filter capsule if selected (e.g. specific actor, director, genre, or dubbed)
+    if (activeFilter && activeFilter !== 'All') {
+      const filterLower = activeFilter.toLowerCase();
+      if (filterLower === 'movies') {
+        pool = pool.filter(item => item.type !== 'series');
+      } else if (filterLower === 'series') {
+        pool = pool.filter(item => item.type === 'series');
+      } else if (filterLower === 'dubbed') {
+        pool = pool.filter(item => {
+          const text = `${item.name} ${item.description || ''} ${(item.genres || []).join(' ')}`.toLowerCase();
+          return text.includes('dub') || text.includes('hindi') || text.includes('tamil') || text.includes('telugu') || text.includes('multi');
+        });
+      } else if (filterLower === 'actors' || filterLower === 'cast') {
+        pool = pool.filter(item => item.cast && item.cast.length > 0);
+      } else {
+        pool = pool.filter(item => {
+          const text = `${item.name} ${item.description || ''} ${(item.genres || []).join(' ')} ${(item.cast || []).join(' ')}`.toLowerCase();
+          return text.includes(filterLower);
+        });
+      }
+    }
+
+    // Sort strictly from Newest to Oldest (e.g. 2026, 2025, 2024...)
+    pool.sort((a, b) => {
+      const yearA = parseInt(a.releaseInfo || '0') || 0;
+      const yearB = parseInt(b.releaseInfo || '0') || 0;
+      if (yearA !== yearB) return yearB - yearA;
+      const ratingA = parseFloat(a.imdbRating || '0') || 0;
+      const ratingB = parseFloat(b.imdbRating || '0') || 0;
+      return ratingB - ratingA;
+    });
+
+    const start = page * limit;
+    const paged = pool.slice(start, start + limit);
+    return { items: paged, totalAvailable: pool.length };
+  } catch (err) {
+    console.error('Paged movie search failed:', err);
+    return { items: [], totalAvailable: 0 };
+  }
+}
+
+/**
+ * Curated Trending Deck:
+ * Integrates 2025/2026 Theater & OTT hits, weighted by user's primary/secondary languages,
+ * high IMDb ratings (>= 7.5), and popular TV shows.
+ */
+export async function fetchCuratedTrendingDeck(
+  primaryLang = 'Tamil',
+  secondaryLang = 'English'
+): Promise<MovieItem[]> {
+  try {
+    const [movies, series, theathers, primLangMovies, secLangMovies] = await Promise.all([
+      fetchTopMovies(),
+      fetchTopSeries(),
+      fetchTheaterReleases(),
+      fetchInfiniteLanguageMovies(primaryLang, 0, 15).catch(() => []),
+      fetchInfiniteLanguageMovies(secondaryLang, 0, 15).catch(() => [])
+    ]);
+
+    const candidatePool = [
+      ...theathers.slice(0, 6),
+      ...movies.slice(0, 10),
+      ...series.slice(0, 6),
+      ...primLangMovies.slice(0, 8),
+      ...secLangMovies.slice(0, 6)
+    ];
+
+    const seen = new Set<string>();
+    const scoredList: { movie: MovieItem; score: number }[] = [];
+
+    for (const m of candidatePool) {
+      if (!m || !m.id || seen.has(m.id)) continue;
+      seen.add(m.id);
+
+      const year = parseInt(m.releaseInfo || '0') || 0;
+      const rating = parseFloat(m.imdbRating || '0') || 0;
+      const titleLower = m.name.toLowerCase();
+
+      // Recency score (2026 gets top priority, 2025 high priority)
+      let score = year >= 2026 ? 8 : year >= 2025 ? 5 : year >= 2024 ? 2 : 0;
+
+      // Rating score
+      if (rating >= 8.5) score += 6;
+      else if (rating >= 7.8) score += 4;
+      else if (rating >= 7.0) score += 2;
+
+      // Primary / Secondary language boost
+      if (m.language === primaryLang || titleLower.includes(primaryLang.toLowerCase())) {
+        score += 7;
+      } else if (m.language === secondaryLang || titleLower.includes(secondaryLang.toLowerCase())) {
+        score += 4;
+      }
+
+      // Popular series balance
+      if (m.type === 'series') {
+        score += 3;
+      }
+
+      // Theatrical release bonus
+      if (m.isTheaterPrint) {
+        score += 4;
+      }
+
+      scoredList.push({ movie: m, score });
+    }
+
+    scoredList.sort((a, b) => b.score - a.score);
+    return scoredList.slice(0, 12).map(item => item.movie);
+  } catch (err) {
+    console.error('Failed to curate trending deck:', err);
+    return fetchTopMovies();
+  }
+}
+
+/**
+ * Dynamic Channel Content Catalog (StarPlus, Colors, Star Vijay, Zee TV, Sony SET, Asianet)
+ */
+export async function fetchChannelContent(channelIdOrName: string): Promise<MovieItem[]> {
+  const channelMap: Record<string, string[]> = {
+    'star-plus': ['StarPlus serials', 'StarPlus Hindi drama', 'Anupamaa', 'Yeh Rishta Kya Kehlata Hai'],
+    'StarPlus': ['StarPlus serials', 'StarPlus Hindi drama', 'Anupamaa', 'Yeh Rishta Kya Kehlata Hai'],
+    'colors-tv': ['Colors TV serials', 'Colors TV drama', 'Naagin', 'Bigg Boss Hindi'],
+    'colors': ['Colors TV serials', 'Colors TV drama', 'Naagin', 'Bigg Boss Hindi'],
+    'star-vijay': ['Star Vijay Tamil serials', 'Star Vijay shows', 'Cooku with Comali', 'Bigg Boss Tamil', 'Baakiyalakshmi'],
+    'Star Vijay': ['Star Vijay Tamil serials', 'Star Vijay shows', 'Cooku with Comali', 'Bigg Boss Tamil', 'Baakiyalakshmi'],
+    'zee-tv': ['Zee TV serials', 'Zee TV drama', 'Kundali Bhagya', 'Kumkum Bhagya'],
+    'Zee TV': ['Zee TV serials', 'Zee TV drama', 'Kundali Bhagya', 'Kumkum Bhagya'],
+    'sony-set': ['Sony Entertainment Television', 'Sony SET shows', 'CID', 'Crime Patrol', 'The Kapil Sharma Show'],
+    'Sony SET': ['Sony Entertainment Television', 'Sony SET shows', 'CID', 'Crime Patrol', 'The Kapil Sharma Show'],
+    'asianet': ['Asianet Malayalam serials', 'Asianet shows', 'Santhwanam', 'Kudumbavilakku'],
+    'Asianet': ['Asianet Malayalam serials', 'Asianet shows', 'Santhwanam', 'Kudumbavilakku'],
+    'sun-tv': ['Sun TV Tamil serials', 'Sun TV shows', 'Ethirneechal', 'Kayal', 'Singapennae'],
+    'Sun TV': ['Sun TV Tamil serials', 'Sun TV shows', 'Ethirneechal', 'Kayal', 'Singapennae']
+  };
+
+  const queries = channelMap[channelIdOrName] || [`${channelIdOrName} serials`, `${channelIdOrName} shows`];
+  try {
+    const results = await Promise.all(queries.map(q => searchMoviesAndShows(q)));
+    const seen = new Set<string>();
+    const flat: MovieItem[] = [];
+
+    for (const group of results) {
+      for (const item of group) {
+        if (item && item.id && !seen.has(item.id)) {
+          seen.add(item.id);
+          flat.push({
+            ...item,
+            type: 'series'
+          });
+        }
+      }
+    }
+    return flat;
+  } catch (err) {
+    console.error(`Failed to fetch channel content for ${channelIdOrName}:`, err);
+    return [];
+  }
+}
+
 export async function fetchByOTT(brand: OTTBrand, page = 0): Promise<MovieItem[]> {
   const cacheKey = `${brand}_page_${page}`;
   if (ottCache.has(cacheKey)) {
@@ -539,9 +736,64 @@ export interface StreamingServerMeta {
 }
 
 export const STREAMING_SERVERS: StreamingServerMeta[] = [
-  // 1. VidLink (Ultra HD 4K/1080p - Primary)
+  // 1. AutoEmbed CC (Zero-Sandbox, Zero Ads, Ultra Fast HTML5)
   {
     id: 0,
+    name: 'AutoEmbed CC (Ultra Fast)',
+    isNoAds: true,
+    specialty: 'Direct HTML5 stream with instant playback & no sandbox issues',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://player.autoembed.cc/embed/tv/${id}/${s}/${e}`
+        : `https://player.autoembed.cc/embed/movie/${id}`
+  },
+  // 2. VidSrc CC (Clean 1080p Full HD)
+  {
+    id: 1,
+    name: 'VidSrc CC (Clean 1080p)',
+    isNoAds: true,
+    specialty: 'High-bitrate pristine 1080p stream with multi-audio',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://vidsrc.cc/v2/embed/tv/${id}/${s}/${e}`
+        : `https://vidsrc.cc/v2/embed/movie/${id}`
+  },
+  // 3. MoviesAPI (Ad-Free Fast CDN)
+  {
+    id: 2,
+    name: 'MoviesAPI (No Ads)',
+    isNoAds: true,
+    specialty: 'Multi-resolution streaming with adaptive bitrate',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://moviesapi.club/tv/${id}-${s}-${e}`
+        : `https://moviesapi.club/movie/${id}`
+  },
+  // 4. MultiEmbed / SuperEmbed (Universal Dynamic Mirrors)
+  {
+    id: 3,
+    name: 'MultiEmbed (Auto Stream)',
+    isNoAds: true,
+    specialty: 'Dynamic multi-source selector with auto-fallback',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://multiembed.mov/?video_id=${id}&s=${s}&e=${e}`
+        : `https://multiembed.mov/?video_id=${id}`
+  },
+  // 5. VidSrc PM (Fast Origin Cluster)
+  {
+    id: 4,
+    name: 'VidSrc PM',
+    isNoAds: true,
+    specialty: 'Reliable fast origin cluster with direct buffers',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://vidsrc.pm/embed/tv/${id}/${s}/${e}`
+        : `https://vidsrc.pm/embed/movie/${id}`
+  },
+  // 6. VidLink (Ultra HD 4K/1080p)
+  {
+    id: 5,
     name: 'VidLink (Ultra HD)',
     isNoAds: true,
     specialty: 'High-speed 4K/1080p fast CDN',
@@ -550,31 +802,9 @@ export const STREAMING_SERVERS: StreamingServerMeta[] = [
         ? `https://vidlink.pro/tv/${id}/${s}/${e}`
         : `https://vidlink.pro/movie/${id}`
   },
-  // 2. AutoEmbed (Adaptive CDN)
+  // 7. 2Embed (Multi-Audio & Subs)
   {
-    id: 1,
-    name: 'AutoEmbed (Adaptive)',
-    isNoAds: true,
-    specialty: 'Instant fast buffer & multi-source',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://autoembed.co/tv/imdb/${id}-${s}-${e}`
-        : `https://autoembed.co/movie/imdb/${id}`
-  },
-  // 3. VidSrc PM (Direct HTML5)
-  {
-    id: 2,
-    name: 'VidSrc PM',
-    isNoAds: true,
-    specialty: 'Reliable fast origin cluster',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://vidsrc.pm/embed/tv/${id}/${s}/${e}`
-        : `https://vidsrc.pm/embed/movie/${id}`
-  },
-  // 4. 2Embed (Multi-Audio & Subs)
-  {
-    id: 3,
+    id: 6,
     name: '2Embed',
     isNoAds: false,
     specialty: 'Multi-subtitles & audio tracks',
@@ -583,49 +813,16 @@ export const STREAMING_SERVERS: StreamingServerMeta[] = [
         ? `https://2embed.cc/embedtv/${id}&s=${s}&e=${e}`
         : `https://2embed.cc/embed/${id}`
   },
-  // 5. 123Embed
-  {
-    id: 4,
-    name: '123Embed',
-    isNoAds: false,
-    specialty: 'Global multi-mirror cluster',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://play2.123embed.net/tv/${id}/${s}/${e}`
-        : `https://play2.123embed.net/movie/${id}`
-  },
-  // 6. VidSrc Embed
-  {
-    id: 5,
-    name: 'VidSrc Embed',
-    isNoAds: false,
-    specialty: 'Massive global catalog',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://vidsrc.xyz/embed/tv/${id}/${s}/${e}`
-        : `https://vidsrc.xyz/embed/movie/${id}`
-  },
-  // 7. MultiEmbed
-  {
-    id: 6,
-    name: 'MultiEmbed',
-    isNoAds: false,
-    specialty: 'Dynamic auto-stream selector',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://multiembed.mov/?video_id=${id}&s=${s}&e=${e}`
-        : `https://multiembed.mov/?video_id=${id}`
-  },
-  // 8. MoviesAPI
+  // 8. 111Movies (Regional Indian & Asian Cinema)
   {
     id: 7,
-    name: 'MoviesAPI',
-    isNoAds: true,
-    specialty: 'Multi-resolution streaming',
+    name: '111Movies',
+    isNoAds: false,
+    specialty: 'Regional Indian & Asian cinema',
     getUrl: (id, _, type, s, e) =>
       type === 'series'
-        ? `https://moviesapi.club/tv/${id}-${s}-${e}`
-        : `https://moviesapi.club/movie/${id}`
+        ? `https://111movies.com/tv/${id}/${s}/${e}`
+        : `https://111movies.com/movie/${id}`
   },
   // 8. VidEasy
   {

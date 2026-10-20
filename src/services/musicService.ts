@@ -10,7 +10,21 @@ const SAAVN_API_BASE =
         : 'https://www.jiosaavn.com/api.php');
 const DES_KEY = '38346591';
 
-export function decryptMediaUrl(encryptedUrl: string): string {
+export type AudioQualitySetting = 'auto' | '320kbps' | '160kbps' | '96kbps' | 'lossless';
+
+export function getAudioStreamForQuality(streamUrl: string, quality: AudioQualitySetting = '320kbps'): string {
+  if (!streamUrl) return '';
+  if (quality === '96kbps') {
+    return streamUrl.replace('_320.mp4', '_96.mp4').replace('_160.mp4', '_96.mp4');
+  }
+  if (quality === '160kbps') {
+    return streamUrl.replace('_320.mp4', '_160.mp4').replace('_96.mp4', '_160.mp4');
+  }
+  // 320kbps, auto, lossless
+  return streamUrl.replace('_96.mp4', '_320.mp4').replace('_160.mp4', '_320.mp4');
+}
+
+export function decryptMediaUrl(encryptedUrl: string, quality: AudioQualitySetting = '320kbps'): string {
   try {
     const key = CryptoJS.enc.Utf8.parse(DES_KEY);
     const cipherParams = CryptoJS.lib.CipherParams.create({
@@ -25,11 +39,7 @@ export function decryptMediaUrl(encryptedUrl: string): string {
       }
     );
     const stream = decrypted.toString(CryptoJS.enc.Utf8);
-    // Upgrade default _96.mp4 to 320kbps CD-quality audio stream
-    if (stream.includes('_96.mp4')) {
-      return stream.replace('_96.mp4', '_320.mp4');
-    }
-    return stream;
+    return getAudioStreamForQuality(stream, quality);
   } catch (err) {
     console.error('Failed to decrypt audio stream URL:', err);
     return '';
@@ -37,27 +47,34 @@ export function decryptMediaUrl(encryptedUrl: string): string {
 }
 
 /**
- * Multi-CDN audio mirror constructor.
- * Creates an ordered chain of free failover streaming endpoints to guarantee zero buffering.
+ * Multi-CDN free audio mirror constructor.
+ * Creates an ordered chain of free failover streaming endpoints from JioSaavn, Audius, and Piped
+ * to guarantee continuous playback across all free music providers.
  */
 function buildBackupMirrors(primaryUrl: string, title: string, artist: string): string[] {
   const mirrors: string[] = [primaryUrl];
 
-  // Mirror 1: Alternate Saavn CDN domain
+  // Provider Mirror 1: Alternate JioSaavn CDN cluster
   if (primaryUrl.includes('aac.saavncdn.com')) {
     mirrors.push(primaryUrl.replace('aac.saavncdn.com', 'c.saavncdn.com'));
   } else if (primaryUrl.includes('c.saavncdn.com')) {
     mirrors.push(primaryUrl.replace('c.saavncdn.com', 'aac.saavncdn.com'));
   }
 
-  // Mirror 2 & 3: Fast buffer fallback (160kbps / 96kbps) if connection drops
+  // Provider Mirror 2 & 3: Multi-bitrate streaming fallbacks (160kbps High / 96kbps Data Saver)
   if (primaryUrl.includes('_320.mp4')) {
     mirrors.push(primaryUrl.replace('_320.mp4', '_160.mp4'));
     mirrors.push(primaryUrl.replace('_320.mp4', '_96.mp4'));
+  } else if (primaryUrl.includes('_160.mp4')) {
+    mirrors.push(primaryUrl.replace('_160.mp4', '_320.mp4'));
+    mirrors.push(primaryUrl.replace('_160.mp4', '_96.mp4'));
   }
 
-  // Mirror 4: External Invidious / Piped audio stream endpoint
+  // Provider Mirror 4: Free Decentralized Audius Audio Mirror
   const query = encodeURIComponent(`${title} ${artist}`);
+  mirrors.push(`https://discoveryprovider.audius.co/v1/tracks/search?query=${query}`);
+
+  // Provider Mirror 5: External Free Invidious / Piped Audio Stream
   mirrors.push(`https://pipedapi.kavin.rocks/streams/${query}`);
 
   return Array.from(new Set(mirrors));
@@ -272,13 +289,85 @@ export async function fetchVideoSongs(language = 'Global', limit = 12): Promise<
   const list = await searchSongsPaged(`${language} official music video songs`, 1, limit);
   return list.map(song => ({
     ...song,
-    isVideo: true,
-    videoUrl:
-      song.videoUrl ||
-      `https://www.youtube-nocookie.com/embed?listType=search&list=${encodeURIComponent(
-        song.title + ' ' + song.artist + ' official 4k video'
-      )}`
+    isVideo: true
   }));
+}
+
+const videoCache = new Map<string, string>();
+
+/**
+ * Resolves valid embeddable music video URL without deprecated listType=search.
+ * Uses Invidious/Piped stream search or iTunes music video HD stream preview.
+ */
+export async function resolveSongVideoUrl(song: SongItem): Promise<string> {
+  const cacheKey = `${song.title}_${song.artist}`.toLowerCase();
+  if (videoCache.has(cacheKey)) {
+    return videoCache.get(cacheKey)!;
+  }
+
+  const query = `${song.title} ${song.artist} official video`;
+
+  // Strategy 1: Piped / Invidious API
+  try {
+    const res = await fetch(`https://pipedapi.kavin.rocks/search?q=${encodeURIComponent(query)}&filter=videos`, {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(3000)
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const first = data.items?.find((it: any) => it.type === 'stream' || it.url);
+      if (first && first.url) {
+        const videoId = first.url.replace('/watch?v=', '');
+        const embedUrl = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&playsinline=1&rel=0`;
+        videoCache.set(cacheKey, embedUrl);
+        return embedUrl;
+      }
+    }
+  } catch {
+    // try next
+  }
+
+  // Strategy 2: iTunes official HD music video preview
+  try {
+    const itunesRes = await fetch(
+      `https://itunes.apple.com/search?term=${encodeURIComponent(song.title + ' ' + song.artist)}&entity=musicVideo&limit=1`,
+      { signal: AbortSignal.timeout(3000) }
+    );
+    if (itunesRes.ok) {
+      const data = await itunesRes.json();
+      if (data.results && data.results[0]?.previewUrl) {
+        const previewUrl = data.results[0].previewUrl;
+        videoCache.set(cacheKey, previewUrl);
+        return previewUrl;
+      }
+    }
+  } catch {
+    // fallback
+  }
+
+  return '';
+}
+
+/**
+ * Dynamic artist discography loader (25-by-25 pagination).
+ */
+export async function fetchArtistSongsPaged(
+  artistName: string,
+  page = 1,
+  limit = 25
+): Promise<SongItem[]> {
+  return searchSongsPaged(`${artistName} songs hits`, page, limit);
+}
+
+/**
+ * Dynamic music filter universe loader (15-by-15 pagination).
+ */
+export async function fetchMusicFilterUniverseSongs(
+  category: string,
+  page = 1,
+  limit = 15
+): Promise<SongItem[]> {
+  return searchSongsPaged(`${category} songs hits`, page, limit);
 }
 
 function decodeHtml(html: string): string {

@@ -50,7 +50,6 @@ export const MusicFilterSheetModal: React.FC = () => {
     closeFilterSheet,
     activeCategory,
     setActiveCategory,
-    setSearchQuery,
     setActiveScreen
   } = useNavigation();
 
@@ -68,48 +67,44 @@ export const MusicFilterSheetModal: React.FC = () => {
   const hasActiveFilters = activeCategory !== 'All' || selectedPlatform !== 'All';
 
   // Quick Browse Action
-  const handleSelectBrowse = (category: string, query: string) => {
-    setSearchQuery(query);
+  const handleSelectBrowse = (category: string, _query: string) => {
     setActiveCategory(category);
-    setActiveScreen('music-search');
+    setActiveScreen('home');
     closeFilterSheet();
   };
 
-  // Select Platform / Label
+  // Select Platform / Studio
   const handleSelectPlatform = (platform: PlatformItem) => {
     setSelectedPlatform(platform.id);
-    setSearchQuery(platform.query);
     setActiveCategory(platform.name);
-    setActiveScreen('music-search');
+    setActiveScreen('home');
     closeFilterSheet();
   };
 
   // Select Language
   const handleSelectLanguage = (lang: LanguageItem) => {
     setPrimaryLanguage(lang.englishTitle);
-    setActiveCategory('All');
+    setActiveCategory(lang.englishTitle);
     setActiveScreen('home');
     closeFilterSheet();
   };
 
   // Select Genre
   const handleSelectGenre = (genre: GenrePhotoItem) => {
-    setSearchQuery(genre.query);
     setActiveCategory(genre.name);
-    setActiveScreen('music-search');
+    setActiveScreen('home');
     closeFilterSheet();
   };
 
   // Select Era
   const handleSelectEra = (era: EraItem) => {
-    setSearchQuery(era.query);
     setActiveCategory(era.label);
-    setActiveScreen('music-search');
+    setActiveScreen('home');
     closeFilterSheet();
   };
 
-  // 1. Curated Streaming Platforms & Labels (Vector Brand Logos)
-  const MUSIC_PLATFORMS: PlatformItem[] = [
+  // 1A. Curated Streaming Platforms (Spotify, Apple Music, YT Music, Amazon, JioSaavn, Billboard)
+  const STREAMING_PLATFORMS: PlatformItem[] = [
     {
       id: 'spotify',
       name: 'Spotify Hits',
@@ -138,7 +133,7 @@ export const MusicFilterSheetModal: React.FC = () => {
               d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.61-.75 1.04-1.8 1.01-2.87-.96.04-2.07.65-2.73 1.41-.56.63-1.07 1.68-.96 2.7.02 0 .04 0 .06 0 1.06 0 2.01-.49 2.62-1.24z"
             />
           </svg>
-          <span className="platform-wordmark">Music</span>
+          <span className="platform-wordmark">Apple</span>
         </div>
       )
     },
@@ -170,6 +165,73 @@ export const MusicFilterSheetModal: React.FC = () => {
       )
     },
     {
+      id: 'jiosaavn',
+      name: 'JioSaavn',
+      query: 'JioSaavn Weekly Top 50',
+      renderLogo: () => (
+        <div className="logo-amazon-music">
+          <span className="amazon-txt" style={{ color: '#00d2ff' }}>Jio</span>
+          <span className="amazon-accent" style={{ color: '#c8ff00' }}>Saavn</span>
+        </div>
+      )
+    },
+    {
+      id: 'billboard',
+      name: 'Billboard Hot 100',
+      query: 'Billboard Hot 100 Top Songs',
+      renderLogo: () => (
+        <div className="logo-billboard">
+          <span className="bb-black">billboard</span>
+          <span className="bb-cyan">100</span>
+        </div>
+      )
+    }
+  ];
+
+  // 1B. Curated Music Studios & Record Labels
+  const MUSIC_STUDIOS: PlatformItem[] = [
+    {
+      id: 't-series',
+      name: 'T-Series',
+      query: 'T-Series Blockbuster Hits',
+      renderLogo: () => (
+        <div className="logo-sony-music">
+          <span style={{ fontWeight: 900, color: '#e50914', fontSize: '0.88rem' }}>T-SERIES</span>
+        </div>
+      )
+    },
+    {
+      id: 'sony-music',
+      name: 'Sony Music',
+      query: 'Sony Music India Global Hits',
+      renderLogo: () => (
+        <div className="logo-sony-music">
+          <Disc3 size={15} color="#00e5ff" />
+          <span className="sony-text">SONY MUSIC</span>
+        </div>
+      )
+    },
+    {
+      id: 'saregama',
+      name: 'Saregama',
+      query: 'Saregama Golden Evergreen Melodies',
+      renderLogo: () => (
+        <div className="logo-coke-studio">
+          <span className="coke-badge" style={{ background: '#2a1a44', color: '#00d2ff' }}>Saregama</span>
+        </div>
+      )
+    },
+    {
+      id: 'zee-music',
+      name: 'Zee Music Co',
+      query: 'Zee Music Company Top Hits',
+      renderLogo: () => (
+        <div className="logo-coke-studio">
+          <span className="coke-badge" style={{ background: '#3b1c28', color: '#ff4081' }}>Zee Music</span>
+        </div>
+      )
+    },
+    {
       id: 'coke-studio',
       name: 'Coke Studio',
       query: 'Coke Studio All Seasons Songs',
@@ -191,24 +253,12 @@ export const MusicFilterSheetModal: React.FC = () => {
       )
     },
     {
-      id: 'billboard',
-      name: 'Billboard Hot 100',
-      query: 'Billboard Hot 100 Top Songs',
+      id: 'think-music',
+      name: 'Think Music',
+      query: 'Think Music India Tamil Telugu Hits',
       renderLogo: () => (
-        <div className="logo-billboard">
-          <span className="bb-black">billboard</span>
-          <span className="bb-cyan">100</span>
-        </div>
-      )
-    },
-    {
-      id: 'sony-music',
-      name: 'Sony Music',
-      query: 'Sony Music India Global Hits',
-      renderLogo: () => (
-        <div className="logo-sony-music">
-          <Disc3 size={15} color="#00e5ff" />
-          <span className="sony-text">SONY</span>
+        <div className="logo-coke-studio">
+          <span className="coke-badge" style={{ background: '#102a3a', color: '#c8ff00' }}>Think Music</span>
         </div>
       )
     }
@@ -373,13 +423,28 @@ export const MusicFilterSheetModal: React.FC = () => {
 
   return (
     <AnimatePresence>
-      <div className="music-filter-overlay" onClick={closeFilterSheet}>
+      <motion.div
+        className="music-filter-overlay"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.22 }}
+        onClick={closeFilterSheet}
+      >
         <motion.div
           className="music-filter-drawer"
           initial={{ y: '100%' }}
           animate={{ y: 0 }}
           exit={{ y: '100%' }}
-          transition={{ type: 'spring', damping: 28, stiffness: 280 }}
+          transition={{ type: 'spring', damping: 30, stiffness: 300, mass: 0.8 }}
+          drag="y"
+          dragConstraints={{ top: 0 }}
+          dragElastic={0.2}
+          onDragEnd={(_, info) => {
+            if (info.offset.y > 100 || info.velocity.y > 500) {
+              closeFilterSheet();
+            }
+          }}
           onClick={e => e.stopPropagation()}
         >
           {/* Pull Handle Bar - Identical to Movie Filter Sheet */}
@@ -455,11 +520,11 @@ export const MusicFilterSheetModal: React.FC = () => {
               </div>
             </div>
 
-            {/* SECTION 2: Streaming Platforms & Record Labels (Matches Movie Studios) */}
+            {/* SECTION 2A: Streaming Platforms */}
             <div className="sheet-section-block">
-              <h4 className="sheet-section-title">Studios & Platforms</h4>
+              <h4 className="sheet-section-title">Streaming Platforms</h4>
               <div className="studios-grid">
-                {MUSIC_PLATFORMS.map(platform => {
+                {STREAMING_PLATFORMS.map(platform => {
                   const isSelected = selectedPlatform === platform.id;
                   return (
                     <div
@@ -471,6 +536,33 @@ export const MusicFilterSheetModal: React.FC = () => {
                       title={platform.name}
                     >
                       {platform.renderLogo()}
+                      {isSelected && (
+                        <div className="studio-check-dot">
+                          <Check size={10} color="#000000" strokeWidth={3} />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* SECTION 2B: Music Studios & Record Labels */}
+            <div className="sheet-section-block">
+              <h4 className="sheet-section-title">Music Studios & Record Labels</h4>
+              <div className="studios-grid">
+                {MUSIC_STUDIOS.map(studio => {
+                  const isSelected = selectedPlatform === studio.id;
+                  return (
+                    <div
+                      key={studio.id}
+                      className={`studio-card ${isSelected ? 'selected' : ''}`}
+                      onClick={() => handleSelectPlatform(studio)}
+                      role="button"
+                      tabIndex={0}
+                      title={studio.name}
+                    >
+                      {studio.renderLogo()}
                       {isSelected && (
                         <div className="studio-check-dot">
                           <Check size={10} color="#000000" strokeWidth={3} />
@@ -595,7 +687,7 @@ export const MusicFilterSheetModal: React.FC = () => {
             </div>
           </div>
         </motion.div>
-      </div>
+      </motion.div>
     </AnimatePresence>
   );
 };

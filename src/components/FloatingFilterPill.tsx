@@ -1,7 +1,7 @@
 import './FloatingFilterPill.css';
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronUp, Sliders } from 'lucide-react';
+import { ChevronUp, Sliders, X, Sparkles } from 'lucide-react';
 import { useNavigation } from '../context/NavigationContext';
 
 export const FloatingFilterPill: React.FC = () => {
@@ -11,7 +11,13 @@ export const FloatingFilterPill: React.FC = () => {
     openFilterSheet,
     isFilterSheetOpen,
     setActiveCategory,
-    activeCategory
+    activeCategory,
+    selectedOTT,
+    setSelectedOTT,
+    selectedLanguage,
+    setSelectedLanguage,
+    selectedChannel,
+    setSelectedChannel
   } = useNavigation();
 
   const [isScrolledPast50, setIsScrolledPast50] = useState(false);
@@ -27,14 +33,42 @@ export const FloatingFilterPill: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Show only on home screen after scrolling down past 50px, and hide when filter sheet is open
-  if (activeScreen !== 'home' || isFilterSheetOpen || !isScrolledPast50) return null;
+  // Check if any filter is active
+  const hasActiveFilter =
+    (selectedOTT && selectedOTT !== 'All') ||
+    (selectedLanguage && selectedLanguage !== 'All') ||
+    (selectedChannel && selectedChannel !== 'All') ||
+    (activeCategory && activeCategory !== 'All');
+
+  // Compute active filter name for display
+  const getActiveFilterLabel = () => {
+    if (selectedOTT && selectedOTT !== 'All') return selectedOTT;
+    if (selectedChannel && selectedChannel !== 'All') return selectedChannel;
+    if (selectedLanguage && selectedLanguage !== 'All') return selectedLanguage;
+    if (activeCategory && activeCategory !== 'All') {
+      if (activeCategory === 'Series') return 'TV Shows';
+      if (activeCategory === 'Movies') return 'Movies';
+      return `${activeCategory}`;
+    }
+    return '';
+  };
+
+  const handleClearFilters = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setActiveCategory('All');
+    setSelectedOTT('All');
+    setSelectedLanguage('All');
+    setSelectedChannel('All');
+  };
+
+  // Show only on home screen after scrolling down past 50px (or immediately if a filter is active), and hide when filter sheet is open
+  if (activeScreen !== 'home' || isFilterSheetOpen || (!isScrolledPast50 && !hasActiveFilter)) return null;
 
   return (
     <AnimatePresence>
       <div className="floating-filter-pill-container">
         <motion.div
-          className={`floating-filter-pill mode-${appMode}`}
+          className={`floating-filter-pill mode-${appMode} ${hasActiveFilter ? 'is-filtered' : ''}`}
           initial={{ y: 16, opacity: 0, scale: 0.92 }}
           animate={{ y: 0, opacity: 1, scale: 1 }}
           exit={{ y: 16, opacity: 0, scale: 0.92 }}
@@ -44,7 +78,24 @@ export const FloatingFilterPill: React.FC = () => {
           tabIndex={0}
           title="Open Filters & Categories"
         >
-          {appMode === 'movies' ? (
+          {hasActiveFilter ? (
+            /* Active Filter Display Pill with Quick Exit */
+            <div className="filtered-pill-display">
+              <span className="filtered-pill-sparkle">
+                <Sparkles size={13} className={appMode === 'movies' ? 'text-cyan' : 'text-lime'} />
+              </span>
+              <span className="filtered-pill-text">{getActiveFilterLabel()}</span>
+              <button
+                type="button"
+                className="filtered-pill-clear-btn"
+                onClick={handleClearFilters}
+                title="Exit filter and show all"
+                aria-label="Exit filter"
+              >
+                <X size={13} strokeWidth={2.8} />
+              </button>
+            </div>
+          ) : appMode === 'movies' ? (
             /* Movie Mode: TV | Movies | ^ */
             <>
               <button
@@ -87,7 +138,7 @@ export const FloatingFilterPill: React.FC = () => {
               </button>
             </>
           ) : (
-            /* Music Mode: Clean single pill to open Music Filter Sheet without segmented filter capsules */
+            /* Music Mode: Clean single pill to open Music Filter Sheet */
             <button
               type="button"
               className="filter-pill-segment music-unified-btn"

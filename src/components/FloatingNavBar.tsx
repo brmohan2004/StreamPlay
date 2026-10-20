@@ -18,8 +18,8 @@ export const FloatingNavBar: React.FC = () => {
     setSelectedLanguage
   } = useNavigation();
 
-  // Hide on Movie Details Screen (full-bleed immersive details view)
-  if (activeScreen === 'details') {
+  // Hide on Movie Details Screen and Profile Screen
+  if (activeScreen === 'details' || activeScreen === 'profile') {
     return null;
   }
 

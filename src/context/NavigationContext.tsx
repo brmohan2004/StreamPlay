@@ -18,6 +18,8 @@ interface NavigationContextType {
   setSearchQuery: (q: string) => void;
   activeCategory: string;
   setActiveCategory: (cat: string) => void;
+  selectedChannel: string;
+  setSelectedChannel: (channel: string) => void;
   isFilterSheetOpen: boolean;
   setIsFilterSheetOpen: (open: boolean) => void;
   openFilterSheet: () => void;
@@ -53,6 +55,7 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [selectedLanguage, setSelectedLanguage] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
+  const [selectedChannel, setSelectedChannel] = useState<string>('All');
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
 
   const openFilterSheet = () => setIsFilterSheetOpen(true);
@@ -73,6 +76,8 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         setSearchQuery,
         activeCategory,
         setActiveCategory,
+        selectedChannel,
+        setSelectedChannel,
         isFilterSheetOpen,
         setIsFilterSheetOpen,
         openFilterSheet,

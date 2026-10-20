@@ -7,9 +7,11 @@ interface MediaRowProps {
   title: string;
   items: MovieItem[];
   showRank?: boolean;
+  onLoadMore?: () => void;
+  isLoadingMore?: boolean;
 }
 
-export const MediaRow: React.FC<MediaRowProps> = ({ title, items, showRank = false }) => {
+export const MediaRow: React.FC<MediaRowProps> = ({ title, items, showRank = false, onLoadMore, isLoadingMore }) => {
   const rowRef = useRef<HTMLDivElement>(null);
 
   const scroll = (direction: 'left' | 'right') => {
@@ -20,6 +22,14 @@ export const MediaRow: React.FC<MediaRowProps> = ({ title, items, showRank = fal
         left: direction === 'left' ? scrollLeft - scrollAmount : scrollLeft + scrollAmount,
         behavior: 'smooth'
       });
+    }
+  };
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    if (!onLoadMore || isLoadingMore) return;
+    const el = e.currentTarget;
+    if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 280) {
+      onLoadMore();
     }
   };
 
@@ -40,10 +50,15 @@ export const MediaRow: React.FC<MediaRowProps> = ({ title, items, showRank = fal
         </div>
       </div>
 
-      <div className="media-row-scroll" ref={rowRef}>
+      <div className="media-row-scroll" ref={rowRef} onScroll={handleScroll}>
         {items.map((item, index) => (
           <MediaCard key={item.id || index} item={item} rank={showRank ? index + 1 : undefined} />
         ))}
+        {isLoadingMore && (
+          <div className="row-auto-pitch-loader" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 80, height: '100%' }}>
+            <div className="stream-glow-spinner" style={{ width: 24, height: 24 }} />
+          </div>
+        )}
       </div>
     </div>
   );

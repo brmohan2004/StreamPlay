@@ -169,6 +169,11 @@ export const MovieRankedCard: React.FC<MovieRankedCardProps> = ({ item, rank, on
         />
 
         <div className={`ranked-movie-badge ${podiumClass}`}>#{rank}</div>
+        {item.ottProvider && item.ottProvider !== 'All' ? (
+          <div className="ranked-movie-ott-tag">{item.ottProvider}</div>
+        ) : item.isTheaterPrint ? (
+          <div className="ranked-movie-ott-tag theater">Theaters</div>
+        ) : null}
       </div>
 
       <div className="ranked-movie-meta">
@@ -472,9 +477,11 @@ export const MovieScrollRow: React.FC<MovieScrollRowProps> = ({
 export interface MovieSectionRowProps {
   title: string;
   children: React.ReactNode;
+  onLoadMore?: () => void;
+  isLoadingMore?: boolean;
 }
 
-export const MovieSectionRow: React.FC<MovieSectionRowProps> = ({ title, children }) => {
+export const MovieSectionRow: React.FC<MovieSectionRowProps> = ({ title, children, onLoadMore, isLoadingMore }) => {
   const scrollRef = React.useRef<HTMLDivElement>(null);
 
   const scroll = (direction: 'left' | 'right') => {
@@ -484,6 +491,14 @@ export const MovieSectionRow: React.FC<MovieSectionRowProps> = ({ title, childre
         left: direction === 'left' ? scrollRef.current.scrollLeft - scrollAmount : scrollRef.current.scrollLeft + scrollAmount,
         behavior: 'smooth'
       });
+    }
+  };
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    if (!onLoadMore || isLoadingMore) return;
+    const el = e.currentTarget;
+    if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 280) {
+      onLoadMore();
     }
   };
 
@@ -500,14 +515,19 @@ export const MovieSectionRow: React.FC<MovieSectionRowProps> = ({ title, childre
           </button>
         </div>
       </div>
-      <div className="movie-row-scroll" ref={scrollRef}>
+      <div className="movie-row-scroll" ref={scrollRef} onScroll={handleScroll}>
         {children}
+        {isLoadingMore && (
+          <div className="row-auto-pitch-loader" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 100, height: '100%' }}>
+            <div className="stream-glow-spinner" style={{ width: 28, height: 28 }} />
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-export const MovieTwoRowSection: React.FC<MovieSectionRowProps> = ({ title, children }) => {
+export const MovieTwoRowSection: React.FC<MovieSectionRowProps> = ({ title, children, onLoadMore, isLoadingMore }) => {
   const scrollRef = React.useRef<HTMLDivElement>(null);
 
   const scroll = (direction: 'left' | 'right') => {
@@ -517,6 +537,14 @@ export const MovieTwoRowSection: React.FC<MovieSectionRowProps> = ({ title, chil
         left: direction === 'left' ? scrollRef.current.scrollLeft - scrollAmount : scrollRef.current.scrollLeft + scrollAmount,
         behavior: 'smooth'
       });
+    }
+  };
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    if (!onLoadMore || isLoadingMore) return;
+    const el = e.currentTarget;
+    if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 280) {
+      onLoadMore();
     }
   };
 
@@ -533,7 +561,7 @@ export const MovieTwoRowSection: React.FC<MovieSectionRowProps> = ({ title, chil
           </button>
         </div>
       </div>
-      <div className="movie-two-row-scroll" ref={scrollRef}>
+      <div className="movie-two-row-scroll" ref={scrollRef} onScroll={handleScroll}>
         <div className="movie-two-row-stage">{children}</div>
       </div>
     </div>

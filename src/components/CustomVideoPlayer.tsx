@@ -52,6 +52,24 @@ export const CustomVideoPlayer: React.FC = () => {
   const [showControls, setShowControls] = useState(true);
   const [isLocked, setIsLocked] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasPlayerCrashed, setHasPlayerCrashed] = useState(false);
+
+  // Popup Guard: Prevent external embed ads from opening new Chrome tabs/windows
+  useEffect(() => {
+    if (!isVideoModalOpen) return;
+    const prevOpen = window.open;
+    try {
+      window.open = function (...args: any[]) {
+        console.warn('[StreamPlay Guard] Blocked popup ad tab breakout:', args[0]);
+        return null;
+      };
+    } catch {
+      // ignore
+    }
+    return () => {
+      window.open = prevOpen;
+    };
+  }, [isVideoModalOpen]);
 
   // Menus & Modals
   const [showQualityMenu, setShowQualityMenu] = useState(false);
@@ -325,6 +343,16 @@ export const CustomVideoPlayer: React.FC = () => {
       onPointerUp={handlePointerUp}
       onPointerLeave={handlePointerUp}
     >
+      {/* 0. Persistent Emergency Back Button (Always accessible if view crashes or controls hide) */}
+      <button
+        className="persistent-player-back-btn"
+        onClick={closeMoviePlayer}
+        title="Exit Player"
+        aria-label="Exit Player"
+      >
+        <X size={22} />
+      </button>
+
       {/* 1. Main Streaming Frame Viewport */}
       <div className="player-viewport-stage" style={getAspectStyle()}>
         {isLoading && (
@@ -333,6 +361,28 @@ export const CustomVideoPlayer: React.FC = () => {
             <div className="stream-loading-info">
               <p className="loading-server-title">Connecting to stream...</p>
               <span className="loading-speed-sub">Buffering {selectedQuality} • {ping}ms</span>
+            </div>
+          </div>
+        )}
+
+        {hasPlayerCrashed && (
+          <div className="player-crash-fallback-card">
+            <p className="crash-title">⚠️ Stream View Interrupted</p>
+            <p className="crash-subtitle">The embedded server player encountered an error or connection timeout.</p>
+            <div className="crash-actions">
+              <button
+                className="crash-action-btn primary"
+                onClick={() => {
+                  setHasPlayerCrashed(false);
+                  setIsLoading(true);
+                  setVideoProviderIndex((videoProviderIndex + 1) % STREAMING_SERVERS.length);
+                }}
+              >
+                Switch to Next Server ({STREAMING_SERVERS[(videoProviderIndex + 1) % STREAMING_SERVERS.length]?.name || 'Next'})
+              </button>
+              <button className="crash-action-btn secondary" onClick={closeMoviePlayer}>
+                Exit Player
+              </button>
             </div>
           </div>
         )}
@@ -357,12 +407,14 @@ export const CustomVideoPlayer: React.FC = () => {
             src={currentEmbedUrl}
             className="custom-stream-iframe"
             title={activeMovie.name}
-            sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
-            referrerPolicy="no-referrer"
+            referrerPolicy="origin"
             allowFullScreen
             allow="autoplay; encrypted-media; gyroscope; picture-in-picture; fullscreen"
             onLoad={() => {
               setIsLoading(false);
+            }}
+            onError={() => {
+              setHasPlayerCrashed(true);
             }}
           />
         )}
@@ -422,8 +474,21 @@ export const CustomVideoPlayer: React.FC = () => {
           </div>
         </div>
 
-        {/* Top Right: Connection Health Pill ONLY */}
+        {/* Top Right: Quick Server Switcher + Connection Health Pill */}
         <div className="header-right-tools">
+          <button
+            className="connection-health-pill-btn server-pill-btn"
+            onClick={() => {
+              setIsLoading(true);
+              setVideoProviderIndex((videoProviderIndex + 1) % STREAMING_SERVERS.length);
+            }}
+            title={`Current Server: ${STREAMING_SERVERS[videoProviderIndex % STREAMING_SERVERS.length]?.name}. Click to switch server`}
+            aria-label="Switch Server"
+          >
+            <Server size={13} style={{ color: '#c8ff00' }} />
+            <span className="health-ping-text">{STREAMING_SERVERS[videoProviderIndex % STREAMING_SERVERS.length]?.name.split(' ')[0] || 'Server'}</span>
+          </button>
+
           <button
             className="connection-health-pill-btn"
             onClick={() => setShowHealthModal(prev => !prev)}

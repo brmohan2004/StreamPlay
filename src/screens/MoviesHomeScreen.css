@@ -335,5 +335,109 @@
   transform: scale(0.96);
 }
 
+/* ========================================================
+   OTT Language Capsules Bar
+   ======================================================== */
+.ott-language-capsules-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem 0.85rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.ott-language-capsules-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.capsules-bar-title {
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.55);
+  white-space: nowrap;
+}
+
+.capsules-scroll-list {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.ott-lang-capsule {
+  padding: 4px 12px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ott-lang-capsule:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.ott-lang-capsule.active {
+  background: #00d2ff;
+  color: #000000;
+  border-color: #00d2ff;
+  box-shadow: 0 0 12px rgba(0, 210, 255, 0.45);
+}
+
+/* ========================================================
+   New Releases Section with Category Capsules
+   ======================================================== */
+.new-releases-section-wrapper {
+  margin-bottom: 2rem;
+  position: relative;
+}
+
+.new-releases-header-capsules {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1rem 0.75rem;
+  gap: 1rem;
+}
+
+.new-releases-category-capsules {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.nr-category-capsule {
+  padding: 3px 10px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nr-category-capsule:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.nr-category-capsule.active {
+  background: #00d2ff;
+  color: #000000;
+  border-color: #00d2ff;
+  box-shadow: 0 0 10px rgba(0, 210, 255, 0.4);
+}
+
+
 
 

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useRef, useEffect } from 'r
 import { MovieItem, SongItem } from '../types/media';
 import { logSignal } from '../services/recommendationTracker';
 import { AudioBufferWatchdog } from '../services/streamingWatchdog';
+import { getAudioStreamForQuality, fetchInfiniteLanguageSongs, AudioQualitySetting } from '../services/musicService';
 
 // Helper: fire a custom event so RecommendationContext knows to refresh
 function notifyRecUpdate() {
@@ -55,6 +56,10 @@ interface MediaContextType {
   likedSongs: string[];
   toggleLikeSong: (id: string) => void;
   isLikedSong: (id: string) => boolean;
+
+  // Multi-Provider Audio Quality
+  audioQuality: AudioQualitySetting;
+  setAudioQuality: (q: AudioQualitySetting) => void;
 
   // Video Songs Support
   openVideoSong: (song: SongItem, queue?: SongItem[]) => void;
@@ -160,7 +165,23 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const openMusicPlayer = () => setIsMusicPlayerOpen(true);
   const closeMusicPlayer = () => setIsMusicPlayerOpen(false);
-  const toggleShuffle = () => setIsShuffle(prev => !prev);
+  const toggleShuffle = () => {
+    setIsShuffle(prev => {
+      const nextVal = !prev;
+      if (nextVal && songQueue.length > 1) {
+        const current = currentSongRef.current;
+        const rest = songQueue.filter(s => String(s.id) !== String(current?.id));
+        for (let i = rest.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [rest[i], rest[j]] = [rest[j], rest[i]];
+        }
+        const shuffled = current ? [current, ...rest] : rest;
+        setSongQueue(shuffled);
+        songQueueRef.current = shuffled;
+      }
+      return nextVal;
+    });
+  };
   const toggleRepeat = () => setIsRepeat(prev => !prev);
 
   const toggleLikeSong = (songId: string) => {
@@ -346,6 +367,29 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const isRepeatRef = useRef(false);
   const nextSongRef = useRef<() => void>(() => {});
 
+  // Session-wide played song tracking to avoid repeating played songs (infinite songs playing)
+  const sessionPlayedSongIds = useRef<Set<string>>(new Set());
+  const autoNextBatchIndexRef = useRef(1);
+
+  // Multi-Provider Audio Quality Setting
+  const [audioQuality, setAudioQualityState] = useState<AudioQualitySetting>(() => {
+    return (localStorage.getItem('streamplay_audio_quality') as AudioQualitySetting) || '320kbps';
+  });
+
+  const setAudioQuality = (q: AudioQualitySetting) => {
+    setAudioQualityState(q);
+    localStorage.setItem('streamplay_audio_quality', q);
+    if (currentSongRef.current && audioRef.current) {
+      const updatedUrl = getAudioStreamForQuality(currentSongRef.current.streamUrl, q);
+      const currentTime = audioRef.current.currentTime;
+      audioRef.current.src = updatedUrl;
+      audioRef.current.currentTime = currentTime;
+      if (isPlayingSong) {
+        audioRef.current.play().catch(console.warn);
+      }
+    }
+  };
+
   useEffect(() => {
     currentSongRef.current = currentSong;
   }, [currentSong]);
@@ -366,7 +410,7 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const audio = new Audio();
     audioRef.current = audio;
 
-    const watchdog = new AudioBufferWatchdog(audio, [], (newUrl) => {
+    const watchdog = new AudioBufferWatchdog(audio, [], (newUrl: string) => {
       setCurrentSong(prev => prev ? { ...prev, streamUrl: newUrl } : null);
     });
     audioWatchdogRef.current = watchdog;
@@ -481,8 +525,19 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     }
 
-    setCurrentSong(song);
-    currentSongRef.current = song;
+    // Mark song as played in session to avoid repeating
+    sessionPlayedSongIds.current.add(String(song.id));
+    sessionPlayedSongIds.current.add(`${song.title.toLowerCase().trim()} - ${song.artist.toLowerCase().trim()}`);
+
+    const qualityStreamUrl = getAudioStreamForQuality(song.streamUrl, audioQuality);
+    const updatedSong: SongItem = {
+      ...song,
+      streamUrl: qualityStreamUrl,
+      quality: `${audioQuality.toUpperCase()} • Free High-Res Audio`
+    };
+
+    setCurrentSong(updatedSong);
+    currentSongRef.current = updatedSong;
 
     if (queue && queue.length > 0) {
       setSongQueue(queue);
@@ -490,7 +545,7 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } else {
       setSongQueue(prev => {
         if (!prev.some(s => String(s.id) === String(song.id))) {
-          const updated = [...prev, song];
+          const updated = [...prev, updatedSong];
           songQueueRef.current = updated;
           return updated;
         }
@@ -500,10 +555,10 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     if (audioRef.current) {
       if (audioWatchdogRef.current) {
-        const mirrors = [song.streamUrl, ...(song.backupStreamUrls || [])];
+        const mirrors = [updatedSong.streamUrl, ...(updatedSong.backupStreamUrls || [])];
         audioWatchdogRef.current.setMirrors(Array.from(new Set(mirrors)));
       }
-      audioRef.current.src = song.streamUrl;
+      audioRef.current.src = updatedSong.streamUrl;
       audioRef.current
         .play()
         .then(() => setIsPlayingSong(true))
@@ -544,7 +599,7 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setCurrentSong(null);
   };
 
-  const nextSong = () => {
+  const nextSong = async () => {
     const queue = songQueueRef.current.length > 0 ? songQueueRef.current : songQueue;
     const current = currentSongRef.current || currentSong;
     if (!current || queue.length === 0) return;
@@ -555,19 +610,65 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return;
     }
 
-    if (isShuffleRef.current && queue.length > 1) {
-      const candidates = queue.filter(s => String(s.id) !== String(current.id));
-      const randomSong = candidates[Math.floor(Math.random() * candidates.length)];
-      playSong(randomSong, queue);
-      return;
+    const currentIndex = queue.findIndex(s => String(s.id) === String(current.id));
+
+    // Find next unplayed song in current queue to prevent repeating
+    let nextCandidate: SongItem | null = null;
+    if (isShuffleRef.current) {
+      const unplayed = queue.filter(s => 
+        String(s.id) !== String(current.id) &&
+        !sessionPlayedSongIds.current.has(String(s.id)) &&
+        !sessionPlayedSongIds.current.has(`${s.title.toLowerCase().trim()} - ${s.artist.toLowerCase().trim()}`)
+      );
+      if (unplayed.length > 0) {
+        nextCandidate = unplayed[Math.floor(Math.random() * unplayed.length)];
+      }
+    } else {
+      // Linear scan forward for next unplayed song
+      for (let i = currentIndex + 1; i < queue.length; i++) {
+        const s = queue[i];
+        if (
+          !sessionPlayedSongIds.current.has(String(s.id)) &&
+          !sessionPlayedSongIds.current.has(`${s.title.toLowerCase().trim()} - ${s.artist.toLowerCase().trim()}`)
+        ) {
+          nextCandidate = s;
+          break;
+        }
+      }
     }
 
-    const currentIndex = queue.findIndex(s => String(s.id) === String(current.id));
-    if (currentIndex >= 0 && currentIndex < queue.length - 1) {
+    // Auto-fetch next batch if remaining unplayed songs in queue is low (<= 2) or no candidate found
+    if (!nextCandidate || queue.length - currentIndex <= 3) {
+      try {
+        const nextBatch = autoNextBatchIndexRef.current + 1;
+        autoNextBatchIndexRef.current = nextBatch;
+        const primLang = localStorage.getItem('streamplay_primary_lang') || 'Tamil';
+        const moreSongs = await fetchInfiniteLanguageSongs(primLang, nextBatch, 25);
+        
+        const existingIds = new Set(queue.map(s => String(s.id)));
+        const freshSongs = moreSongs.filter(s => 
+          !existingIds.has(String(s.id)) &&
+          !sessionPlayedSongIds.current.has(String(s.id)) &&
+          !sessionPlayedSongIds.current.has(`${s.title.toLowerCase().trim()} - ${s.artist.toLowerCase().trim()}`)
+        );
+
+        if (freshSongs.length > 0) {
+          const updatedQueue = [...queue, ...freshSongs];
+          setSongQueue(updatedQueue);
+          songQueueRef.current = updatedQueue;
+          if (!nextCandidate) {
+            nextCandidate = freshSongs[0];
+          }
+        }
+      } catch (e) {
+        console.warn('Infinite auto-fetch next songs failed:', e);
+      }
+    }
+
+    if (nextCandidate) {
+      playSong(nextCandidate, songQueueRef.current);
+    } else if (currentIndex >= 0 && currentIndex < queue.length - 1) {
       playSong(queue[currentIndex + 1], queue);
-    } else if (queue.length > 0) {
-      // Loop to beginning
-      playSong(queue[0], queue);
     }
   };
 
@@ -654,6 +755,8 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         likedSongs,
         toggleLikeSong,
         isLikedSong,
+        audioQuality,
+        setAudioQuality,
         openVideoSong,
         primaryLanguage,
         setPrimaryLanguage,

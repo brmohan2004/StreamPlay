@@ -55,9 +55,11 @@ export const FilterSheetModal: React.FC = () => {
     setSelectedLanguage,
     activeCategory,
     setActiveCategory,
-    setSearchQuery,
+    selectedChannel,
+    setSelectedChannel,
     setActiveScreen
   } = useNavigation();
+
   const { setPrimaryLanguage } = useMedia();
 
   if (!isFilterSheetOpen) return null;
@@ -66,13 +68,19 @@ export const FilterSheetModal: React.FC = () => {
     setSelectedOTT('All');
     setSelectedLanguage('All');
     setActiveCategory('All');
+    setSelectedChannel('All');
   };
 
-  const hasActiveFilters = selectedOTT !== 'All' || activeCategory !== 'All' || selectedLanguage !== 'All';
+  const hasActiveFilters =
+    selectedOTT !== 'All' ||
+    activeCategory !== 'All' ||
+    selectedLanguage !== 'All' ||
+    selectedChannel !== 'All';
 
   // Navigation / Filter Actions
   const handleSelectBrowse = (type: string) => {
     setActiveCategory(type);
+    setSelectedChannel('All');
     closeFilterSheet();
   };
 
@@ -80,6 +88,7 @@ export const FilterSheetModal: React.FC = () => {
     setSelectedOTT(brand);
     setSelectedLanguage('All');
     setActiveCategory('All');
+    setSelectedChannel('All');
     setActiveScreen('home');
     closeFilterSheet();
   };
@@ -89,22 +98,23 @@ export const FilterSheetModal: React.FC = () => {
     setPrimaryLanguage(lang.englishTitle);
     setSelectedOTT('All');
     setActiveCategory('All');
+    setSelectedChannel('All');
     setActiveScreen('home');
     closeFilterSheet();
   };
 
   const handleSelectChannel = (channel: ChannelItem) => {
-    setSearchQuery(channel.query);
-    if (appMode === 'movies') {
-      setActiveScreen('movie-search');
-    } else {
-      setActiveScreen('music-search');
-    }
+    setSelectedChannel(channel.name);
+    setSelectedOTT('All');
+    setSelectedLanguage('All');
+    setActiveCategory('All');
+    setActiveScreen('home');
     closeFilterSheet();
   };
 
   const handleSelectGenre = (genreName: string) => {
     setActiveCategory(genreName);
+    setSelectedChannel('All');
     closeFilterSheet();
   };
 
@@ -492,13 +502,28 @@ export const FilterSheetModal: React.FC = () => {
   return (
     <AnimatePresence>
       {isFilterSheetOpen && (
-        <div className="filter-sheet-overlay" onClick={closeFilterSheet}>
+        <motion.div
+          className="filter-sheet-overlay"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+          onClick={closeFilterSheet}
+        >
           <motion.div
             className="filter-sheet-drawer"
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+            transition={{ type: 'spring', damping: 30, stiffness: 320, mass: 0.8 }}
+            drag="y"
+            dragConstraints={{ top: 0 }}
+            dragElastic={0.2}
+            onDragEnd={(_, info) => {
+              if (info.offset.y > 100 || info.velocity.y > 500) {
+                closeFilterSheet();
+              }
+            }}
             onClick={e => e.stopPropagation()}
           >
             {/* Top Sheet Drag/Pull Handle matching Screenshot 1 */}
@@ -700,7 +725,7 @@ export const FilterSheetModal: React.FC = () => {
               </div>
             </div>
           </motion.div>
-        </div>
+        </motion.div>
       )}
     </AnimatePresence>
   );

@@ -30,15 +30,38 @@ import {
 } from './services/movieService';
 import { searchSongs } from './services/musicService';
 import { MovieItem, SongItem } from './types/media';
+import { StatusBar, Style } from '@capacitor/status-bar';
+import { Capacitor } from '@capacitor/core';
 import './App.css';
 
 export function AppContent() {
   const { appMode, activeScreen } = useNavigation();
 
   // Active Swipe Gestures:
-  // Movies: Swipe Right -> Watch Later | Swipe Left -> Movies Home
-  // Music:  Swipe Right -> Playlist    | Swipe Left -> Music Home
+  // Movies: Swipe Left -> Watch Later | Swipe Right -> Movies Home
+  // Music:  Swipe Left -> Playlist    | Swipe Right -> Music Home
   useSwipeNavigation();
+
+  // Synchronize device status bar and meta theme-color with active mode
+  useEffect(() => {
+    const isMovies = appMode === 'movies';
+    const themeColor = isMovies ? '#000000' : '#080b12';
+
+    // 1. Update HTML meta theme-color for mobile browsers & PWAs
+    let metaTag = document.querySelector('meta[name="theme-color"]');
+    if (!metaTag) {
+      metaTag = document.createElement('meta');
+      metaTag.setAttribute('name', 'theme-color');
+      document.head.appendChild(metaTag);
+    }
+    metaTag.setAttribute('content', themeColor);
+
+    // 2. Update Capacitor native status bar if running on Android/iOS
+    if (Capacitor.isNativePlatform()) {
+      StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
+      StatusBar.setBackgroundColor({ color: themeColor }).catch(() => {});
+    }
+  }, [appMode]);
   const [showSplash, setShowSplash] = useState(true);
   const [topMovies, setTopMovies] = useState<MovieItem[]>([]);
   const [topSeries, setTopSeries] = useState<MovieItem[]>([]);

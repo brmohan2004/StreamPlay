@@ -121,7 +121,9 @@ export const RecommendationProvider: React.FC<RecommendationProviderProps> = ({
     // ─── Music Recommendations ───
     if (songCatalog.length > 0) {
       setForYouSongs(getMusicRecommendations(songCatalog, 12));
-      setDailyMix(getDailyMix(songCatalog, 10));
+      const primLang = localStorage.getItem('streamplay_primary_lang') || 'Tamil';
+      const secLang = localStorage.getItem('streamplay_secondary_lang') || 'English';
+      setDailyMix(getDailyMix(songCatalog, 12, primLang, secLang));
       setDiscoverWeekly(getExplorationSongs(songCatalog, 8));
 
       // "Because You Listened" rows — up to 2 anchor songs

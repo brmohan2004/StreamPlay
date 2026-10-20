@@ -1,6 +1,5 @@
 import './MoviesHomeScreen.css';
-import React, { useState, useEffect, useRef } from 'react';
-import { RotateCcw } from 'lucide-react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { TopAppHeader } from '../components/TopAppHeader';
 import { SkeletonHome, SkeletonRow } from '../components/SkeletonLoader';
 import {
@@ -25,7 +24,9 @@ import {
   fetchGenreMovies,
   fetchGenreSeries,
   fetchByOTT,
-  fetchTheaterReleases
+  fetchTheaterReleases,
+  fetchCuratedTrendingDeck,
+  fetchChannelContent
 } from '../services/movieService';
 
 interface MoviesHomeScreenProps {
@@ -59,9 +60,9 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
 }) => {
   const {
     activeCategory,
-    setActiveCategory,
     selectedOTT,
-    selectedLanguage
+    selectedLanguage,
+    selectedChannel
   } = useNavigation();
   const { continueWatching, primaryLanguage, secondaryLanguage } = useMedia();
   const { forYouMovies, becauseYouWatched, explorationMovies } = useRecommendations();
@@ -69,6 +70,19 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
   const [primaryLangMovies, setPrimaryLangMovies] = useState<MovieItem[]>([]);
   const [secondaryLangMovies, setSecondaryLangMovies] = useState<MovieItem[]>([]);
   const movieBottomRef = useRef<HTMLDivElement>(null);
+
+  // Curated Trending Deck state (combining 2025/2026 Theater, OTT, primary/secondary lang, high IMDb)
+  const [curatedTrending, setCuratedTrending] = useState<MovieItem[]>([]);
+
+  // OTT Top 20 Language Filter Capsule state
+  const [selectedOttLang, setSelectedOttLang] = useState<string>('All');
+
+  // New Releases Category Filter Capsule state ('All' | 'Movies' | 'Series')
+  const [newReleasesCategory, setNewReleasesCategory] = useState<'All' | 'Movies' | 'Series'>('All');
+
+  // Channel Universe State (StarPlus, Colors, Star Vijay, Zee TV, Sony SET, Asianet)
+  const [channelMovies, setChannelMovies] = useState<MovieItem[]>([]);
+  const [isLoadingChannel, setIsLoadingChannel] = useState(false);
 
   // Dynamic Genre Movies Cache for Capsule Listing
   const [genreCache, setGenreCache] = useState<Record<string, MovieItem[]>>({});
@@ -142,6 +156,38 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
       isMounted = false;
     };
   }, []);
+
+  // Curated Trending Deck: Theater & OTT 2025/2026, language affinity, high IMDb, popular series
+  useEffect(() => {
+    let isMounted = true;
+    fetchCuratedTrendingDeck(primaryLanguage, secondaryLanguage).then(res => {
+      if (isMounted && res.length > 0) {
+        setCuratedTrending(res);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [primaryLanguage, secondaryLanguage]);
+
+  // Dynamic Channel Content Catalog (StarPlus, Colors, Star Vijay, Zee TV, Sony SET, Asianet)
+  useEffect(() => {
+    if (!selectedChannel || selectedChannel === 'All') {
+      setChannelMovies([]);
+      return;
+    }
+    let isMounted = true;
+    setIsLoadingChannel(true);
+    fetchChannelContent(selectedChannel).then(res => {
+      if (isMounted) {
+        setChannelMovies(res);
+        setIsLoadingChannel(false);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedChannel]);
 
   // Fetch OTT Universe Catalog when selectedOTT changes
   useEffect(() => {
@@ -241,6 +287,48 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
       isMounted = false;
     };
   }, [primaryLanguage, secondaryLanguage]);
+
+  // Horizontal auto-pitching state for primary & secondary language rows
+  const [primBatch, setPrimBatch] = useState(1);
+  const [secBatch, setSecBatch] = useState(1);
+  const [isLoadingPrimMore, setIsLoadingPrimMore] = useState(false);
+  const [isLoadingSecMore, setIsLoadingSecMore] = useState(false);
+
+  const loadMorePrimaryMovies = async () => {
+    if (isLoadingPrimMore) return;
+    setIsLoadingPrimMore(true);
+    try {
+      const nextBatch = primBatch + 1;
+      const more = await fetchInfiniteLanguageMovies(primaryLanguage, nextBatch, 15);
+      if (more.length > 0) {
+        setPrimaryLangMovies(prev => {
+          const seen = new Set(prev.map(p => p.id));
+          return [...prev, ...more.filter(m => !seen.has(m.id))];
+        });
+        setPrimBatch(nextBatch);
+      }
+    } finally {
+      setIsLoadingPrimMore(false);
+    }
+  };
+
+  const loadMoreSecondaryMovies = async () => {
+    if (isLoadingSecMore) return;
+    setIsLoadingSecMore(true);
+    try {
+      const nextBatch = secBatch + 1;
+      const more = await fetchInfiniteLanguageMovies(secondaryLanguage, nextBatch, 15);
+      if (more.length > 0) {
+        setSecondaryLangMovies(prev => {
+          const seen = new Set(prev.map(p => p.id));
+          return [...prev, ...more.filter(m => !seen.has(m.id))];
+        });
+        setSecBatch(nextBatch);
+      }
+    } finally {
+      setIsLoadingSecMore(false);
+    }
+  };
 
   // Fetch Genre Movies when capsule is clicked
   useEffect(() => {
@@ -365,14 +453,62 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
     })
     .filter((entry): entry is NonNullable<typeof entry> => entry !== null && entry.movies.length >= 2);
 
-  // 5. New Releases
+  // 5. New Releases: Dynamic 2025/2026 releases prioritized by primary & secondary languages + OTT tags
+  const newReleasesCandidatePool: MovieItem[] = [
+    ...primaryLangMovies.filter(m => (parseInt(m.releaseInfo || '0') || 0) >= 2025),
+    ...secondaryLangMovies.filter(m => (parseInt(m.releaseInfo || '0') || 0) >= 2025),
+    ...newMoviesWithTags,
+    ...theaterReleases.slice(0, 4),
+    ...netflixHits.slice(0, 4),
+    ...hotstarHits.slice(0, 4),
+    ...primeHits.slice(0, 4)
+  ];
+
   const deduplicatedNewReleases: MovieItem[] = [];
-  for (const m of newMoviesWithTags) {
+  for (const m of newReleasesCandidatePool) {
     if (m && m.id && !globalSeenIds.has(m.id)) {
       globalSeenIds.add(m.id);
       deduplicatedNewReleases.push(m);
     }
   }
+
+  // Filtered New Releases based on selected category capsule ('All' | 'Movies' | 'Series')
+  const filteredNewReleases = useMemo(() => {
+    return deduplicatedNewReleases.filter(m => {
+      if (newReleasesCategory === 'Movies') return m.type !== 'series';
+      if (newReleasesCategory === 'Series') return m.type === 'series';
+      return true;
+    });
+  }, [deduplicatedNewReleases, newReleasesCategory]);
+
+  // OTT Languages capsules: 1st Primary, 2nd Secondary, remaining languages
+  const ottLanguageCapsules = useMemo(() => {
+    return Array.from(
+      new Set([
+        primaryLanguage,
+        secondaryLanguage,
+        'All',
+        'Hindi',
+        'Telugu',
+        'Malayalam',
+        'Kannada',
+        'Korean',
+        'English'
+      ].filter(Boolean))
+    );
+  }, [primaryLanguage, secondaryLanguage]);
+
+  // OTT Top 20 picks filtered by language capsule
+  const filteredOttPicks = useMemo(() => {
+    if (selectedOttLang === 'All') return ottUniverseMovies.slice(0, 20);
+    const langLower = selectedOttLang.toLowerCase();
+    const matched = ottUniverseMovies.filter(m =>
+      (m.language && m.language.toLowerCase().includes(langLower)) ||
+      ((m as any).originalLanguage && (m as any).originalLanguage.toLowerCase().includes(langLower)) ||
+      (m.genres && m.genres.some(g => g.toLowerCase().includes(langLower)))
+    );
+    return (matched.length > 0 ? matched : ottUniverseMovies).slice(0, 20);
+  }, [ottUniverseMovies, selectedOttLang]);
 
   // 6. Regional Languages
   const deduplicatedPrimaryLang: MovieItem[] = [];
@@ -445,10 +581,44 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
       <TopAppHeader />
 
       <div className="movies-home-scrollable">
-        {/* ========================================================================= */}
-        {/* CASE 1: REGIONAL LANGUAGE UNIVERSE (e.g. Tamil Cinema Universe)            */}
-        {/* ========================================================================= */}
-        {selectedLanguage !== 'All' ? (
+        {selectedChannel && selectedChannel !== 'All' ? (
+          /* ========================================================================= */
+          /* CASE 0: DEDICATED CHANNEL UNIVERSE (StarPlus, Colors, Zee TV, etc.)        */
+          /* ========================================================================= */
+          <>
+            {/* Trending Channel Deck */}
+            {channelMovies.length > 0 && (
+              <MovieTrendingFannedDeck movies={channelMovies.slice(0, 8)} />
+            )}
+
+            {isLoadingChannel ? (
+              <div style={{ width: '100%', marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                <SkeletonRow cardCount={6} titleWidth={220} />
+                <SkeletonRow cardCount={6} titleWidth={180} />
+              </div>
+            ) : (
+              <>
+                <MovieSectionRow title={`Top Serials on ${selectedChannel}`}>
+                  {channelMovies.slice(0, 10).map(item => (
+                    <MovieSpotlightCard key={item.id} item={item} />
+                  ))}
+                </MovieSectionRow>
+
+                {channelMovies.length > 10 && (
+                  <MovieSectionRow title="Primetime Drama & Popular Shows">
+                    {channelMovies.slice(10, 20).map(movie => (
+                      <MovieBackdropCard key={movie.id} item={movie} />
+                    ))}
+                  </MovieSectionRow>
+                )}
+
+                {channelMovies.length > 20 && (
+                  <MediaRow title={`All Shows on ${selectedChannel}`} items={channelMovies.slice(20, 40)} />
+                )}
+              </>
+            )}
+          </>
+        ) : selectedLanguage !== 'All' ? (
           <>
             {/* Trending Cards for this language */}
             <MovieTrendingFannedDeck
@@ -521,8 +691,30 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
               </div>
             ) : (
               <>
+                {/* OTT Language Capsules */}
+                <div className="ott-language-capsules-bar">
+                  <span className="capsules-bar-title">Languages</span>
+                  <div className="capsules-scroll-list">
+                    {ottLanguageCapsules.map(lang => (
+                      <button
+                        key={lang}
+                        className={`ott-lang-capsule ${selectedOttLang === lang ? 'active' : ''}`}
+                        onClick={() => setSelectedOttLang(lang)}
+                      >
+                        {lang}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Top Pick 20 for this OTT */}
+                <MovieSectionRow title={selectedOttLang === 'All' ? `Top Pick 20 on ${selectedOTT}` : `Top Pick 20 in ${selectedOttLang} • ${selectedOTT}`}>
+                  {filteredOttPicks.map((movie, idx) => (
+                    <MovieRankedCard key={movie.id} item={movie} rank={idx + 1} />
+                  ))}
+                </MovieSectionRow>
+
                 <MediaRow title={`Trending on ${selectedOTT}`} items={ottUniverseMovies.slice(0, 10)} />
-                <MediaRow title={`Top 10 in India Today • ${selectedOTT}`} items={ottUniverseMovies.slice(10, 20)} />
                 <MediaRow title={`${selectedOTT} Originals & Blockbusters`} items={ottUniverseMovies.slice(20, 30)} />
                 {ottUniverseMovies.filter(m => m.type === 'series').length > 0 && (
                   <MediaRow
@@ -539,21 +731,6 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
           /* CASE 3A: TV SHOWS & WEB SERIES UNIVERSE                                   */
           /* ========================================================================= */
           <>
-            {/* Active Filter Banner */}
-            <div className="home-active-filter-banner">
-              <div className="filter-banner-content">
-                <span className="filter-banner-label">📺 TV Shows & Web Series Mode</span>
-                <span className="filter-banner-sub">Trending series, OTT originals, and binge-worthy seasons</span>
-              </div>
-              <button
-                className="filter-banner-clear-btn"
-                onClick={() => setActiveCategory('All')}
-                title="Exit TV filter & return to All"
-              >
-                <RotateCcw size={14} />
-                <span>Exit Filter</span>
-              </button>
-            </div>
 
             {/* Trending Series Deck */}
             {deduplicatedSeries.length > 0 && (
@@ -653,22 +830,6 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
           /* CASE 3B: MOVIES ONLY UNIVERSE                                             */
           /* ========================================================================= */
           <>
-            {/* Active Filter Banner */}
-            <div className="home-active-filter-banner">
-              <div className="filter-banner-content">
-                <span className="filter-banner-label">🎬 Movies Mode</span>
-                <span className="filter-banner-sub">Cinema blockbusters, theatrical premieres, and feature films</span>
-              </div>
-              <button
-                className="filter-banner-clear-btn"
-                onClick={() => setActiveCategory('All')}
-                title="Exit Movies filter & return to All"
-              >
-                <RotateCcw size={14} />
-                <span>Exit Filter</span>
-              </button>
-            </div>
-
             {/* Trending Movies Deck */}
             {deduplicatedTopMovies.length > 0 && (
               <MovieTrendingFannedDeck movies={deduplicatedTopMovies} />
@@ -790,22 +951,6 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
           /* CASE 3C: GENRE UNIVERSE (e.g. Action / Sci-Fi / Thriller)                  */
           /* ========================================================================= */
           <>
-            {/* Active Filter Banner */}
-            <div className="home-active-filter-banner">
-              <div className="filter-banner-content">
-                <span className="filter-banner-label">⚡ {activeCategory} Universe</span>
-                <span className="filter-banner-sub">Curated blockbuster movies, web series, and top hits</span>
-              </div>
-              <button
-                className="filter-banner-clear-btn"
-                onClick={() => setActiveCategory('All')}
-                title="Exit genre filter & return to All"
-              >
-                <RotateCcw size={14} />
-                <span>Exit Filter</span>
-              </button>
-            </div>
-
             {/* Trending in Genre Deck */}
             {categoryFilteredMovies.length > 0 && (
               <MovieTrendingFannedDeck movies={categoryFilteredMovies.slice(0, 8)} />
@@ -877,9 +1022,9 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
           /* CASE 4: STANDARD FULL HOME VIEW (All Platforms, Personalization & Rows)    */
           /* ========================================================================= */
           <>
-            {/* 2. Trending Fanned Cards Deck */}
-            {deduplicatedTopMovies.length > 0 && (
-              <MovieTrendingFannedDeck movies={deduplicatedTopMovies} />
+            {/* 2. Trending Fanned Cards Deck (2025/2026 Theater/OTT, Language-weighted, High IMDb >= 7.5, Popular TV) */}
+            {(curatedTrending.length > 0 ? curatedTrending : deduplicatedTopMovies).length > 0 && (
+              <MovieTrendingFannedDeck movies={curatedTrending.length > 0 ? curatedTrending : deduplicatedTopMovies} />
             )}
 
             {/* 3. Continue Watching */}
@@ -925,29 +1070,53 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
               </MovieSectionRow>
             ))}
 
-            {/* New Releases - DESIGN: #1, #2, #3 Podium Ranked Cards */}
-            {deduplicatedNewReleases.length > 0 && (
-              <MovieSectionRow title="New Releases">
-                {deduplicatedNewReleases.map((movie, idx) => (
-                  <MovieRankedCard key={movie.id} item={movie} rank={idx + 1} />
-                ))}
-              </MovieSectionRow>
+            {/* New Releases - DESIGN: #1, #2, #3 Podium Ranked Cards with OTT Badges & Category Capsules */}
+            {filteredNewReleases.length > 0 && (
+              <div className="new-releases-section-wrapper">
+                <div className="new-releases-header-capsules">
+                  <div className="section-title-wrap">
+                    <h3 className="section-heading">New Releases</h3>
+                  </div>
+                  <div className="new-releases-category-capsules">
+                    {(['All', 'Movies', 'Series'] as const).map(cat => (
+                      <button
+                        key={cat}
+                        className={`nr-category-capsule ${newReleasesCategory === cat ? 'active' : ''}`}
+                        onClick={() => setNewReleasesCategory(cat)}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <MovieSectionRow title="">
+                  {filteredNewReleases.map((movie, idx) => (
+                    <MovieRankedCard key={movie.id} item={movie} rank={idx + 1} />
+                  ))}
+                </MovieSectionRow>
+              </div>
             )}
 
-            {/* Primary Language Blockbusters - DESIGN: 2-Row Horizontal Quick Tile Grid */}
+            {/* Primary Language Blockbusters - DESIGN: 2-Row Horizontal Quick Tile Grid with Auto-Pitch */}
             {deduplicatedPrimaryLang.length > 0 && (
-              <MovieTwoRowSection title={`${primaryLanguage} Blockbusters`}>
+              <MovieTwoRowSection
+                title={`${primaryLanguage} Blockbusters`}
+                onLoadMore={loadMorePrimaryMovies}
+                isLoadingMore={isLoadingPrimMore}
+              >
                 {deduplicatedPrimaryLang.map(movie => (
                   <MovieTileCard key={movie.id} item={movie} />
                 ))}
               </MovieTwoRowSection>
             )}
 
-            {/* Secondary Language Hits - DESIGN: MediaRow Poster Cards */}
+            {/* Secondary Language Hits - DESIGN: MediaRow Poster Cards with Auto-Pitch */}
             {deduplicatedSecondaryLang.length > 0 && (
               <MediaRow
                 title={`${secondaryLanguage} Hits`}
                 items={deduplicatedSecondaryLang}
+                onLoadMore={loadMoreSecondaryMovies}
+                isLoadingMore={isLoadingSecMore}
               />
             )}
 

@@ -1,24 +1,12 @@
 import './MusicSearchScreen.css';
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Music, X, ArrowLeft, History, Play, Pause, Heart, Sparkles, SlidersHorizontal } from 'lucide-react';
-import { searchSongs } from '../services/musicService';
+import { Mic, MicOff, Music, X, ArrowLeft, History, Play, Pause, Heart, Sparkles, Loader2 } from 'lucide-react';
+import { searchSongsPaged } from '../services/musicService';
 import { SongItem } from '../types/media';
 import { useMedia } from '../context/MediaContext';
 import { useNavigation } from '../context/NavigationContext';
 import { logSignal } from '../services/recommendationTracker';
 import { SkeletonTrackList } from '../components/SkeletonLoader';
-
-const MUSIC_GENRES = [
-  'Bollywood',
-  'Pop',
-  'Lo-Fi',
-  'Hip-Hop',
-  'Party',
-  'Devotional',
-  'Acoustic',
-  'Romance',
-  'Rock'
-];
 
 const POPULAR_ARTISTS = [
   'Arijit Singh',
@@ -33,20 +21,32 @@ const POPULAR_ARTISTS = [
   'Billie Eilish'
 ];
 
+const SEARCH_CAPSULES = [
+  { id: 'All', label: 'All Content' },
+  { id: 'Songs', label: 'Songs' },
+  { id: 'Playlists', label: 'Playlists' },
+  { id: 'Artists', label: 'Artists' }
+];
+
 export const MusicSearchScreen: React.FC = () => {
   const {
     setActiveScreen,
     activeCategory,
-    setActiveCategory,
-    openFilterSheet
+    setActiveCategory
   } = useNavigation();
   const { playSong, currentSong, isPlayingSong, toggleSongPlay, toggleLikeSong, isLikedSong } = useMedia();
 
   const [query, setQuery] = useState('');
+  const [selectedCapsule, setSelectedCapsule] = useState<'All' | 'Songs' | 'Playlists' | 'Artists'>('All');
   const [isListening, setIsListening] = useState(false);
   const [songResults, setSongResults] = useState<SongItem[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [page, setPage] = useState(1);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+
   const inputRef = useRef<HTMLInputElement>(null);
+  const bottomObserverRef = useRef<HTMLDivElement>(null);
 
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
     try {
@@ -63,14 +63,27 @@ export const MusicSearchScreen: React.FC = () => {
     inputRef.current?.focus();
   }, []);
 
-  // Perform search
-  const triggerSearch = async (term: string) => {
+  // Compute final search query string based on active capsule
+  const getCapsuleQuery = (rawQuery: string, capsule: string) => {
+    const trimmed = rawQuery.trim();
+    if (!trimmed) return '';
+    if (capsule === 'Playlists') return `${trimmed} playlist`;
+    if (capsule === 'Artists') return `${trimmed} artist songs`;
+    return trimmed;
+  };
+
+  // Perform initial search (page 1, 25 items)
+  const triggerSearch = async (term: string, capsule = selectedCapsule) => {
     const trimmed = term.trim();
     if (!trimmed) {
       setSongResults([]);
+      setHasMore(false);
       return;
     }
+
     setIsSearching(true);
+    setPage(1);
+    setHasMore(true);
 
     // Save to music recents
     setRecentSearches(prev => {
@@ -85,8 +98,12 @@ export const MusicSearchScreen: React.FC = () => {
     });
 
     try {
-      const songs = await searchSongs(trimmed, 25);
+      const targetQuery = getCapsuleQuery(trimmed, capsule);
+      const songs = await searchSongsPaged(targetQuery, 1, 25);
       setSongResults(songs || []);
+      if (!songs || songs.length < 25) {
+        setHasMore(false);
+      }
 
       // Track: music search intent signal
       logSignal({
@@ -102,29 +119,80 @@ export const MusicSearchScreen: React.FC = () => {
     } catch (err) {
       console.error('Music search failed:', err);
       setSongResults([]);
+      setHasMore(false);
     } finally {
       setIsSearching(false);
     }
   };
 
+  // Load next batch of 25 tracks
+  const loadNextBatch = async () => {
+    if (isLoadingMore || !hasMore || !query.trim() || isSearching) return;
+    setIsLoadingMore(true);
+
+    try {
+      const nextPage = page + 1;
+      const targetQuery = getCapsuleQuery(query, selectedCapsule);
+      const moreSongs = await searchSongsPaged(targetQuery, nextPage, 25);
+
+      if (!moreSongs || moreSongs.length === 0) {
+        setHasMore(false);
+      } else {
+        setSongResults(prev => {
+          const seen = new Set(prev.map(s => s.id));
+          const unique = moreSongs.filter(s => !seen.has(s.id));
+          return [...prev, ...unique];
+        });
+        setPage(nextPage);
+        if (moreSongs.length < 25) {
+          setHasMore(false);
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to load next music batch:', err);
+      setHasMore(false);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
+  // IntersectionObserver for 25-by-25 infinite scroll
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && hasMore && !isLoadingMore && !isSearching) {
+          loadNextBatch();
+        }
+      },
+      { rootMargin: '350px' }
+    );
+
+    if (bottomObserverRef.current) {
+      observer.observe(bottomObserverRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [hasMore, isLoadingMore, isSearching, page, query, selectedCapsule]);
+
   // Real-time debounce search as user types
   useEffect(() => {
     if (!query.trim()) {
       setSongResults([]);
+      setHasMore(false);
       return;
     }
 
     const timer = setTimeout(() => {
-      triggerSearch(query);
+      triggerSearch(query, selectedCapsule);
     }, 280);
 
     return () => clearTimeout(timer);
-  }, [query]);
+  }, [query, selectedCapsule]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (query.trim()) {
-      triggerSearch(query);
+      triggerSearch(query, selectedCapsule);
     }
   };
 
@@ -147,7 +215,7 @@ export const MusicSearchScreen: React.FC = () => {
       recognition.onresult = (event: any) => {
         const transcript = event.results[0][0].transcript;
         setQuery(transcript);
-        triggerSearch(transcript);
+        triggerSearch(transcript, selectedCapsule);
       };
       recognition.start();
     } catch {
@@ -168,24 +236,9 @@ export const MusicSearchScreen: React.FC = () => {
     localStorage.removeItem('streamplay_recent_music_searches');
   };
 
-  // Filter songs based on category from Filter Sheet
-  const filteredSongs = songResults.filter(s => {
-    if (activeCategory === 'All' || activeCategory === 'Songs') return true;
-    if (activeCategory === 'Artists') return s.artist.toLowerCase().includes(query.toLowerCase());
-    if (activeCategory === 'Albums') return s.album.toLowerCase().includes(query.toLowerCase());
-    if (MUSIC_GENRES.includes(activeCategory)) {
-      return (
-        s.title.toLowerCase().includes(activeCategory.toLowerCase()) ||
-        s.artist.toLowerCase().includes(activeCategory.toLowerCase()) ||
-        s.album.toLowerCase().includes(activeCategory.toLowerCase())
-      );
-    }
-    return true;
-  });
-
   return (
     <div className="music-search-screen pure-black-theme">
-      {/* Sticky Minimalist Header without category capsules */}
+      {/* Sticky Header with Search Bar & Capsules */}
       <div className="search-header-container music-header">
         {/* Top Control Bar */}
         <div className="search-top-row">
@@ -205,7 +258,7 @@ export const MusicSearchScreen: React.FC = () => {
             <input
               ref={inputRef}
               type="text"
-              placeholder="Search songs, artists, albums, playlists..."
+              placeholder="Search songs, artists, playlists, albums..."
               value={query}
               onChange={e => setQuery(e.target.value)}
               className="minimal-search-input"
@@ -218,6 +271,7 @@ export const MusicSearchScreen: React.FC = () => {
                 onClick={() => {
                   setQuery('');
                   setSongResults([]);
+                  setHasMore(false);
                   inputRef.current?.focus();
                 }}
                 aria-label="Clear Search"
@@ -235,20 +289,26 @@ export const MusicSearchScreen: React.FC = () => {
             >
               {isListening ? <MicOff size={16} /> : <Mic size={16} />}
             </button>
-
-            {/* Quick Filter Sheet Trigger Button */}
-            <button
-              type="button"
-              className={`search-filter-icon-btn music-filter ${hasActiveFilters ? 'has-filter' : ''}`}
-              onClick={openFilterSheet}
-              title="Open Music Filters"
-              aria-label="Open Music Filters"
-            >
-              <SlidersHorizontal size={16} />
-              {hasActiveFilters && <span className="filter-badge-dot lime-dot" />}
-            </button>
           </form>
         </div>
+
+        {/* Category Capsules (All, Songs, Playlists, Artists) */}
+        {query.trim() && (
+          <div className="music-search-capsules-bar">
+            {SEARCH_CAPSULES.map(cap => (
+              <button
+                key={cap.id}
+                type="button"
+                className={`music-search-capsule ${selectedCapsule === cap.id ? 'active' : ''}`}
+                onClick={() => {
+                  setSelectedCapsule(cap.id as any);
+                }}
+              >
+                {cap.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Active Filter Strip */}
         {hasActiveFilters && (
@@ -351,16 +411,16 @@ export const MusicSearchScreen: React.FC = () => {
           <div className="search-results-container">
             <div className="results-header-info">
               <span className="results-count-title">
-                {filteredSongs.length > 0
-                  ? `Found ${filteredSongs.length} tracks for "${query}"`
+                {songResults.length > 0
+                  ? `Showing ${songResults.length} tracks for "${query}"`
                   : `No tracks found for "${query}"`}
               </span>
               <span className="badge-320kbps-hd">320kbps Master</span>
             </div>
 
-            {filteredSongs.length > 0 ? (
+            {songResults.length > 0 ? (
               <div className="music-results-list">
-                {filteredSongs.map((song, i) => {
+                {songResults.map((song, i) => {
                   const isCurrent = currentSong?.id === song.id;
                   const isPlayingThis = isCurrent && isPlayingSong;
                   const isLiked = isLikedSong(song.id);
@@ -369,7 +429,7 @@ export const MusicSearchScreen: React.FC = () => {
                     <div
                       key={song.id || i}
                       className={`minimal-track-row ${isCurrent ? 'track-current' : ''}`}
-                      onClick={() => playSong(song, filteredSongs)}
+                      onClick={() => playSong(song, songResults)}
                     >
                       <div className="track-left-cover">
                         <img
@@ -417,7 +477,7 @@ export const MusicSearchScreen: React.FC = () => {
                             if (isCurrent) {
                               toggleSongPlay();
                             } else {
-                              playSong(song, filteredSongs);
+                              playSong(song, songResults);
                             }
                           }}
                           aria-label={isPlayingThis ? 'Pause' : 'Play'}
@@ -432,6 +492,33 @@ export const MusicSearchScreen: React.FC = () => {
                     </div>
                   );
                 })}
+
+                {/* 25-by-25 Infinite Scroll Loader and Trigger Button */}
+                {hasMore && (
+                  <div className="music-search-load-bar">
+                    <button
+                      type="button"
+                      className="music-search-load-btn"
+                      onClick={loadNextBatch}
+                      disabled={isLoadingMore}
+                    >
+                      {isLoadingMore ? (
+                        <>
+                          <Loader2 size={16} className="music-spin-icon" />
+                          <span>Loading next 25 tracks...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles size={16} />
+                          <span>Load next 25 tracks</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+
+                {/* Observer Anchor */}
+                <div ref={bottomObserverRef} style={{ height: 1 }} />
               </div>
             ) : (
               <div className="search-no-results">

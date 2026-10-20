@@ -374,45 +374,77 @@ export function getBecauseYouListened(
   return scored.slice(0, limit).map(d => ({ ...d.item, _recReason: d.reason }));
 }
 
-/** Time-of-day "Daily Mix" — picks songs that match the current time bucket's genre preferences. */
-export function getDailyMix(catalog: SongItem[], limit = 10): (SongItem & { _recReason: string })[] {
+/**
+ * Dynamic Daily Mix:
+ * Based on primary and secondary languages, daily trending songs, albums, and playlists,
+ * blended with time-of-day audio profiles.
+ */
+export function getDailyMix(
+  catalog: SongItem[],
+  limit = 12,
+  primaryLang?: string,
+  secondaryLang?: string
+): (SongItem & { _recReason: string })[] {
   const profile = getProfile();
   const timeBucket = getTimeBucket();
-  const timeWeights = profile.timePatterns[timeBucket];
+  const timeWeights = profile.timePatterns[timeBucket] || {};
+
+  const prim = (primaryLang || (profile as any).preferredLanguage || 'Tamil').toLowerCase();
+  const sec = (secondaryLang || 'English').toLowerCase();
 
   const bucketLabels: Record<string, string> = {
-    morning: '☀️ Morning energy',
-    afternoon: '🌤️ Afternoon vibes',
-    evening: '🌆 Evening chill',
-    night: '🌙 Late night mood',
+    morning: '☀️ Morning Daily Energy',
+    afternoon: '🌤️ Afternoon Vibe Mix',
+    evening: '🌆 Evening Chillout',
+    night: '🌙 Late Night Ambient',
   };
-
-  if (Object.keys(timeWeights).length === 0) {
-    // Not enough time data — fall back to general recommendations
-    return getMusicRecommendations(catalog, limit);
-  }
 
   const scored = catalog.map(song => {
     let score = 0;
     const titleLower = (song.title + ' ' + song.album + ' ' + song.artist).toLowerCase();
+    const songLang = (song.language || '').toLowerCase();
 
+    // 1. Primary language affinity
+    if (songLang.includes(prim) || titleLower.includes(prim)) {
+      score += 12;
+    }
+
+    // 2. Secondary language affinity
+    if (songLang.includes(sec) || titleLower.includes(sec)) {
+      score += 8;
+    }
+
+    // 3. Trending & Album / Playlist signal
+    if (song.album && song.album !== 'Single') {
+      score += 4;
+    }
+    if (titleLower.includes('trending') || titleLower.includes('hits') || titleLower.includes('top')) {
+      score += 5;
+    }
+
+    // 4. Time bucket weights
     for (const [genre, tw] of Object.entries(timeWeights)) {
       if (titleLower.includes(genre.toLowerCase())) {
         score += tw;
       }
     }
 
-    // Also factor in artist affinity
+    // 5. Artist affinity
     for (const [artist, aw] of Object.entries(profile.artistWeights)) {
-      if (aw > 0 && song.artist.toLowerCase().includes(artist.toLowerCase())) {
-        score += aw * 0.5;
+      if (aw > 0 && song.artist?.toLowerCase().includes(artist.toLowerCase())) {
+        score += aw * 0.8;
       }
+    }
+
+    let reason = bucketLabels[timeBucket] || 'Your Daily Mix';
+    if (songLang.includes(prim)) {
+      reason = `Daily Mix • ${primaryLang || 'Trending'}`;
     }
 
     return {
       item: song,
       score,
-      reason: bucketLabels[timeBucket] || 'Your daily mix',
+      reason,
       reasonType: 'time_of_day' as RecommendationResult['reasonType'],
     };
   });

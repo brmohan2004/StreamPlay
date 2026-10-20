@@ -1,7 +1,7 @@
 import './MovieSearchScreen.css';
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Film, Music, X, ArrowLeft, History, Flame, Play, SlidersHorizontal } from 'lucide-react';
-import { searchMoviesAndShows, fetchTopMovies } from '../services/movieService';
+import { Mic, MicOff, Film, Music, X, ArrowLeft, History, Flame, Play } from 'lucide-react';
+import { searchMoviesAndShowsPaged, fetchTopMovies } from '../services/movieService';
 import { searchSongs } from '../services/musicService';
 import { MovieItem, SongItem } from '../types/media';
 import { useNavigation } from '../context/NavigationContext';
@@ -23,14 +23,15 @@ const MOVIE_GENRES = [
   'Adventure'
 ];
 
+const SEARCH_CAPSULES = ['All', 'Latest', 'Dubbed', 'Series', 'Movies', 'Actors'];
+
 export const MovieSearchScreen: React.FC = () => {
   const {
     setActiveScreen,
     selectedOTT,
     setSelectedOTT,
     activeCategory,
-    setActiveCategory,
-    openFilterSheet
+    setActiveCategory
   } = useNavigation();
   const { playSong } = useMedia();
 
@@ -40,6 +41,13 @@ export const MovieSearchScreen: React.FC = () => {
   const [relatedMusic, setRelatedMusic] = useState<SongItem[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // 25-by-25 Pagination and Dynamic Capsule state
+  const [searchFilter, setSearchFilter] = useState<string>('All');
+  const [page, setPage] = useState<number>(0);
+  const [hasMore, setHasMore] = useState<boolean>(true);
+  const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
+  const searchBottomRef = useRef<HTMLDivElement>(null);
 
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
     try {
@@ -67,15 +75,18 @@ export const MovieSearchScreen: React.FC = () => {
       .catch(() => {});
   }, []);
 
-  // Perform search (Dedicated movie search engine + related music)
-  const triggerSearch = async (term: string) => {
+  // Perform search (25-by-25 batching with new-to-old sorting)
+  const triggerSearch = async (term: string, filterToUse = searchFilter) => {
     const trimmed = term.trim();
     if (!trimmed) {
       setMovieResults([]);
       setRelatedMusic([]);
+      setPage(0);
+      setHasMore(false);
       return;
     }
     setIsSearching(true);
+    setPage(0);
 
     // Save to movie recents
     setRecentSearches(prev => {
@@ -90,14 +101,14 @@ export const MovieSearchScreen: React.FC = () => {
     });
 
     try {
-      const [movies, songs] = await Promise.all([
-        searchMoviesAndShows(trimmed),
+      const [{ items: movies }, songs] = await Promise.all([
+        searchMoviesAndShowsPaged(trimmed, 0, 25, filterToUse),
         searchSongs(trimmed, 8)
       ]);
       setMovieResults(movies || []);
       setRelatedMusic(songs || []);
+      setHasMore((movies || []).length >= 25);
 
-      // Track: search intent signal
       logSignal({
         type: 'search',
         itemId: `search-${trimmed}`,
@@ -116,6 +127,47 @@ export const MovieSearchScreen: React.FC = () => {
       setIsSearching(false);
     }
   };
+
+  // Load next 25-by-25 batch of movies
+  const loadNextPage = async () => {
+    if (isLoadingMore || !hasMore || !query.trim()) return;
+    setIsLoadingMore(true);
+    const nextPage = page + 1;
+    try {
+      const { items: more } = await searchMoviesAndShowsPaged(query, nextPage, 25, searchFilter);
+      if (more.length === 0) {
+        setHasMore(false);
+      } else {
+        setMovieResults(prev => {
+          const seen = new Set(prev.map(p => p.id));
+          const filtered = more.filter(m => !seen.has(m.id));
+          return [...prev, ...filtered];
+        });
+        setPage(nextPage);
+        if (more.length < 25) setHasMore(false);
+      }
+    } catch (err) {
+      console.error('Load more search results failed:', err);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
+  // Infinite Scroll Observer for Search Results
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && hasMore && !isSearching && !isLoadingMore) {
+          loadNextPage();
+        }
+      },
+      { rootMargin: '300px' }
+    );
+    if (searchBottomRef.current) {
+      observer.observe(searchBottomRef.current);
+    }
+    return () => observer.disconnect();
+  }, [hasMore, isSearching, isLoadingMore, page, query, searchFilter]);
 
   // Real-time debounce search as user types
   useEffect(() => {
@@ -252,20 +304,27 @@ export const MovieSearchScreen: React.FC = () => {
             >
               {isListening ? <MicOff size={16} /> : <Mic size={16} />}
             </button>
-
-            {/* Quick Filter Sheet Trigger Button */}
-            <button
-              type="button"
-              className={`search-filter-icon-btn ${hasActiveFilters ? 'has-filter' : ''}`}
-              onClick={openFilterSheet}
-              title="Filters & OTT Networks"
-              aria-label="Open Filters & OTT Networks"
-            >
-              <SlidersHorizontal size={16} />
-              {hasActiveFilters && <span className="filter-badge-dot cyan-dot" />}
-            </button>
           </form>
         </div>
+
+        {/* Dynamic Search Filter Capsules (All, Latest, Dubbed, Series, Movies, Actors) */}
+        {query && (
+          <div className="search-capsules-scroll">
+            {SEARCH_CAPSULES.map(cap => (
+              <button
+                key={cap}
+                type="button"
+                className={`search-capsule-btn ${searchFilter === cap ? 'active' : ''}`}
+                onClick={() => {
+                  setSearchFilter(cap);
+                  triggerSearch(query, cap);
+                }}
+              >
+                {cap === 'Latest' ? '⚡ Latest (New to Old)' : cap}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Active Filters Strip (when filters are chosen from sheet) */}
         {hasActiveFilters && (
@@ -395,11 +454,23 @@ export const MovieSearchScreen: React.FC = () => {
             </div>
 
             {filteredMovies.length > 0 && (
-              <div className="movies-results-grid">
-                {filteredMovies.map(movie => (
-                  <MediaCard key={movie.id} item={movie} />
-                ))}
-              </div>
+              <>
+                <div className="movies-results-grid">
+                  {filteredMovies.map(movie => (
+                    <MediaCard key={movie.id} item={movie} />
+                  ))}
+                </div>
+
+                {/* Infinite Scroll Anchor & Loader (25-by-25) */}
+                <div ref={searchBottomRef} className="search-infinite-anchor">
+                  {isLoadingMore && (
+                    <div className="search-more-spinner">
+                      <span className="search-loading-dot" />
+                      <span>Loading more titles (25-by-25)...</span>
+                    </div>
+                  )}
+                </div>
+              </>
             )}
 
             {filteredMovies.length === 0 && relatedMusic.length === 0 && (
