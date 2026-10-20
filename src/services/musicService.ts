@@ -1,10 +1,13 @@
 import CryptoJS from 'crypto-js';
+import { Capacitor } from '@capacitor/core';
 import { SongItem } from '../types/media';
 
 const SAAVN_API_BASE =
-  typeof window !== 'undefined' && window.location.protocol.startsWith('http')
-    ? '/api/saavn'
-    : 'https://www.jiosaavn.com/api.php';
+  Capacitor.isNativePlatform()
+    ? 'https://www.jiosaavn.com/api.php'
+    : (typeof window !== 'undefined' && window.location.hostname === 'localhost' && window.location.port === '1420'
+        ? '/api/saavn'
+        : 'https://www.jiosaavn.com/api.php');
 const DES_KEY = '38346591';
 
 export function decryptMediaUrl(encryptedUrl: string): string {

@@ -2,7 +2,7 @@
 
 A high-performance, cross-platform media entertainment hub combining **NetMirror** (movies & web series with OTT categorization) and **Spotify** (unlimited 320kbps audio streaming) into a single, unified player.
 
-Built with **Tauri 2.0 (Rust backend) + React 19 + TypeScript + Vite**.
+Built with **Capacitor + React 19 + TypeScript + Vite**.
 
 ---
 
@@ -22,33 +22,31 @@ Built with **Tauri 2.0 (Rust backend) + React 19 + TypeScript + Vite**.
   - Spotify-style floating bar at the bottom with seek slider, volume control, and playback controls.
   - Keep listening to music while browsing movies and web series across tabs.
 - **Multi-Screen Responsive**:
-  - Seamless layout across Desktop, Tablet, Mobile (with touch slide-out drawer), and 4K/TV screens.
+  - Seamless layout across Android Phones, Tablets, Android TV / Fire TV, and Web.
 
 ---
 
 ## 🚀 Getting Started
 
-### 1. Web / Browser Mode
+### 1. Web Development
 ```bash
 npm install
 npm run dev
 ```
-Open [http://localhost:1420](http://localhost:1420) or preview production with:
+
+### 2. Android & Android TV (APK)
+Sync web assets to Android:
 ```bash
-npm run build
-npm run preview
+npm run cap:sync
+```
+Open in Android Studio to build or run on phone/TV:
+```bash
+npm run cap:android
 ```
 
-### 2. Desktop Mode (Tauri 2.0 Native)
-Prerequisites:
-- [Rust](https://rustup.rs/)
-- [Visual Studio C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) (Desktop development with C++)
+Or push to GitHub to get a direct **1-click APK download** via GitHub Actions.
 
-Run in desktop window:
+### 3. iOS
 ```bash
-npm run tauri dev
-```
-Build standalone desktop installer:
-```bash
-npm run tauri build
+npm run cap:ios
 ```
