@@ -558,3 +558,19 @@
     bottom: auto;
   }
 }
+
+.player-embed-lang-hint {
+  background: rgba(0, 210, 255, 0.08);
+  border: 1px solid rgba(0, 210, 255, 0.25);
+  border-radius: 8px;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.73rem;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.4;
+  margin-bottom: 0.75rem;
+}
+
+.player-embed-lang-hint strong {
+  color: #00d2ff;
+}
+

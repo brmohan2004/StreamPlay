@@ -22,7 +22,8 @@ import {
   Pause
 } from 'lucide-react';
 import { useMedia } from '../context/MediaContext';
-import { getStreamEmbedUrl, STREAMING_SERVERS } from '../services/movieService';
+import { getStreamEmbedUrl, STREAMING_SERVERS, fetchMovieDetails } from '../services/movieService';
+import { EpisodeItem } from '../types/media';
 
 export const CustomVideoPlayer: React.FC = () => {
   const {
@@ -57,6 +58,24 @@ export const CustomVideoPlayer: React.FC = () => {
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [showHealthModal, setShowHealthModal] = useState(false);
   const [showEpisodeDrawer, setShowEpisodeDrawer] = useState(false);
+  const [dynamicEpisodes, setDynamicEpisodes] = useState<EpisodeItem[]>([]);
+
+  useEffect(() => {
+    if (!activeMovie || activeMovie.type !== 'series') return;
+    if (activeMovie.videos && activeMovie.videos.length > 0) {
+      setDynamicEpisodes(activeMovie.videos);
+      return;
+    }
+    let isMounted = true;
+    fetchMovieDetails(activeMovie.id, 'series').then(details => {
+      if (isMounted && details.videos && details.videos.length > 0) {
+        setDynamicEpisodes(details.videos);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [activeMovie]);
 
   // Player Settings
   const [selectedQuality, setSelectedQuality] = useState('1080p FHD');
@@ -610,6 +629,11 @@ export const CustomVideoPlayer: React.FC = () => {
               <h4>Audio & Subtitles</h4>
               <button className="menu-close-x" onClick={() => setShowLangMenu(false)}>✕</button>
             </div>
+            {!activeMovie.streamUrl && (
+              <div className="player-embed-lang-hint">
+                <span>💡 <strong>Embed Server Notice:</strong> To change language/dubbing or toggle subtitles for third-party servers, use the native <strong>CC</strong> and <strong>Audio (⚙️)</strong> buttons directly inside the video player screen.</span>
+              </div>
+            )}
             <div className="lang-split-sections">
               <div className="lang-col">
                 <span className="lang-col-title">
@@ -723,15 +747,12 @@ export const CustomVideoPlayer: React.FC = () => {
               <button className="menu-close-x" onClick={() => setShowEpisodeDrawer(false)}>✕</button>
             </div>
             <div className="menu-options-list">
-              {(activeMovie.videos && activeMovie.videos.length > 0
-                ? activeMovie.videos
-                : Array.from({ length: 12 }, (_, i) => ({
-                    id: `ep-${i + 1}`,
-                    name: `Episode ${i + 1}`,
-                    season: 1,
-                    number: i + 1
-                  }))
-              ).map(ep => (
+              {((activeMovie.videos && activeMovie.videos.length > 0) ? activeMovie.videos : dynamicEpisodes).length === 0 ? (
+                <div className="menu-loading-episodes" style={{ padding: '16px', color: '#888', textAlign: 'center', fontSize: '13px' }}>
+                  Loading series episodes...
+                </div>
+              ) : (
+                ((activeMovie.videos && activeMovie.videos.length > 0) ? activeMovie.videos : dynamicEpisodes).map(ep => (
                 <div
                   key={ep.id}
                   className={`menu-option-item ${activeSeason === ep.season && activeEpisode === ep.number ? 'active' : ''}`}
@@ -746,7 +767,7 @@ export const CustomVideoPlayer: React.FC = () => {
                   </div>
                   {activeSeason === ep.season && activeEpisode === ep.number && <Check size={18} color="#c8ff00" />}
                 </div>
-              ))}
+              )))}
             </div>
           </motion.div>
         )}

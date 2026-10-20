@@ -162,7 +162,16 @@ export async function searchMoviesAndShows(query: string): Promise<MovieItem[]> 
 
     const movies = (movieRes.metas || []).map((m: any) => formatMovie(m, 'movie'));
     const series = (seriesRes.metas || []).map((m: any) => formatMovie(m, 'series'));
-    return [...movies, ...series];
+
+    const seen = new Set<string>();
+    const combined: MovieItem[] = [];
+    for (const item of [...series, ...movies]) {
+      if (item && item.id && !seen.has(item.id)) {
+        seen.add(item.id);
+        combined.push(item);
+      }
+    }
+    return combined;
   } catch (err) {
     console.error('Search failed:', err);
     return [];
@@ -252,6 +261,18 @@ export async function fetchPagedGenreMovies(genre: string, skip = 0): Promise<Mo
     return (data.metas || []).map((m: any) => formatMovie(m, 'movie'));
   } catch (err) {
     console.error(`Failed to fetch genre ${genre} skip ${skip}:`, err);
+    return [];
+  }
+}
+
+export async function fetchGenreSeries(genre: string, skip = 0): Promise<MovieItem[]> {
+  try {
+    const skipSuffix = skip > 0 ? `/skip=${skip}.json` : '.json';
+    const res = await fetch(`${CINEMETA_BASE}/catalog/series/top/genre=${encodeURIComponent(genre)}${skipSuffix}`);
+    const data = await res.json();
+    return (data.metas || []).map((m: any) => formatMovie(m, 'series'));
+  } catch (err) {
+    console.error(`Failed to fetch series genre ${genre} skip ${skip}:`, err);
     return [];
   }
 }
@@ -457,16 +478,45 @@ export async function fetchMovieDetails(id: string, type: 'movie' | 'series'): P
         : typeof m.trailer === 'string' && m.trailer.length > 5
         ? (m.trailer.startsWith('http') ? m.trailer : `https://www.youtube.com/embed/${m.trailer}`)
         : undefined,
-      videos: (m.videos || []).map((v: any) => ({
-        id: v.id || `${id}:${v.season || 1}:${v.number || v.episode || 1}`,
-        name: v.name || v.title || `Episode ${v.number || v.episode || 1}`,
-        season: v.season || 1,
-        number: v.number || v.episode || 1,
-        overview: v.overview || v.description || '',
-        thumbnail: v.thumbnail || '',
-        rating: v.rating,
-        released: v.released || v.firstAired
-      }))
+      videos: (() => {
+        const rawVideos = (m.videos || []).map((v: any) => {
+          const seasonNum = typeof v.season === 'number' ? v.season : parseInt(v.season, 10);
+          const safeSeason = isNaN(seasonNum) ? 1 : seasonNum;
+          const episodeNum = typeof v.number === 'number'
+            ? v.number
+            : typeof v.episode === 'number'
+            ? v.episode
+            : parseInt(v.number || v.episode, 10);
+          const safeNumber = isNaN(episodeNum) ? 1 : episodeNum;
+          return {
+            id: v.id || `${id}:${safeSeason}:${safeNumber}`,
+            name: v.name || v.title || `Episode ${safeNumber}`,
+            season: safeSeason,
+            number: safeNumber,
+            overview: v.overview || v.description || '',
+            thumbnail: v.thumbnail || '',
+            rating: v.rating,
+            released: v.released || v.firstAired
+          };
+        });
+
+        const seenKeys = new Set<string>();
+        const uniqueVideos: any[] = [];
+        for (const ep of rawVideos) {
+          const key = `${ep.season}:${ep.number}`;
+          if (!seenKeys.has(key)) {
+            seenKeys.add(key);
+            uniqueVideos.push(ep);
+          }
+        }
+
+        uniqueVideos.sort((a, b) => {
+          if (a.season !== b.season) return a.season - b.season;
+          return a.number - b.number;
+        });
+
+        return uniqueVideos;
+      })()
     };
   } catch (err) {
     console.error('Failed to fetch movie details:', err);

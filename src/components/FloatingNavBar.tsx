@@ -12,7 +12,10 @@ export const FloatingNavBar: React.FC = () => {
     setActiveScreen,
     selectedOTT,
     setSelectedOTT,
-    setActiveCategory
+    activeCategory,
+    setActiveCategory,
+    selectedLanguage,
+    setSelectedLanguage
   } = useNavigation();
 
   // Hide on Movie Details Screen (full-bleed immersive details view)
@@ -25,7 +28,20 @@ export const FloatingNavBar: React.FC = () => {
     activeScreen === 'movie-search' ||
     activeScreen === 'music-search';
   const isHomeActive = activeScreen === 'home';
-  const isInsideOTT = appMode === 'movies' && selectedOTT !== 'All';
+
+  // Check if any filter (OTT, TV/category, or regional language) is currently active
+  const isFiltered =
+    selectedOTT !== 'All' ||
+    activeCategory !== 'All' ||
+    selectedLanguage !== 'All';
+
+  const handleResetFiltersAndGoHome = () => {
+    setSelectedOTT('All');
+    setActiveCategory('All');
+    setSelectedLanguage('All');
+    setActiveScreen('home');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const handleModeSwitch = () => {
     if (appMode === 'movies') {
@@ -39,11 +55,6 @@ export const FloatingNavBar: React.FC = () => {
         setActiveScreen('movie-search');
       }
     }
-  };
-
-  const handleExitOTT = () => {
-    setSelectedOTT('All');
-    setActiveCategory('All');
   };
 
   const handleSearchClick = () => {
@@ -62,26 +73,32 @@ export const FloatingNavBar: React.FC = () => {
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: 'spring', damping: 20, stiffness: 280 }}
       >
-        {/* 1. Home Button */}
+        {/* 1. Home Button (Resets any active filters and navigates to clean Home) */}
         <button
-          className={`floating-nav-btn ${isHomeActive ? 'active' : ''}`}
-          onClick={() => setActiveScreen('home')}
+          className={`floating-nav-btn ${isHomeActive && !isFiltered ? 'active' : ''}`}
+          onClick={handleResetFiltersAndGoHome}
           aria-label="Home"
-          title="Home"
+          title="Home (All Movies & TV Shows)"
         >
           <Home size={22} />
-          {isHomeActive && <span className="nav-glow-dot" />}
+          {isHomeActive && !isFiltered && <span className="nav-glow-dot" />}
         </button>
 
-        {/* 2. Center Button: Changes to "Exit OTT" when inside any OTT, otherwise Mode Switch */}
-        {isInsideOTT ? (
+        {/* 2. Center Button: Changes to Exit button when any filter/OTT/TV is active, otherwise Mode Switch */}
+        {isFiltered ? (
           <motion.button
             className="floating-nav-btn big-circular-mode-btn exit-ott-mode-btn"
             whileHover={{ scale: 1.12 }}
             whileTap={{ scale: 0.9 }}
-            onClick={handleExitOTT}
-            aria-label={`Exit ${selectedOTT}`}
-            title={`Exit ${selectedOTT} & Return to All Movies`}
+            onClick={handleResetFiltersAndGoHome}
+            aria-label="Exit Filter"
+            title={
+              selectedOTT !== 'All'
+                ? `Exit ${selectedOTT} & Return to Home`
+                : activeCategory !== 'All'
+                ? `Exit ${activeCategory === 'Series' ? 'TV' : activeCategory} & Return to Home`
+                : `Exit ${selectedLanguage} & Return to Home`
+            }
           >
             <RotateCcw size={21} strokeWidth={2.6} />
             <span className="mode-btn-glow-ring ott-exit-ring" />

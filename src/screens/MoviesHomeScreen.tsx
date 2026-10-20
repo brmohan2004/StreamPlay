@@ -1,6 +1,8 @@
 import './MoviesHomeScreen.css';
 import React, { useState, useEffect, useRef } from 'react';
+import { RotateCcw } from 'lucide-react';
 import { TopAppHeader } from '../components/TopAppHeader';
+import { SkeletonHome, SkeletonRow } from '../components/SkeletonLoader';
 import {
   MovieTrendingFannedDeck,
   MovieSpotlightCard,
@@ -13,7 +15,6 @@ import {
   MovieTwoRowSection
 } from '../components/MovieCardsDesign';
 import { MediaRow } from '../components/MediaRow';
-import { MediaCard } from '../components/MediaCard';
 import { MovieItem } from '../types/media';
 import { useMedia } from '../context/MediaContext';
 import { useNavigation } from '../context/NavigationContext';
@@ -22,6 +23,7 @@ import {
   fetchLanguageMovies,
   fetchInfiniteLanguageMovies,
   fetchGenreMovies,
+  fetchGenreSeries,
   fetchByOTT,
   fetchTheaterReleases
 } from '../services/movieService';
@@ -83,6 +85,53 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
 
   // Theatrical Releases
   const [theaterReleases, setTheaterReleases] = useState<MovieItem[]>([]);
+
+  // Filter flags
+  const isTVFilter = activeCategory === 'Series' || activeCategory === 'Shows' || activeCategory === 'TV';
+  const isMoviesFilter = activeCategory === 'Movies';
+  const isGenreFilter = !isTVFilter && !isMoviesFilter && activeCategory !== 'All';
+
+  // Dedicated TV Series Genre Rows for TV Mode
+  const [seriesGenreRows, setSeriesGenreRows] = useState<{ title: string; subtitle: string; items: MovieItem[] }[]>([]);
+  const [isLoadingSeriesGenres, setIsLoadingSeriesGenres] = useState(false);
+
+  useEffect(() => {
+    if (!isTVFilter) return;
+    if (seriesGenreRows.length > 0) return;
+
+    let isMounted = true;
+    setIsLoadingSeriesGenres(true);
+
+    const initialGenres = [
+      { name: 'Action', desc: 'High-octane action & superhero web series' },
+      { name: 'Crime', desc: 'True crime, detective thrillers & mob sagas' },
+      { name: 'Drama', desc: 'Award-winning prestige drama & stories' },
+      { name: 'Sci-Fi', desc: 'Mind-bending sci-fi & futuristic universes' },
+      { name: 'Comedy', desc: 'Hilarious sitcoms & comedy favorites' },
+      { name: 'Animation', desc: 'Popular anime & animated web series' },
+      { name: 'Thriller', desc: 'Edge-of-your-seat suspense & mysteries' }
+    ];
+
+    Promise.all(
+      initialGenres.map(async g => {
+        const items = await fetchGenreSeries(g.name);
+        return {
+          title: `${g.name} Series`,
+          subtitle: g.desc,
+          items
+        };
+      })
+    ).then(rows => {
+      if (isMounted) {
+        setSeriesGenreRows(rows.filter(r => r.items.length > 0));
+        setIsLoadingSeriesGenres(false);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isTVFilter, seriesGenreRows.length]);
 
   useEffect(() => {
     let isMounted = true;
@@ -380,6 +429,16 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
     }))
     .filter(row => row.items.length >= 2);
 
+  // Show Skeleton shimmer loading if initial content has not loaded
+  if (topMovies.length === 0 && topSeries.length === 0) {
+    return (
+      <div className="movies-home-screen">
+        <TopAppHeader />
+        <SkeletonHome />
+      </div>
+    );
+  }
+
   return (
     <div className="movies-home-screen">
       {/* 1. Top Header */}
@@ -425,9 +484,8 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
             {/* Infinite Scroll Anchor & Loader */}
             <div ref={movieBottomRef} className="movie-bottom-loader-anchor">
               {isLoadingLangMore && (
-                <div className="infinite-scroll-loading">
-                  <div className="spinner cyan-spinner" />
-                  <span>Loading more {selectedLanguage} movies...</span>
+                <div style={{ width: '100%', marginTop: '1rem' }}>
+                  <SkeletonRow cardCount={6} titleWidth={200} />
                 </div>
               )}
             </div>
@@ -457,9 +515,9 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
             )}
 
             {isLoadingOtt ? (
-              <div className="capsule-loading-box">
-                <div className="spinner cyan-spinner" />
-                <p>Connecting to {selectedOTT} catalog...</p>
+              <div style={{ width: '100%', marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                <SkeletonRow cardCount={6} titleWidth={220} />
+                <SkeletonRow cardCount={6} titleWidth={180} />
               </div>
             ) : (
               <>
@@ -476,34 +534,344 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
               </>
             )}
           </>
-        ) : activeCategory !== 'All' ? (
+        ) : isTVFilter ? (
           /* ========================================================================= */
-          /* CASE 3: CATEGORY / GENRE CAPSULE LISTING - NO EXIT BANNER CARD            */
+          /* CASE 3A: TV SHOWS & WEB SERIES UNIVERSE                                   */
           /* ========================================================================= */
-          <div className="capsule-filtered-section">
-            {isGenreLoading && categoryFilteredMovies.length === 0 ? (
-              <div className="capsule-loading-box">
-                <div className="spinner cyan-spinner" />
-                <p>Curating {activeCategory} titles...</p>
+          <>
+            {/* Active Filter Banner */}
+            <div className="home-active-filter-banner">
+              <div className="filter-banner-content">
+                <span className="filter-banner-label">📺 TV Shows & Web Series Mode</span>
+                <span className="filter-banner-sub">Trending series, OTT originals, and binge-worthy seasons</span>
               </div>
-            ) : categoryFilteredMovies.length === 0 ? (
-              <div className="capsule-empty-box">
-                <p>No titles found in this category.</p>
-                <button
-                  className="capsule-browse-all-btn"
-                  onClick={() => setActiveCategory('All')}
-                >
-                  Browse All
-                </button>
-              </div>
-            ) : (
-              <div className="capsule-media-grid">
-                {categoryFilteredMovies.map(movie => (
-                  <MediaCard key={movie.id} item={movie} />
-                ))}
+              <button
+                className="filter-banner-clear-btn"
+                onClick={() => setActiveCategory('All')}
+                title="Exit TV filter & return to All"
+              >
+                <RotateCcw size={14} />
+                <span>Exit Filter</span>
+              </button>
+            </div>
+
+            {/* Trending Series Deck */}
+            {deduplicatedSeries.length > 0 && (
+              <MovieTrendingFannedDeck movies={deduplicatedSeries.slice(0, 8)} />
+            )}
+
+            {/* Continue Watching Series */}
+            {continueWatching.filter(m => m.type === 'series').length > 0 && (
+              <div className="continue-watching-section">
+                <div className="section-title-wrap continue-head">
+                  <h3 className="section-heading">Continue Watching Series</h3>
+                </div>
+                <div className="continue-cards-scroll">
+                  {continueWatching
+                    .filter(m => m.type === 'series')
+                    .map(item => (
+                      <MovieContinueCard key={item.id} item={item} />
+                    ))}
+                </div>
               </div>
             )}
-          </div>
+
+            {/* Top Picks in TV Shows */}
+            {deduplicatedSeries.length > 0 && (
+              <MovieSectionRow title="Top Picks For You • Web Series">
+                {deduplicatedSeries.slice(0, 8).map(item => (
+                  <MovieSpotlightCard key={item.id} item={item} />
+                ))}
+              </MovieSectionRow>
+            )}
+
+            {/* Binge-Worthy Series on OTT */}
+            {[...netflixHits, ...primeHits, ...hotstarHits].filter(m => m.type === 'series').length > 0 && (
+              <MovieSectionRow title="Binge-Worthy OTT Series">
+                {[...netflixHits, ...primeHits, ...hotstarHits]
+                  .filter(m => m.type === 'series')
+                  .slice(0, 10)
+                  .map(movie => (
+                    <MovieBackdropCard key={movie.id} item={movie} />
+                  ))}
+              </MovieSectionRow>
+            )}
+
+            {/* Top 10 Trending Shows */}
+            {topSeries.length > 0 && (
+              <MovieSectionRow title="Top 10 Trending Shows Today">
+                {topSeries.slice(0, 10).map((movie, idx) => (
+                  <MovieRankedCard key={movie.id} item={movie} rank={idx + 1} />
+                ))}
+              </MovieSectionRow>
+            )}
+
+            {/* Drama & Prestige Web Series */}
+            {deduplicatedSeries.length > 8 && (
+              <MovieTwoRowSection title="Prestige Drama & Thriller Series">
+                {deduplicatedSeries.slice(8, 22).map(movie => (
+                  <MovieTileCard key={movie.id} item={movie} />
+                ))}
+              </MovieTwoRowSection>
+            )}
+
+            {/* OTT Branded Series Rows */}
+            <div className="ott-branded-sections">
+              {netflixHits.filter(m => m.type === 'series').length > 0 && (
+                <MediaRow title="Netflix Original Series" items={netflixHits.filter(m => m.type === 'series')} />
+              )}
+              {primeHits.filter(m => m.type === 'series').length > 0 && (
+                <MediaRow title="Prime Video Originals" items={primeHits.filter(m => m.type === 'series')} />
+              )}
+              {hotstarHits.filter(m => m.type === 'series').length > 0 && (
+                <MediaRow title="JioHotstar Specials & HBO" items={hotstarHits.filter(m => m.type === 'series')} />
+              )}
+              {appleHits.filter(m => m.type === 'series').length > 0 && (
+                <MediaRow title="Apple TV+ Series" items={appleHits.filter(m => m.type === 'series')} />
+              )}
+              {sonyHits.filter(m => m.type === 'series').length > 0 && (
+                <MediaRow title="Sony LIV Series" items={sonyHits.filter(m => m.type === 'series')} />
+              )}
+            </div>
+
+            {/* Dynamic Genre Series Rows */}
+            {seriesGenreRows.map((row, idx) => (
+              <MediaRow key={idx} title={row.title} items={row.items} />
+            ))}
+
+            {/* Infinite Scroll Anchor & Loader */}
+            <div ref={movieBottomRef} className="movie-bottom-loader-anchor">
+              {isLoadingSeriesGenres && (
+                <div style={{ width: '100%', marginTop: '1rem' }}>
+                  <SkeletonRow cardCount={6} titleWidth={200} />
+                </div>
+              )}
+            </div>
+          </>
+        ) : isMoviesFilter ? (
+          /* ========================================================================= */
+          /* CASE 3B: MOVIES ONLY UNIVERSE                                             */
+          /* ========================================================================= */
+          <>
+            {/* Active Filter Banner */}
+            <div className="home-active-filter-banner">
+              <div className="filter-banner-content">
+                <span className="filter-banner-label">🎬 Movies Mode</span>
+                <span className="filter-banner-sub">Cinema blockbusters, theatrical premieres, and feature films</span>
+              </div>
+              <button
+                className="filter-banner-clear-btn"
+                onClick={() => setActiveCategory('All')}
+                title="Exit Movies filter & return to All"
+              >
+                <RotateCcw size={14} />
+                <span>Exit Filter</span>
+              </button>
+            </div>
+
+            {/* Trending Movies Deck */}
+            {deduplicatedTopMovies.length > 0 && (
+              <MovieTrendingFannedDeck movies={deduplicatedTopMovies} />
+            )}
+
+            {/* In Theaters Now */}
+            {deduplicatedTheaterReleases.length > 0 && (
+              <MediaRow
+                title="In Theaters Now • Cinema Exclusive"
+                items={deduplicatedTheaterReleases}
+              />
+            )}
+
+            {/* Continue Watching Movies */}
+            {continueWatching.filter(m => m.type !== 'series').length > 0 && (
+              <div className="continue-watching-section">
+                <div className="section-title-wrap continue-head">
+                  <h3 className="section-heading">Continue Watching Movies</h3>
+                </div>
+                <div className="continue-cards-scroll">
+                  {continueWatching
+                    .filter(m => m.type !== 'series')
+                    .map(item => (
+                      <MovieContinueCard key={item.id} item={item} />
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {/* Top Picks in Movies */}
+            {deduplicatedForYou.filter(m => m.type !== 'series').length > 0 && (
+              <MovieSectionRow title="Top Picks For You • Movies">
+                {deduplicatedForYou.filter(m => m.type !== 'series').map(item => (
+                  <MovieSpotlightCard key={item.id} item={item} />
+                ))}
+              </MovieSectionRow>
+            )}
+
+            {/* Because You Watched */}
+            {deduplicatedBecauseYouWatched.map((entry, idx) => (
+              <MovieSectionRow
+                key={`byw-mov-${entry.anchor.id}-${idx}`}
+                title={`Because You Watched "${entry.anchor.name}"`}
+              >
+                {entry.movies.map(movie => (
+                  <MovieBackdropCard key={movie.id} item={movie} />
+                ))}
+              </MovieSectionRow>
+            ))}
+
+            {/* New Movie Releases */}
+            {deduplicatedNewReleases.filter(m => m.type !== 'series').length > 0 && (
+              <MovieSectionRow title="New Movie Releases">
+                {deduplicatedNewReleases.filter(m => m.type !== 'series').map((movie, idx) => (
+                  <MovieRankedCard key={movie.id} item={movie} rank={idx + 1} />
+                ))}
+              </MovieSectionRow>
+            )}
+
+            {/* Regional Language Blockbusters */}
+            {deduplicatedPrimaryLang.filter(m => m.type !== 'series').length > 0 && (
+              <MovieTwoRowSection title={`${primaryLanguage} Blockbusters`}>
+                {deduplicatedPrimaryLang.filter(m => m.type !== 'series').map(movie => (
+                  <MovieTileCard key={movie.id} item={movie} />
+                ))}
+              </MovieTwoRowSection>
+            )}
+
+            {/* Secondary Language Hits */}
+            {deduplicatedSecondaryLang.filter(m => m.type !== 'series').length > 0 && (
+              <MediaRow
+                title={`${secondaryLanguage} Hits`}
+                items={deduplicatedSecondaryLang.filter(m => m.type !== 'series')}
+              />
+            )}
+
+            {/* OTT Movie Premieres */}
+            <div className="ott-branded-sections">
+              {netflixHits.filter(m => m.type !== 'series').length > 0 && (
+                <MediaRow title="Netflix Movies" items={netflixHits.filter(m => m.type !== 'series')} />
+              )}
+              {primeHits.filter(m => m.type !== 'series').length > 0 && (
+                <MediaRow title="Prime Video Movies" items={primeHits.filter(m => m.type !== 'series')} />
+              )}
+              {hotstarHits.filter(m => m.type !== 'series').length > 0 && (
+                <MediaRow title="JioHotstar Movies" items={hotstarHits.filter(m => m.type !== 'series')} />
+              )}
+              {appleHits.filter(m => m.type !== 'series').length > 0 && (
+                <MediaRow title="Apple TV+ Films" items={appleHits.filter(m => m.type !== 'series')} />
+              )}
+              {sonyHits.filter(m => m.type !== 'series').length > 0 && (
+                <MediaRow title="Sony LIV Movies" items={sonyHits.filter(m => m.type !== 'series')} />
+              )}
+              {zeeHits.filter(m => m.type !== 'series').length > 0 && (
+                <MediaRow title="Zee5 Movies" items={zeeHits.filter(m => m.type !== 'series')} />
+              )}
+            </div>
+
+            {/* Infinite Scrolling Movie Categories */}
+            {deduplicatedGenreRows.map((row, idx) => (
+              <MediaRow
+                key={idx}
+                title={row.title}
+                items={row.items.filter(m => m.type !== 'series')}
+              />
+            ))}
+
+            {/* Infinite Scroll Anchor & Loader */}
+            <div ref={movieBottomRef} className="movie-bottom-loader-anchor">
+              {isLoadingMore && (
+                <div style={{ width: '100%', marginTop: '1rem' }}>
+                  <SkeletonRow cardCount={6} titleWidth={200} />
+                </div>
+              )}
+            </div>
+          </>
+        ) : isGenreFilter ? (
+          /* ========================================================================= */
+          /* CASE 3C: GENRE UNIVERSE (e.g. Action / Sci-Fi / Thriller)                  */
+          /* ========================================================================= */
+          <>
+            {/* Active Filter Banner */}
+            <div className="home-active-filter-banner">
+              <div className="filter-banner-content">
+                <span className="filter-banner-label">⚡ {activeCategory} Universe</span>
+                <span className="filter-banner-sub">Curated blockbuster movies, web series, and top hits</span>
+              </div>
+              <button
+                className="filter-banner-clear-btn"
+                onClick={() => setActiveCategory('All')}
+                title="Exit genre filter & return to All"
+              >
+                <RotateCcw size={14} />
+                <span>Exit Filter</span>
+              </button>
+            </div>
+
+            {/* Trending in Genre Deck */}
+            {categoryFilteredMovies.length > 0 && (
+              <MovieTrendingFannedDeck movies={categoryFilteredMovies.slice(0, 8)} />
+            )}
+
+            {/* Top Picks in Genre */}
+            {categoryFilteredMovies.length > 0 && (
+              <MovieSectionRow title={`Top Picks in ${activeCategory}`}>
+                {categoryFilteredMovies.slice(0, 8).map(item => (
+                  <MovieSpotlightCard key={item.id} item={item} />
+                ))}
+              </MovieSectionRow>
+            )}
+
+            {/* Trending Releases in Genre */}
+            {categoryFilteredMovies.length > 8 && (
+              <MovieSectionRow title={`Trending ${activeCategory} Releases`}>
+                {categoryFilteredMovies.slice(8, 16).map(movie => (
+                  <MovieBackdropCard key={movie.id} item={movie} />
+                ))}
+              </MovieSectionRow>
+            )}
+
+            {/* Top 10 in Genre */}
+            {categoryFilteredMovies.length > 16 && (
+              <MovieSectionRow title={`Top 10 ${activeCategory} Hits`}>
+                {categoryFilteredMovies.slice(16, 26).map((movie, idx) => (
+                  <MovieRankedCard key={movie.id} item={movie} rank={idx + 1} />
+                ))}
+              </MovieSectionRow>
+            )}
+
+            {/* Two-Row Tile Grid */}
+            {categoryFilteredMovies.length > 26 && (
+              <MovieTwoRowSection title={`More ${activeCategory} Blockbusters`}>
+                {categoryFilteredMovies.slice(26, 40).map(movie => (
+                  <MovieTileCard key={movie.id} item={movie} />
+                ))}
+              </MovieTwoRowSection>
+            )}
+
+            {/* Web Series in Genre */}
+            {categoryFilteredMovies.filter(m => m.type === 'series').length > 0 && (
+              <MediaRow
+                title={`${activeCategory} Web Series & Shows`}
+                items={categoryFilteredMovies.filter(m => m.type === 'series')}
+              />
+            )}
+
+            {/* All Titles in Genre */}
+            {categoryFilteredMovies.length > 40 && (
+              <MediaRow
+                title={`All ${activeCategory} Titles`}
+                items={categoryFilteredMovies.slice(40, 60)}
+              />
+            )}
+
+            {/* Infinite Scroll Anchor & Loader */}
+            <div ref={movieBottomRef} className="movie-bottom-loader-anchor">
+              {isGenreLoading && (
+                <div style={{ width: '100%', marginTop: '1rem' }}>
+                  <SkeletonRow cardCount={6} titleWidth={200} />
+                </div>
+              )}
+            </div>
+          </>
         ) : (
           /* ========================================================================= */
           /* CASE 4: STANDARD FULL HOME VIEW (All Platforms, Personalization & Rows)    */
@@ -615,9 +983,8 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
             {/* Infinite Scroll Anchor & Loader */}
             <div ref={movieBottomRef} className="movie-bottom-loader-anchor">
               {isLoadingMore && (
-                <div className="infinite-scroll-loading">
-                  <div className="spinner cyan-spinner" />
-                  <span>Loading categories...</span>
+                <div style={{ width: '100%', marginTop: '1rem' }}>
+                  <SkeletonRow cardCount={6} titleWidth={200} />
                 </div>
               )}
             </div>

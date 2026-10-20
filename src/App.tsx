@@ -21,6 +21,7 @@ import { MusicFilterSheetModal } from './components/MusicFilterSheetModal';
 import { PartyProvider } from './context/PartyContext';
 import { PartyRoomModal } from './components/PartyRoomModal';
 import { FloatingReactionLayer } from './components/FloatingReactionLayer';
+import { SplashScreen } from './components/SplashScreen';
 import {
   fetchTopMovies,
   fetchTopSeries,
@@ -38,6 +39,7 @@ export function AppContent() {
   // Movies: Swipe Right -> Watch Later | Swipe Left -> Movies Home
   // Music:  Swipe Right -> Playlist    | Swipe Left -> Music Home
   useSwipeNavigation();
+  const [showSplash, setShowSplash] = useState(true);
   const [topMovies, setTopMovies] = useState<MovieItem[]>([]);
   const [topSeries, setTopSeries] = useState<MovieItem[]>([]);
   const [netflixHits, setNetflixHits] = useState<MovieItem[]>([]);
@@ -186,6 +188,7 @@ export function AppContent() {
   return (
     <RecommendationProvider movieCatalog={combinedMovieCatalog} songCatalog={combinedSongCatalog}>
       <div className={`streamplay-app pure-black-theme mode-${appMode}`}>
+        {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} durationMs={3500} />}
         <main className="app-main-content">
           {/* Screen Routing */}
           {activeScreen === 'movie-search' || (activeScreen === 'search' && appMode === 'movies') ? (

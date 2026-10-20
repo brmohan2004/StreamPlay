@@ -1,0 +1,406 @@
+/* =========================================================================
+   STREAMPLAY UNIVERSAL SKELETON SHIMMER LOADING SYSTEM
+   ========================================================================= */
+
+@keyframes skeletonShimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-shimmer-base {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.03) 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.03) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.8s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+/* -------------------------------------------------------------------------
+   1. MOVIES HOME SKELETON
+   ------------------------------------------------------------------------- */
+.skeleton-home-container {
+  width: 100%;
+  max-width: 100vw;
+  padding: 1rem 1.25rem 6rem;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  overflow: hidden;
+}
+
+.skeleton-pills-row {
+  display: flex;
+  gap: 0.6rem;
+  overflow: hidden;
+  padding: 0.5rem 0;
+}
+
+.skeleton-pill-item {
+  width: 72px;
+  height: 32px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+/* Hero / Trending Fanned Deck */
+.skeleton-hero-deck {
+  width: 100%;
+  height: 360px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  margin: 1rem 0;
+}
+
+.skeleton-hero-card {
+  position: absolute;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.skeleton-hero-card.card-back-left {
+  width: 220px;
+  height: 310px;
+  transform: translateX(-80px) rotate(-8deg) scale(0.9);
+  opacity: 0.4;
+}
+
+.skeleton-hero-card.card-back-right {
+  width: 220px;
+  height: 310px;
+  transform: translateX(80px) rotate(8deg) scale(0.9);
+  opacity: 0.4;
+}
+
+.skeleton-hero-card.card-front-center {
+  width: 250px;
+  height: 350px;
+  z-index: 2;
+  transform: scale(1);
+  opacity: 0.85;
+}
+
+/* Media Rows */
+.skeleton-row-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  width: 100%;
+}
+
+.skeleton-row-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.skeleton-row-title {
+  width: 180px;
+  height: 20px;
+}
+
+.skeleton-row-subtitle {
+  width: 260px;
+  height: 12px;
+  opacity: 0.6;
+}
+
+.skeleton-row-cards-track {
+  display: flex;
+  gap: 1rem;
+  overflow: hidden;
+  padding: 0.25rem 0;
+}
+
+/* Media Poster Card */
+.skeleton-media-card {
+  width: 160px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.skeleton-card-poster {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.skeleton-card-title {
+  width: 80%;
+  height: 14px;
+}
+
+.skeleton-card-sub {
+  width: 50%;
+  height: 10px;
+  opacity: 0.6;
+}
+
+/* -------------------------------------------------------------------------
+   2. MUSIC HOME SKELETON
+   ------------------------------------------------------------------------- */
+.skeleton-music-home-container {
+  width: 100%;
+  max-width: 100vw;
+  padding: 1rem 1.25rem 6rem;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 2.2rem;
+  overflow: hidden;
+}
+
+.skeleton-music-hero {
+  width: 100%;
+  height: 340px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  margin: 0.5rem 0;
+}
+
+.skeleton-music-hero-card {
+  position: absolute;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.skeleton-music-hero-card.left {
+  width: 260px;
+  height: 260px;
+  transform: translateX(-65px) rotate(-6deg) scale(0.92);
+  opacity: 0.4;
+}
+
+.skeleton-music-hero-card.right {
+  width: 260px;
+  height: 260px;
+  transform: translateX(65px) rotate(6deg) scale(0.92);
+  opacity: 0.4;
+}
+
+.skeleton-music-hero-card.center {
+  width: 280px;
+  height: 280px;
+  z-index: 2;
+  opacity: 0.85;
+}
+
+.skeleton-music-row-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  width: 100%;
+}
+
+.skeleton-music-card {
+  width: 155px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.skeleton-music-cover {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* -------------------------------------------------------------------------
+   3. SEARCH RESULTS SKELETONS (MOVIE GRID & MUSIC TRACK LIST)
+   ------------------------------------------------------------------------- */
+.skeleton-grid-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 1.25rem;
+  width: 100%;
+  padding: 1rem 0;
+}
+
+@media (min-width: 768px) {
+  .skeleton-grid-container {
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 1.5rem;
+  }
+}
+
+.skeleton-grid-card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.skeleton-grid-card .skeleton-card-poster {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+}
+
+/* Music Track List Skeleton (Track Rows) */
+.skeleton-tracklist-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  width: 100%;
+  padding: 0.5rem 0;
+}
+
+.skeleton-track-row {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.65rem 0.85rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+}
+
+.skeleton-track-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.skeleton-track-meta {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.skeleton-track-title {
+  width: 45%;
+  height: 14px;
+}
+
+.skeleton-track-artist {
+  width: 25%;
+  height: 10px;
+  opacity: 0.6;
+}
+
+.skeleton-track-dur {
+  width: 35px;
+  height: 12px;
+  opacity: 0.5;
+}
+
+/* -------------------------------------------------------------------------
+   4. MOVIE DETAILS SCREEN SKELETON
+   ------------------------------------------------------------------------- */
+.skeleton-details-container {
+  width: 100%;
+  min-height: 100vh;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  background: #000000;
+  padding-bottom: 6rem;
+}
+
+.skeleton-details-backdrop {
+  width: 100%;
+  height: 380px;
+  position: relative;
+  border-radius: 0 0 24px 24px;
+}
+
+@media (min-width: 768px) {
+  .skeleton-details-backdrop {
+    height: 480px;
+  }
+}
+
+.skeleton-details-content {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.skeleton-details-title {
+  width: 60%;
+  height: 32px;
+}
+
+.skeleton-details-badges {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.skeleton-details-badge {
+  width: 60px;
+  height: 24px;
+  border-radius: 999px;
+}
+
+.skeleton-details-actions {
+  display: flex;
+  gap: 1rem;
+  margin: 0.5rem 0;
+}
+
+.skeleton-details-playbtn {
+  width: 160px;
+  height: 48px;
+  border-radius: 12px;
+}
+
+.skeleton-details-iconbtn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+}
+
+.skeleton-details-synopsis {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.skeleton-details-textline {
+  width: 100%;
+  height: 14px;
+}
+
+.skeleton-details-textline.short {
+  width: 70%;
+}
+
+.skeleton-cast-row {
+  display: flex;
+  gap: 1rem;
+  overflow: hidden;
+  padding: 0.5rem 0;
+}
+
+.skeleton-cast-circle {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}

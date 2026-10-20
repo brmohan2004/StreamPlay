@@ -8,6 +8,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { DailyMixFannedDeck } from '../components/DailyMixFannedDeck';
 import { fetchVideoSongs, fetchGenreSongs, fetchInfiniteLanguageSongs } from '../services/musicService';
 import { useRecommendations } from '../context/RecommendationContext';
+import { SkeletonMusicHome, SkeletonMusicRow } from '../components/SkeletonLoader';
 import {
   SquareMusicCard,
   VinylMusicCard,
@@ -187,6 +188,16 @@ export const MusicHomeScreen: React.FC<MusicHomeScreenProps> = ({
   const popularRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLDivElement>(null);
   const secondaryLangRef = useRef<HTMLDivElement>(null);
+
+  // Show Skeleton shimmer loading if initial music content has not loaded
+  if (trendingSongs.length === 0) {
+    return (
+      <div className="music-home-screen">
+        <TopAppHeader />
+        <SkeletonMusicHome />
+      </div>
+    );
+  }
 
   return (
     <div className="music-home-screen">
@@ -533,9 +544,8 @@ export const MusicHomeScreen: React.FC<MusicHomeScreenProps> = ({
         {/* Infinite Scroll Trigger Observer Anchor */}
         <div ref={bottomObserverRef} className="music-bottom-loader-anchor">
           {isLoadingMoreMusic && (
-            <div className="infinite-scroll-loading">
-              <div className="spinner lime-spinner" />
-              <span>Loading more music...</span>
+            <div style={{ width: '100%', marginTop: '1rem' }}>
+              <SkeletonMusicRow cardCount={6} titleWidth={210} />
             </div>
           )}
         </div>

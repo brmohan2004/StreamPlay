@@ -8,6 +8,7 @@ import { useNavigation } from '../context/NavigationContext';
 import { useMedia } from '../context/MediaContext';
 import { MediaCard } from '../components/MediaCard';
 import { logSignal } from '../services/recommendationTracker';
+import { SkeletonGrid } from '../components/SkeletonLoader';
 
 const MOVIE_GENRES = [
   'Action',
@@ -371,11 +372,10 @@ export const MovieSearchScreen: React.FC = () => {
           </div>
         )}
 
-        {/* Loading Spinner */}
+        {/* Skeleton Grid Loading */}
         {isSearching && (
-          <div className="minimal-search-loading">
-            <div className="minimal-spinner cyan-spin" />
-            <p>Searching cinema catalogs & related soundtracks...</p>
+          <div style={{ width: '100%', padding: '0.5rem 0' }}>
+            <SkeletonGrid count={8} />
           </div>
         )}
 

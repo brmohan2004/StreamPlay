@@ -10,36 +10,38 @@ import {
   Smartphone,
   ChevronRight,
   Sparkles,
-  RotateCcw,
   Gift,
-  Cpu
+  Trash2,
+  Database
 } from 'lucide-react';
 import { TopAppHeader } from '../components/TopAppHeader';
 import { useMedia } from '../context/MediaContext';
 import { useNavigation } from '../context/NavigationContext';
-import { getProfile, getTopGenres, getTopArtists, resetProfile } from '../services/recommendationTracker';
 
 export const ProfileScreen: React.FC = () => {
-  const { watchLater, primaryLanguage, setPrimaryLanguage, secondaryLanguage, setSecondaryLanguage } = useMedia();
+  const { watchLater, playlists, primaryLanguage, setPrimaryLanguage, secondaryLanguage, setSecondaryLanguage } = useMedia();
   const { setActiveScreen } = useNavigation();
 
   // Settings State
   const [notifications, setNotifications] = useState(true);
   const [autoPlay, setAutoPlay] = useState(true);
   const [highBitrate, setHighBitrate] = useState(true);
-  const [recResetSuccess, setRecResetSuccess] = useState(false);
-  const [recProfile, setRecProfile] = useState(() => getProfile());
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
+  const [clearSuccess, setClearSuccess] = useState(false);
 
-  const handleResetRecommendations = () => {
-    resetProfile();
-    setRecProfile(getProfile());
-    setRecResetSuccess(true);
-    window.dispatchEvent(new CustomEvent('streamplay-rec-update'));
-    setTimeout(() => setRecResetSuccess(false), 3000);
+  const handleClearAllData = () => {
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+    } catch (e) {
+      console.warn('Failed to clear storage:', e);
+    }
+    setClearSuccess(true);
+    setClearConfirmOpen(false);
+    setTimeout(() => {
+      window.location.reload();
+    }, 700);
   };
-
-  const topGenres = getTopGenres(3);
-  const topArtists = getTopArtists(3);
 
   const availableLanguages = [
     'Tamil',
@@ -202,52 +204,62 @@ export const ProfileScreen: React.FC = () => {
             </label>
           </div>
 
-          <h3 className="group-heading">AI Recommendation Profile</h3>
+          <h3 className="group-heading">Storage & Data Management</h3>
 
-          {/* AI Recommendation Engine Card */}
-          <div className="rec-profile-card">
-            <div className="rec-profile-head">
-              <div className="rec-profile-title">
-                <Cpu size={18} className="text-cyan" />
-                <span>Smart Taste Profile</span>
+          {/* Storage & Clear All Data Card */}
+          <div className="data-storage-card">
+            <div className="data-storage-head">
+              <div className="data-storage-title">
+                <Database size={18} className="text-cyan" />
+                <span>App Cache & Local Storage</span>
               </div>
-              <span className="rec-free-pill">100% FREE</span>
+              <span className="data-badge-pill">Local Device Only</span>
             </div>
 
-            <div className="rec-stat-grid">
-              <div className="rec-stat-box">
-                <span className="rec-stat-label">Top Genres</span>
-                <span className="rec-stat-val" title={topGenres.join(', ')}>
-                  {topGenres.length > 0 ? topGenres.join(', ') : 'Learning tastes'}
-                </span>
-              </div>
+            <p className="data-storage-desc">
+              Clear all offline cache, watch history, saved preferences, playlists, and stored local data.
+            </p>
 
-              <div className="rec-stat-box">
-                <span className="rec-stat-label">Top Artists</span>
-                <span className="rec-stat-val" title={topArtists.join(', ')}>
-                  {topArtists.length > 0 ? topArtists.join(', ') : 'Learning artists'}
-                </span>
+            <div className="data-stats-row">
+              <div className="data-stat-item">
+                <span className="data-stat-label">Watch Later</span>
+                <span className="data-stat-val">{watchLater.length} items</span>
               </div>
-
-              <div className="rec-stat-box">
-                <span className="rec-stat-label">Taste Signals Logged</span>
-                <span className="rec-stat-val">
-                  {recProfile.totalInteractions} interactions
-                </span>
+              <div className="data-stat-item">
+                <span className="data-stat-label">Playlists</span>
+                <span className="data-stat-val">{playlists.length} saved</span>
               </div>
-
-              <div className="rec-stat-box">
-                <span className="rec-stat-label">Storage & Privacy</span>
-                <span className="rec-stat-val" style={{ color: '#c8ff00' }}>
-                  Local Device Only
-                </span>
+              <div className="data-stat-item">
+                <span className="data-stat-label">Storage Status</span>
+                <span className="data-stat-val text-green">Active</span>
               </div>
             </div>
 
-            <button className="rec-reset-btn" onClick={handleResetRecommendations}>
-              <RotateCcw size={14} />
-              <span>{recResetSuccess ? 'Profile Reset Complete!' : 'Reset Taste History'}</span>
-            </button>
+            {clearConfirmOpen ? (
+              <div className="clear-confirm-dialog">
+                <p className="clear-confirm-warning">
+                  ⚠️ This will permanently erase all local storage, playlists, watch later list, search history, and reset your preferences. Are you sure?
+                </p>
+                <div className="clear-confirm-actions">
+                  <button className="confirm-btn-danger" onClick={handleClearAllData}>
+                    <Trash2 size={15} />
+                    <span>Yes, Clear Everything</span>
+                  </button>
+                  <button className="confirm-btn-cancel" onClick={() => setClearConfirmOpen(false)}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                className="data-clear-btn"
+                onClick={() => setClearConfirmOpen(true)}
+                disabled={clearSuccess}
+              >
+                <Trash2 size={16} />
+                <span>{clearSuccess ? 'Clearing Storage & Reloading...' : 'Clear All Data (Clear Local Storage)'}</span>
+              </button>
+            )}
           </div>
 
           {/* 100% Free Guarantee Banner */}

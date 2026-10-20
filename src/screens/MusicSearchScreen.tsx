@@ -6,6 +6,7 @@ import { SongItem } from '../types/media';
 import { useMedia } from '../context/MediaContext';
 import { useNavigation } from '../context/NavigationContext';
 import { logSignal } from '../services/recommendationTracker';
+import { SkeletonTrackList } from '../components/SkeletonLoader';
 
 const MUSIC_GENRES = [
   'Bollywood',
@@ -338,11 +339,10 @@ export const MusicSearchScreen: React.FC = () => {
           </div>
         )}
 
-        {/* Loading Spinner */}
+        {/* Skeleton Track List Loading */}
         {isSearching && (
-          <div className="minimal-search-loading">
-            <div className="minimal-spinner lime-spin" />
-            <p>Searching 320kbps CD-quality music library...</p>
+          <div style={{ width: '100%', padding: '0.5rem 0' }}>
+            <SkeletonTrackList count={8} />
           </div>
         )}
 

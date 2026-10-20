@@ -19,6 +19,7 @@ import { useMedia } from '../context/MediaContext';
 import { useNavigation } from '../context/NavigationContext';
 import { MovieItem, EpisodeItem } from '../types/media';
 import { fetchMovieDetails, fetchGenreMovies } from '../services/movieService';
+import { SkeletonDetails, SkeletonRow } from '../components/SkeletonLoader';
 
 /* Dynamic Movie Color Theme Generator */
 interface MovieColorTheme {
@@ -256,6 +257,10 @@ export const MovieDetailsScreen: React.FC = () => {
     return getMovieColorTheme(movieData);
   }, [movieData]);
 
+  if (isLoading && !movieData) {
+    return <SkeletonDetails />;
+  }
+
   if (!movieData) {
     return (
       <div className="movie-details-empty">
@@ -273,16 +278,38 @@ export const MovieDetailsScreen: React.FC = () => {
   const seasonsMap: Record<number, EpisodeItem[]> = {};
   if (movieData.videos && movieData.videos.length > 0) {
     movieData.videos.forEach(v => {
-      const s = v.season || 1;
+      const s = typeof v.season === 'number' ? v.season : 1;
       if (!seasonsMap[s]) seasonsMap[s] = [];
       seasonsMap[s].push(v);
     });
   }
+
+  // Deduplicate and sort episodes within each season strictly by episode number
+  Object.keys(seasonsMap).forEach(sKey => {
+    const s = Number(sKey);
+    const seenNumbers = new Set<number>();
+    seasonsMap[s] = seasonsMap[s]
+      .filter(ep => {
+        if (seenNumbers.has(ep.number)) return false;
+        seenNumbers.add(ep.number);
+        return true;
+      })
+      .sort((a, b) => a.number - b.number);
+  });
+
+  // Regular seasons first (1, 2, 3...), and specials (season 0) at the end
   const availableSeasons = Object.keys(seasonsMap)
     .map(Number)
-    .sort((a, b) => a - b);
+    .sort((a, b) => {
+      if (a === 0) return 1;
+      if (b === 0) return -1;
+      return a - b;
+    });
 
-  const currentEpisodes = seasonsMap[selectedSeason] || seasonsMap[1] || [];
+  const currentEpisodes =
+    seasonsMap[selectedSeason] ||
+    seasonsMap[1] ||
+    (availableSeasons.length > 0 ? seasonsMap[availableSeasons[0]] : []);
 
   const handleShare = () => {
     if (navigator.clipboard) {
@@ -589,7 +616,7 @@ export const MovieDetailsScreen: React.FC = () => {
                     className={`season-tab-btn ${selectedSeason === s ? 'active' : ''}`}
                     onClick={() => setSelectedSeason(s)}
                   >
-                    Season {s}
+                    {s === 0 ? 'Specials' : `Season ${s}`}
                   </button>
                 ))}
               </div>
@@ -598,7 +625,7 @@ export const MovieDetailsScreen: React.FC = () => {
             <div className="episodes-cards-list">
               {currentEpisodes.map((ep, idx) => (
                 <div
-                  key={ep.id || idx}
+                  key={`${ep.season}-${ep.number}-${ep.id || idx}`}
                   className="episode-card-item"
                   onClick={() => openMoviePlayer(movieData, ep.season, ep.number)}
                 >
@@ -639,7 +666,7 @@ export const MovieDetailsScreen: React.FC = () => {
         )}
 
         {/* 7. More Like This / All Related Category Movies in 3 Rows */}
-        {recommended.length > 0 && (
+        {recommended.length > 0 ? (
           <section className="details-streamlined-section">
             <h3 className="streamlined-sec-title">More Like This</h3>
             <div className="details-more-like-three-rows">
@@ -677,6 +704,10 @@ export const MovieDetailsScreen: React.FC = () => {
                 </div>
               ))}
             </div>
+          </section>
+        ) : (
+          <section className="details-streamlined-section" style={{ width: '100%', marginTop: '1rem' }}>
+            <SkeletonRow cardCount={5} titleWidth={160} />
           </section>
         )}
       </div>
