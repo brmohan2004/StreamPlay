@@ -1,6 +1,6 @@
 import './RecommendationRow.css';
 import React, { useRef } from 'react';
-import { ChevronLeft, ChevronRight, Sparkles, Play } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Play } from 'lucide-react';
 import { MovieItem, SongItem } from '../types/media';
 import { MediaCard } from './MediaCard';
 import { useMedia } from '../context/MediaContext';
@@ -17,11 +17,8 @@ export interface RecommendationRowProps {
 
 export const RecommendationRow: React.FC<RecommendationRowProps> = ({
   title,
-  subtitle,
-  badgeText = 'AI Pick',
   items,
-  type,
-  icon = <Sparkles size={16} className="text-cyan" />
+  type
 }) => {
   const rowRef = useRef<HTMLDivElement>(null);
   const { playSong, openMusicPlayer } = useMedia();
@@ -42,22 +39,7 @@ export const RecommendationRow: React.FC<RecommendationRowProps> = ({
   return (
     <div className="rec-row-container">
       <div className="rec-row-header">
-        <div className="rec-row-title-wrap">
-          <div className="rec-badge-row">
-            <span className="rec-ai-pill">
-              <Sparkles size={11} />
-              {badgeText}
-            </span>
-            <span className="rec-free-pill">100% FREE</span>
-          </div>
-
-          <h2 className="rec-row-title">
-            <span className="rec-row-title-icon">{icon}</span>
-            <span>{title}</span>
-          </h2>
-
-          {subtitle && <p className="rec-row-subtitle">{subtitle}</p>}
-        </div>
+        <h2 className="rec-row-title">{title}</h2>
 
         <div className="rec-row-controls">
           <button className="rec-arrow-btn" onClick={() => scroll('left')} aria-label="Scroll left">
@@ -74,12 +56,6 @@ export const RecommendationRow: React.FC<RecommendationRowProps> = ({
           ? (items as (MovieItem & { _recReason?: string })[]).map((movie, idx) => (
               <div key={movie.id || idx} className="rec-movie-item">
                 <MediaCard item={movie} />
-                {movie._recReason && (
-                  <div className="rec-reason-tag" title={movie._recReason}>
-                    <Sparkles size={10} />
-                    <span>{movie._recReason}</span>
-                  </div>
-                )}
               </div>
             ))
           : (items as (SongItem & { _recReason?: string })[]).map((song, idx) => (
@@ -116,12 +92,6 @@ export const RecommendationRow: React.FC<RecommendationRowProps> = ({
                   <span className="rec-song-artist" title={song.artist}>
                     {song.artist}
                   </span>
-                  {song._recReason && (
-                    <span className="rec-song-reason" title={song._recReason}>
-                      <Sparkles size={9} />
-                      {song._recReason}
-                    </span>
-                  )}
                 </div>
               </motion.div>
             ))}

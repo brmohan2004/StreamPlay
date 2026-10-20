@@ -1,12 +1,13 @@
 import './FloatingFilterPill.css';
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronUp } from 'lucide-react';
+import { ChevronUp, Sliders } from 'lucide-react';
 import { useNavigation } from '../context/NavigationContext';
 
 export const FloatingFilterPill: React.FC = () => {
   const {
     appMode,
+    activeScreen,
     openFilterSheet,
     isFilterSheetOpen,
     setActiveCategory,
@@ -26,8 +27,8 @@ export const FloatingFilterPill: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Show only after scrolling upward / down past 50px, and hide when filter sheet is open
-  if (isFilterSheetOpen || !isScrolledPast50) return null;
+  // Show only on home screen after scrolling down past 50px, and hide when filter sheet is open
+  if (activeScreen !== 'home' || isFilterSheetOpen || !isScrolledPast50) return null;
 
   return (
     <AnimatePresence>
@@ -99,60 +100,20 @@ export const FloatingFilterPill: React.FC = () => {
               </button>
             </>
           ) : (
-            /* Music Mode: Tracks | Artists | Vibes | ^ */
-            <>
-              <button
-                type="button"
-                className={`filter-pill-segment ${activeCategory === 'Songs' ? 'active-seg-lime' : ''}`}
-                onClick={e => {
-                  e.stopPropagation();
-                  setActiveCategory(activeCategory === 'Songs' ? 'All' : 'Songs');
-                }}
-              >
-                Tracks
-              </button>
-
-              <span className="pill-divider" />
-
-              <button
-                type="button"
-                className={`filter-pill-segment ${activeCategory === 'Artists' ? 'active-seg-lime' : ''}`}
-                onClick={e => {
-                  e.stopPropagation();
-                  setActiveCategory(activeCategory === 'Artists' ? 'All' : 'Artists');
-                }}
-              >
-                Artists
-              </button>
-
-              <span className="pill-divider" />
-
-              <button
-                type="button"
-                className="filter-pill-segment"
-                onClick={e => {
-                  e.stopPropagation();
-                  openFilterSheet();
-                }}
-              >
-                Vibes
-              </button>
-
-              <span className="pill-divider" />
-
-              <button
-                type="button"
-                className="filter-pill-expand-btn"
-                onClick={e => {
-                  e.stopPropagation();
-                  openFilterSheet();
-                }}
-                aria-label="Expand all music filters sheet"
-                title="Open all filters"
-              >
-                <ChevronUp size={14} strokeWidth={2.5} />
-              </button>
-            </>
+            /* Music Mode: Clean single pill to open Music Filter Sheet without segmented filter capsules */
+            <button
+              type="button"
+              className="filter-pill-segment music-unified-btn"
+              onClick={e => {
+                e.stopPropagation();
+                openFilterSheet();
+              }}
+              title="Open Music Filters & Explorer"
+            >
+              <Sliders size={13} className="text-lime" style={{ marginRight: 6 }} />
+              <span>Music Filters</span>
+              <ChevronUp size={13} strokeWidth={2.5} style={{ marginLeft: 6 }} />
+            </button>
           )}
         </motion.div>
       </div>

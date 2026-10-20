@@ -81,9 +81,15 @@
 }
 
 .rec-row-controls {
-  display: flex;
+  display: none;
   align-items: center;
   gap: 0.4rem;
+}
+
+@media (min-width: 768px) {
+  .rec-row-controls {
+    display: flex;
+  }
 }
 
 .rec-arrow-btn {

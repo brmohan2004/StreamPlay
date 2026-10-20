@@ -1,21 +1,28 @@
 import './MoviesHomeScreen.css';
 import React, { useState, useEffect, useRef } from 'react';
 import { TopAppHeader } from '../components/TopAppHeader';
-import { TrendingFlipCards } from '../components/TrendingFlipCards';
+import {
+  MovieTrendingFannedDeck,
+  MovieSpotlightCard,
+  MovieBackdropCard,
+  MovieRankedCard,
+  MovieTileCard,
+  MoviePanoramaCard,
+  MovieContinueCard,
+  MovieSectionRow,
+  MovieTwoRowSection
+} from '../components/MovieCardsDesign';
 import { MediaRow } from '../components/MediaRow';
 import { MediaCard } from '../components/MediaCard';
 import { MovieItem } from '../types/media';
 import { useMedia } from '../context/MediaContext';
 import { useNavigation } from '../context/NavigationContext';
 import { useRecommendations } from '../context/RecommendationContext';
-import { RecommendationRow } from '../components/RecommendationRow';
-import { History, Play, Sparkles, RotateCcw, Film, Compass } from 'lucide-react';
 import {
   fetchLanguageMovies,
   fetchInfiniteLanguageMovies,
   fetchGenreMovies,
-  fetchByOTT,
-  OTT_PLATFORMS
+  fetchByOTT
 } from '../services/movieService';
 
 interface MoviesHomeScreenProps {
@@ -51,12 +58,10 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
     activeCategory,
     setActiveCategory,
     selectedOTT,
-    setSelectedOTT,
-    selectedLanguage,
-    setSelectedLanguage
+    selectedLanguage
   } = useNavigation();
-  const { continueWatching, openMoviePlayer, primaryLanguage, secondaryLanguage } = useMedia();
-  const { forYouMovies, becauseYouWatched, explorationMovies, hasPersonalization } = useRecommendations();
+  const { continueWatching, primaryLanguage, secondaryLanguage } = useMedia();
+  const { forYouMovies, becauseYouWatched, explorationMovies } = useRecommendations();
 
   const [primaryLangMovies, setPrimaryLangMovies] = useState<MovieItem[]>([]);
   const [secondaryLangMovies, setSecondaryLangMovies] = useState<MovieItem[]>([]);
@@ -183,10 +188,10 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
     if (!genreCache[activeCategory]) {
       setIsGenreLoading(true);
       fetchGenreMovies(activeCategory)
-        .then(items => {
+        .then((items: MovieItem[]) => {
           setGenreCache(prev => ({ ...prev, [activeCategory]: items }));
         })
-        .catch(err => {
+        .catch((err: unknown) => {
           console.error(`Failed to load genre movies for ${activeCategory}:`, err);
         })
         .finally(() => setIsGenreLoading(false));
@@ -235,7 +240,6 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
     return Array.from(new Map(merged.map(m => [m.id, m])).values());
   };
 
-  const ottMeta = OTT_PLATFORMS.find(p => p.brand === selectedOTT);
   const categoryFilteredMovies = getCategoryMovies();
 
   return (
@@ -249,31 +253,8 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
         {/* ========================================================================= */}
         {selectedLanguage !== 'All' ? (
           <>
-            <div className="universe-banner language-universe">
-              <div className="universe-meta">
-                <span className="universe-pill lang-pill">
-                  🔥 {selectedLanguage.toUpperCase()} CINEMA UNIVERSE
-                </span>
-                <h2 className="universe-title">{selectedLanguage} Blockbusters & Hits</h2>
-                <p className="universe-sub">
-                  Infinite catalog curated across all streaming platforms • 100% Free
-                </p>
-              </div>
-              <button
-                className="capsule-reset-btn"
-                onClick={() => {
-                  setSelectedLanguage('All');
-                  setActiveCategory('All');
-                }}
-                title="Return to All Content"
-              >
-                <RotateCcw size={14} />
-                <span>Exit {selectedLanguage}</span>
-              </button>
-            </div>
-
-            {/* Trending Flip Cards for this language */}
-            <TrendingFlipCards
+            {/* Trending Cards for this language */}
+            <MovieTrendingFannedDeck
               movies={languageUniverseMovies.length > 0 ? languageUniverseMovies.slice(0, 8) : topMovies.slice(0, 5)}
             />
 
@@ -281,27 +262,11 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
             {continueWatching.length > 0 && (
               <div className="continue-watching-section">
                 <div className="section-title-wrap continue-head">
-                  <History size={18} className="text-cyan" />
                   <h3 className="section-heading">Continue Watching</h3>
                 </div>
                 <div className="continue-cards-scroll">
                   {continueWatching.map(item => (
-                    <div
-                      key={item.id}
-                      className="continue-card-item"
-                      onClick={() => openMoviePlayer(item)}
-                    >
-                      <div className="continue-thumb-wrap">
-                        <img src={item.poster} alt={item.name} className="continue-thumb" />
-                        <div className="continue-play-hover">
-                          <Play size={20} fill="#fff" />
-                        </div>
-                        <div className="continue-progress-bar">
-                          <div className="progress-fill" style={{ width: '45%' }} />
-                        </div>
-                      </div>
-                      <span className="continue-name">{item.name}</span>
-                    </div>
+                    <MovieContinueCard key={item.id} item={item} />
                   ))}
                 </div>
               </div>
@@ -334,41 +299,8 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
           /* CASE 2: DEDICATED OTT UNIVERSE (e.g. Netflix Crimson Universe)            */
           /* ========================================================================= */
           <>
-            <div
-              className="universe-banner ott-universe"
-              style={{ borderColor: ottMeta?.accentColor || '#00d2ff' }}
-            >
-              <div className="universe-meta">
-                <span
-                  className="universe-pill"
-                  style={{
-                    background: `${ottMeta?.accentColor || '#00d2ff'}25`,
-                    color: ottMeta?.accentColor || '#00d2ff',
-                    border: `1px solid ${ottMeta?.accentColor || '#00d2ff'}40`
-                  }}
-                >
-                  {selectedOTT.toUpperCase()} UNIVERSE
-                </span>
-                <h2 className="universe-title">{ottMeta?.displayName || selectedOTT}</h2>
-                <p className="universe-sub">
-                  {ottMeta?.tagline || 'Streaming original series & films • 100% Free'}
-                </p>
-              </div>
-              <button
-                className="capsule-reset-btn"
-                onClick={() => {
-                  setSelectedOTT('All');
-                  setActiveCategory('All');
-                }}
-                title="Return to All Platforms"
-              >
-                <RotateCcw size={14} />
-                <span>Exit {selectedOTT}</span>
-              </button>
-            </div>
-
-            {/* Trending Flip Cards for this OTT */}
-            <TrendingFlipCards
+            {/* Trending Cards for this OTT - NO EXIT BANNER CARD */}
+            <MovieTrendingFannedDeck
               movies={ottUniverseMovies.length > 0 ? ottUniverseMovies.slice(0, 8) : topMovies.slice(0, 5)}
             />
 
@@ -376,27 +308,11 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
             {continueWatching.length > 0 && (
               <div className="continue-watching-section">
                 <div className="section-title-wrap continue-head">
-                  <History size={18} className="text-cyan" />
                   <h3 className="section-heading">Continue Watching on {selectedOTT}</h3>
                 </div>
                 <div className="continue-cards-scroll">
                   {continueWatching.map(item => (
-                    <div
-                      key={item.id}
-                      className="continue-card-item"
-                      onClick={() => openMoviePlayer(item)}
-                    >
-                      <div className="continue-thumb-wrap">
-                        <img src={item.poster} alt={item.name} className="continue-thumb" />
-                        <div className="continue-play-hover">
-                          <Play size={20} fill="#fff" />
-                        </div>
-                        <div className="continue-progress-bar">
-                          <div className="progress-fill" style={{ width: '45%' }} />
-                        </div>
-                      </div>
-                      <span className="continue-name">{item.name}</span>
-                    </div>
+                    <MovieContinueCard key={item.id} item={item} />
                   ))}
                 </div>
               </div>
@@ -424,39 +340,9 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
           </>
         ) : activeCategory !== 'All' ? (
           /* ========================================================================= */
-          /* CASE 3: CATEGORY / GENRE CAPSULE LISTING                                   */
+          /* CASE 3: CATEGORY / GENRE CAPSULE LISTING - NO EXIT BANNER CARD            */
           /* ========================================================================= */
           <div className="capsule-filtered-section">
-            <div className="capsule-filtered-header">
-              <div>
-                <span className="capsule-eyebrow">
-                  <Sparkles size={13} className="text-cyan" /> {activeCategory.toUpperCase()} COLLECTION
-                </span>
-                <h2 className="capsule-section-heading">
-                  {activeCategory === 'Series' || activeCategory === 'Shows'
-                    ? 'All Web Series & Shows'
-                    : activeCategory === 'Movies'
-                    ? 'All Blockbuster Movies'
-                    : `${activeCategory} Movies & Hits`}
-                </h2>
-                <p className="capsule-section-sub">
-                  Showing {categoryFilteredMovies.length} curated titles across OTT platforms
-                </p>
-              </div>
-
-              <button
-                className="capsule-reset-btn"
-                onClick={() => {
-                  setActiveCategory('All');
-                  setSelectedOTT('All');
-                }}
-                title="Return to full home catalog"
-              >
-                <RotateCcw size={14} />
-                <span>Show All</span>
-              </button>
-            </div>
-
             {isGenreLoading && categoryFilteredMovies.length === 0 ? (
               <div className="capsule-loading-box">
                 <div className="spinner cyan-spinner" />
@@ -485,83 +371,61 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
           /* CASE 4: STANDARD FULL HOME VIEW (All Platforms, Personalization & Rows)    */
           /* ========================================================================= */
           <>
-            {/* 2. Trending Flip Cards */}
-            <TrendingFlipCards movies={topMovies} />
+            {/* 2. Trending Fanned Cards Deck */}
+            <MovieTrendingFannedDeck movies={topMovies} />
 
             {/* 3. Continue Watching */}
             {continueWatching.length > 0 && (
               <div className="continue-watching-section">
                 <div className="section-title-wrap continue-head">
-                  <History size={18} className="text-cyan" />
                   <h3 className="section-heading">Continue Watching</h3>
                 </div>
                 <div className="continue-cards-scroll">
                   {continueWatching.map(item => (
-                    <div
-                      key={item.id}
-                      className="continue-card-item"
-                      onClick={() => openMoviePlayer(item)}
-                    >
-                      <div className="continue-thumb-wrap">
-                        <img src={item.poster} alt={item.name} className="continue-thumb" />
-                        <div className="continue-play-hover">
-                          <Play size={20} fill="#fff" />
-                        </div>
-                        <div className="continue-progress-bar">
-                          <div className="progress-fill" style={{ width: '45%' }} />
-                        </div>
-                      </div>
-                      <span className="continue-name">{item.name}</span>
-                    </div>
+                    <MovieContinueCard key={item.id} item={item} />
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Personalized Recommendation Engine Rows */}
+            {/* Top Picks For You - DESIGN: Spotlight Cards with IMDb pill & neon glow */}
             {forYouMovies.length > 0 && (
-              <RecommendationRow
-                title="Top Picks For You"
-                subtitle={
-                  hasPersonalization
-                    ? "Curated from your viewing patterns & preferences • 100% Free"
-                    : "Trending blockbusters tailored for you • 100% Free"
-                }
-                badgeText={hasPersonalization ? "AI Match" : "Top Pick"}
-                items={forYouMovies}
-                type="movie"
-                icon={<Sparkles size={18} className="text-cyan" />}
-              />
+              <MovieSectionRow title="Top Picks For You">
+                {forYouMovies.map(item => (
+                  <MovieSpotlightCard key={item.id} item={item} />
+                ))}
+              </MovieSectionRow>
             )}
 
+            {/* Because You Watched - DESIGN: 16:9 Landscape Cinematic Backdrop Cards */}
             {becauseYouWatched.map((entry, idx) => (
-              <RecommendationRow
+              <MovieSectionRow
                 key={`byw-${entry.anchor.id}-${idx}`}
                 title={`Because You Watched "${entry.anchor.name}"`}
-                subtitle="Similar genres & cast alignment • 100% Free"
-                badgeText="Similarity"
-                items={entry.movies}
-                type="movie"
-                icon={<Film size={18} className="text-cyan" />}
-              />
+              >
+                {entry.movies.map(movie => (
+                  <MovieBackdropCard key={movie.id} item={movie} />
+                ))}
+              </MovieSectionRow>
             ))}
 
-            {/* New Releases with OTT tags */}
-            <div className="new-movies-section">
-              <MediaRow
-                title="New Releases"
-                items={newMoviesWithTags}
-              />
-            </div>
+            {/* New Releases - DESIGN: #1, #2, #3 Podium Ranked Cards */}
+            <MovieSectionRow title="New Releases">
+              {newMoviesWithTags.map((movie, idx) => (
+                <MovieRankedCard key={movie.id} item={movie} rank={idx + 1} />
+              ))}
+            </MovieSectionRow>
 
-            {/* Language Curated Movies (Primary & Secondary Languages) */}
+            {/* Primary Language Blockbusters - DESIGN: 2-Row Horizontal Quick Tile Grid */}
             {primaryLangMovies.length > 0 && (
-              <MediaRow
-                title={`${primaryLanguage} Blockbusters`}
-                items={primaryLangMovies}
-              />
+              <MovieTwoRowSection title={`${primaryLanguage} Blockbusters`}>
+                {primaryLangMovies.map(movie => (
+                  <MovieTileCard key={movie.id} item={movie} />
+                ))}
+              </MovieTwoRowSection>
             )}
 
+            {/* Secondary Language Hits - DESIGN: MediaRow Poster Cards */}
             {secondaryLangMovies.length > 0 && (
               <MediaRow
                 title={`${secondaryLanguage} Hits`}
@@ -569,16 +433,13 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
               />
             )}
 
-            {/* Exploration Picks: Anti-Filter-Bubble Discovery */}
+            {/* Exploration Picks: Anti-Filter-Bubble - DESIGN: Panorama Feature Banners */}
             {explorationMovies.length > 0 && (
-              <RecommendationRow
-                title="Discover Something New"
-                subtitle="High-rated gems beyond your usual genres • 100% Free"
-                badgeText="Explore"
-                items={explorationMovies}
-                type="movie"
-                icon={<Compass size={18} className="text-lime" />}
-              />
+              <MovieSectionRow title="Discover Something New">
+                {explorationMovies.map(movie => (
+                  <MoviePanoramaCard key={movie.id} item={movie} />
+                ))}
+              </MovieSectionRow>
             )}
 
             {/* OTT Brand Catalogs & Series */}

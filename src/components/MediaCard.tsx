@@ -57,7 +57,7 @@ export const MediaCard: React.FC<MediaCardProps> = ({ item, rank }) => {
               }}
               title="View Details & Watch"
             >
-              <Play size={20} fill="#ffffff" color="#ffffff" />
+              <Play size={18} fill="#000000" color="#000000" style={{ marginLeft: 2 }} />
             </motion.button>
           </div>
         </div>

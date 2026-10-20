@@ -22,6 +22,28 @@ export const TopAppHeader: React.FC<TopAppHeaderProps> = ({
   const { watchLater, playlists } = useMedia();
   const { isInParty, memberCount, openPartyModal } = useParty();
 
+  const [showHeader, setShowHeader] = React.useState(true);
+  const prevScrollY = React.useRef(0);
+
+  React.useEffect(() => {
+    const handleScroll = () => {
+      const scrollY = window.scrollY || document.documentElement.scrollTop;
+      if (scrollY <= 20) {
+        setShowHeader(true);
+      } else if (scrollY > prevScrollY.current + 6) {
+        // Scrolling downward -> hide header
+        setShowHeader(false);
+      } else if (scrollY < prevScrollY.current - 6) {
+        // Scrolling upward -> show header
+        setShowHeader(true);
+      }
+      prevScrollY.current = Math.max(0, scrollY);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   const handleBack = () => {
     if (onBack) {
       onBack();
@@ -31,21 +53,26 @@ export const TopAppHeader: React.FC<TopAppHeaderProps> = ({
   };
 
   return (
-    <header className={`mobile-top-header ${appMode === 'music' ? 'music-mode-header' : 'movies-mode-header'}`}>
-      <div className="header-left">
-        {showBack ? (
-          <button className="header-icon-btn back-btn" onClick={handleBack} aria-label="Go Back">
-            <ArrowLeft size={22} />
-          </button>
-        ) : (
-          <div className="header-brand" onClick={() => setActiveScreen('home')} title="StreamPlay Home">
-            <img src="/StreamPlay.png" alt="StreamPlay Logo" className="header-brand-logo-img" />
-            <span className="brand-title-text">StreamPlay</span>
-          </div>
-        )}
+    <>
+      <header
+        className={`mobile-top-header ${appMode === 'music' ? 'music-mode-header' : 'movies-mode-header'} ${
+          showHeader ? 'header-scrolled-visible' : 'header-scrolled-hidden'
+        }`}
+      >
+        <div className="header-left">
+          {showBack ? (
+            <button className="header-icon-btn back-btn" onClick={handleBack} aria-label="Go Back">
+              <ArrowLeft size={22} />
+            </button>
+          ) : (
+            <div className="header-brand" onClick={() => setActiveScreen('home')} title="StreamPlay Home">
+              <img src="/StreamPlay.png" alt="StreamPlay Logo" className="header-brand-logo-img" />
+            </div>
+          )}
 
-        {title && <h2 className="header-custom-title">{title}</h2>}
-      </div>
+          {title && <h2 className="header-custom-title">{title}</h2>}
+        </div>
+
 
       {!hideRightActions && (
         <div className="header-right">
@@ -119,6 +146,7 @@ export const TopAppHeader: React.FC<TopAppHeaderProps> = ({
         </div>
       )}
     </header>
-  );
+  </>
+);
 };
 

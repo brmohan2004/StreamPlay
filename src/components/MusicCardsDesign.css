@@ -1,0 +1,869 @@
+/* MusicCardsDesign.css - Modular Music Card Components for StreamPlay */
+
+/* ========================================================
+   1. TWO-ROW HORIZONTAL SCROLL GRID (Popular Songs & Recently Played)
+   Lists cards vertically into 2 rows, scrolling horizontally
+   ======================================================== */
+.two-row-horizontal-scroll {
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 6px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.two-row-horizontal-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.two-row-grid-stage {
+  display: grid;
+  grid-template-rows: repeat(2, 58px);
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(230px, 260px);
+  gap: 10px;
+}
+
+@media (max-width: 480px) {
+  .two-row-grid-stage {
+    grid-auto-columns: 220px;
+    gap: 8px;
+  }
+}
+
+/* ========================================================
+   2. COMPACT TILE CARD (Pill Shape with Artwork, Title, Artist)
+   Matches Spotify / Apple Music quick list tile layout
+   ======================================================== */
+.music-compact-tile-card {
+  height: 58px;
+  background: #0f1523;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 10px 5px 5px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+  user-select: none;
+  min-width: 0;
+  position: relative;
+}
+
+.music-compact-tile-card:hover {
+  background: #172033;
+  border-color: rgba(200, 255, 0, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+}
+
+.compact-tile-thumb-wrap {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #080c14;
+  flex-shrink: 0;
+}
+
+.compact-tile-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Ranking Badge on Thumb */
+.compact-tile-rank-tag {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  font-size: 0.64rem;
+  font-weight: 800;
+  padding: 1px 4px;
+  border-radius: 4px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.compact-tile-rank-tag.rank-tag-1 {
+  background: linear-gradient(135deg, #ffd54f, #ff8f00);
+  color: #000000;
+  box-shadow: 0 2px 6px rgba(255, 193, 7, 0.5);
+}
+
+.compact-tile-rank-tag.rank-tag-2 {
+  background: linear-gradient(135deg, #80d8ff, #0091ea);
+  color: #000000;
+  box-shadow: 0 2px 6px rgba(0, 229, 255, 0.5);
+}
+
+.compact-tile-rank-tag.rank-tag-3 {
+  background: linear-gradient(135deg, #ccff90, #64dd17);
+  color: #000000;
+  box-shadow: 0 2px 6px rgba(200, 255, 0, 0.5);
+}
+
+.compact-tile-rank-tag.rank-tag-gen {
+  background: rgba(0, 0, 0, 0.85);
+  color: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Hover play icon over thumbnail */
+.compact-tile-hover-play {
+  position: absolute;
+  inset: 0;
+  background: rgba(200, 255, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.music-compact-tile-card:hover .compact-tile-hover-play {
+  opacity: 1;
+}
+
+/* Metadata Text */
+.compact-tile-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.compact-tile-title {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+.compact-tile-artist {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.55);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+/* Action Play Button on right (optional) */
+.compact-tile-action-play {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #c8ff00;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  opacity: 0;
+  transform: scale(0.85);
+  transition: all 0.2s ease;
+}
+
+.music-compact-tile-card:hover .compact-tile-action-play {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* ========================================================
+   3. SQUARE MINIMALIST CARD (Top Picks For You)
+   Clean 146x146 square poster with sleek lime hover ring
+   ======================================================== */
+.card-style-square {
+  flex: 0 0 146px;
+  width: 146px;
+  max-width: 146px;
+  min-width: 0;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.square-art-wrap {
+  position: relative;
+  width: 146px;
+  height: 146px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #0d121c;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: all 0.25s ease;
+}
+
+.card-style-square:hover .square-art-wrap {
+  border-color: rgba(200, 255, 0, 0.45);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.8), 0 0 16px rgba(200, 255, 0, 0.2);
+}
+
+.square-art-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.square-play-btn {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.85);
+  border: 1px solid rgba(200, 255, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  transform: translateY(4px);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card-style-square:hover .square-play-btn {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.square-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.square-title {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  display: block;
+}
+
+.square-artist {
+  font-size: 0.74rem;
+  color: rgba(255, 255, 255, 0.55);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  display: block;
+}
+
+/* ========================================================
+   4. VINYL DISC RECORD CARD (Because You Listened)
+   Realistic circular vinyl record disc sliding out of sleeve
+   ======================================================== */
+.card-style-vinyl {
+  flex: 0 0 164px;
+  width: 164px;
+  max-width: 164px;
+  min-width: 0;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.vinyl-art-wrapper {
+  position: relative;
+  width: 140px;
+  height: 140px;
+}
+
+.vinyl-record-disc {
+  position: absolute;
+  top: 4px;
+  right: -24px;
+  width: 132px;
+  height: 132px;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, #111111 25%, #050505 50%, #151515 80%, #000000 100%);
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 1;
+}
+
+.card-style-vinyl:hover .vinyl-record-disc {
+  transform: translateX(12px) rotate(40deg);
+}
+
+.vinyl-groove-rings {
+  width: 80%;
+  height: 80%;
+  border-radius: 50%;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 0 0 6px rgba(255, 255, 255, 0.03), inset 0 0 0 12px rgba(255, 255, 255, 0.02);
+}
+
+.vinyl-center-hole {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #c8ff00;
+  border: 3px solid #000000;
+}
+
+.vinyl-sleeve-img {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  border-radius: 10px;
+  object-fit: cover;
+  display: block;
+  z-index: 2;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.vinyl-play-trigger {
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.card-style-vinyl:hover .vinyl-play-trigger {
+  opacity: 1;
+}
+
+.vinyl-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.vinyl-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vinyl-artist {
+  font-size: 0.73rem;
+  color: rgba(255, 255, 255, 0.55);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ========================================================
+   5. PANORAMA COLLECTION CARD (New Collection)
+   Wide landscape card with duotone background & angled art
+   ======================================================== */
+.collection-wide-card {
+  flex: 0 0 280px;
+  height: 128px;
+  border-radius: 20px;
+  padding: 1.1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  transition: all 0.25s ease;
+}
+
+.collection-wide-card:hover {
+  transform: translateY(-3px) scale(1.02);
+  border-color: rgba(200, 255, 0, 0.4);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.7);
+}
+
+.collection-card-left {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+  z-index: 2;
+  gap: 0.5rem;
+}
+
+.collection-card-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1.25;
+  color: #ffffff;
+  margin: 0;
+  max-width: 140px;
+}
+
+.collection-arrow-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.collection-wide-card:hover .collection-arrow-btn {
+  background: #c8ff00;
+  color: #000000;
+  transform: translateX(4px);
+}
+
+.collection-card-right {
+  width: 95px;
+  height: 95px;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transform: rotate(3deg);
+  transition: transform 0.3s ease;
+}
+
+.collection-wide-card:hover .collection-card-right {
+  transform: rotate(0deg) scale(1.06);
+}
+
+.collection-artist-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.collection-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ========================================================
+   6. AURA MUSIC CARD (Discover Weekly)
+   Minimalist 146x146 square matching Movie Mode
+   ======================================================== */
+.card-style-aura {
+  flex: 0 0 146px;
+  width: 146px;
+  max-width: 146px;
+  min-width: 0;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.aura-art-wrap {
+  position: relative;
+  width: 146px;
+  height: 146px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #0d121c;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: all 0.25s ease;
+}
+
+.card-style-aura:hover .aura-art-wrap {
+  border-color: rgba(200, 255, 0, 0.45);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.8), 0 0 16px rgba(200, 255, 0, 0.2);
+  transform: translateY(-2px);
+}
+
+.aura-art-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.aura-play-btn {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.85);
+  border: 1px solid rgba(200, 255, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  transform: translateY(4px);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card-style-aura:hover .aura-play-btn {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.aura-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.aura-title {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  display: block;
+}
+
+.aura-artist {
+  font-size: 0.74rem;
+  color: rgba(255, 255, 255, 0.55);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  display: block;
+}
+
+/* ========================================================
+   7. CINEMATIC VIDEO CARD (Video Songs)
+   16:9 widescreen video song card with cinematic overlay
+   ======================================================== */
+.card-style-cinematic {
+  flex: 0 0 240px;
+  width: 240px;
+  max-width: 240px;
+  min-width: 0;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  transition: transform 0.2s ease;
+}
+
+.card-style-cinematic:hover {
+  transform: translateY(-4px);
+}
+
+.cinematic-thumb-wrap {
+  position: relative;
+  width: 240px;
+  aspect-ratio: 16 / 9;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #0a0a0a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
+}
+
+.cinematic-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.cinematic-play-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.1) 60%, transparent 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cinematic-play-circle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.75);
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.7);
+  transition: all 0.25s ease;
+}
+
+.card-style-cinematic:hover .cinematic-play-circle {
+  background: #c8ff00;
+  border-color: #c8ff00;
+  transform: scale(1.1);
+}
+
+.card-style-cinematic:hover .cinematic-play-circle svg {
+  fill: #000000 !important;
+  color: #000000 !important;
+}
+
+.cinematic-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.cinematic-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cinematic-artist {
+  font-size: 0.74rem;
+  color: rgba(255, 255, 255, 0.55);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ========================================================
+   8. PORTRAIT GLASS CARD (Secondary Language Melodies)
+   Tall 4:5 vertical poster card with glass highlights
+   ======================================================== */
+.card-style-portrait {
+  flex: 0 0 144px;
+  width: 144px;
+  max-width: 144px;
+  min-width: 0;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.portrait-art-wrap {
+  position: relative;
+  width: 144px;
+  aspect-ratio: 4 / 5;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #0e1624;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
+}
+
+.portrait-art-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.portrait-play-btn {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.8);
+  border: 1px solid rgba(0, 229, 255, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card-style-portrait:hover .portrait-play-btn {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.portrait-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.portrait-title {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  display: block;
+}
+
+.portrait-artist {
+  font-size: 0.73rem;
+  color: rgba(255, 255, 255, 0.55);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  display: block;
+}
+
+/* ========================================================
+   9. CURATED MUSIC CARD (Infinite Genre Batches)
+   Square card with subtle accent color line
+   ======================================================== */
+.card-style-curated {
+  flex: 0 0 144px;
+  width: 144px;
+  max-width: 144px;
+  min-width: 0;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.curated-art-wrap {
+  position: relative;
+  width: 144px;
+  height: 144px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #111;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.curated-art-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.curated-play-btn {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: all 0.2s ease;
+}
+
+.card-style-curated:hover .curated-play-btn {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.curated-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.curated-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+}
+
+.curated-vertical-bar {
+  width: 3px;
+  height: 12px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.curated-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.curated-artist {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-left: 9px;
+}

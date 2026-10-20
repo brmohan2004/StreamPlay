@@ -17,6 +17,7 @@ import { VideoPlayerModal } from './components/VideoPlayerModal';
 import { MusicPlayerModal } from './components/MusicPlayerModal';
 import { AudioPlayerBar } from './components/AudioPlayerBar';
 import { FilterSheetModal } from './components/FilterSheetModal';
+import { MusicFilterSheetModal } from './components/MusicFilterSheetModal';
 import { PartyProvider } from './context/PartyContext';
 import { PartyRoomModal } from './components/PartyRoomModal';
 import { FloatingReactionLayer } from './components/FloatingReactionLayer';
@@ -240,8 +241,8 @@ export function AppContent() {
         {/* Full-Screen Immersive Music Player Modal */}
         <MusicPlayerModal />
 
-        {/* Slide-Up Filter & OTT Bottom Sheet Modal */}
-        <FilterSheetModal />
+        {/* Slide-Up Filter & OTT Bottom Sheet Modals (Separate for Movie & Music Modes) */}
+        {appMode === 'movies' ? <FilterSheetModal /> : <MusicFilterSheetModal />}
 
         {/* Friends Mode Watch & Listen Party Modal */}
         <PartyRoomModal />

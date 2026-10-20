@@ -12,7 +12,6 @@ import {
   VolumeX,
   Maximize2,
   Minimize2,
-  Server,
   Settings,
   Languages,
   Activity,
@@ -60,7 +59,6 @@ export const CustomVideoPlayer: React.FC = () => {
   const videoWatchdogRef = useRef<VideoBufferWatchdog | null>(null);
 
   // Menus & Modals
-  const [showServerMenu, setShowServerMenu] = useState(false);
   const [showQualityMenu, setShowQualityMenu] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [showHealthModal, setShowHealthModal] = useState(false);
@@ -118,7 +116,7 @@ export const CustomVideoPlayer: React.FC = () => {
       setShowControls(true);
       clearTimeout(timer);
       timer = setTimeout(() => {
-        if (!showServerMenu && !showQualityMenu && !showLangMenu && !showHealthModal && !showEpisodeDrawer) {
+        if (!showQualityMenu && !showLangMenu && !showHealthModal && !showEpisodeDrawer) {
           setShowControls(false);
         }
       }, 3500);
@@ -133,7 +131,7 @@ export const CustomVideoPlayer: React.FC = () => {
       window.removeEventListener('mousemove', resetTimer);
       window.removeEventListener('touchstart', resetTimer);
     };
-  }, [isVideoModalOpen, showServerMenu, showQualityMenu, showLangMenu, showHealthModal, showEpisodeDrawer]);
+  }, [isVideoModalOpen, showQualityMenu, showLangMenu, showHealthModal, showEpisodeDrawer]);
 
   // Connection Health Heartbeat
   useEffect(() => {
@@ -273,7 +271,7 @@ export const CustomVideoPlayer: React.FC = () => {
           <div className="stream-loading-curtain">
             <div className="stream-glow-spinner" />
             <div className="stream-loading-info">
-              <p className="loading-server-title">Connecting to {STREAMING_SERVERS[videoProviderIndex % STREAMING_SERVERS.length]?.name || 'Fast Streaming Server'}...</p>
+              <p className="loading-server-title">Connecting to stream...</p>
               <span className="loading-speed-sub">Buffering {selectedQuality} • {ping}ms</span>
             </div>
           </div>
@@ -357,9 +355,6 @@ export const CustomVideoPlayer: React.FC = () => {
                   S{activeSeason}:E{activeEpisode}
                 </span>
               )}
-              <span className="chip-badge server-chip">
-                {STREAMING_SERVERS[videoProviderIndex % STREAMING_SERVERS.length]?.name || `Mirror ${videoProviderIndex + 1}`}
-              </span>
             </div>
           </div>
         </div>
@@ -375,16 +370,6 @@ export const CustomVideoPlayer: React.FC = () => {
             <span className="health-dot-indicator green" />
             <Activity size={14} />
             <span className="health-ping-text">{ping}ms</span>
-          </button>
-
-          {/* Servers Switcher */}
-          <button
-            className={`player-tool-icon-btn ${showServerMenu ? 'active' : ''}`}
-            onClick={() => setShowServerMenu(prev => !prev)}
-            title="Switch Streaming Server"
-          >
-            <Server size={18} />
-            <span className="btn-label-hide-mobile">Servers</span>
           </button>
 
           {/* Quality Selector */}
@@ -506,45 +491,6 @@ export const CustomVideoPlayer: React.FC = () => {
 
 
       {/* 7. POPUP MODALS */}
-
-      {/* Server Selection Popup */}
-      <AnimatePresence>
-        {showServerMenu && (
-          <motion.div
-            className="player-menu-modal server-menu"
-            initial={{ opacity: 0, scale: 0.95, y: -10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: -10 }}
-          >
-            <div className="menu-modal-header">
-              <Server size={18} className="text-lime" />
-              <h4>Streaming Servers</h4>
-              <button className="menu-close-x" onClick={() => setShowServerMenu(false)}>✕</button>
-            </div>
-            <div className="menu-options-list">
-              {STREAMING_SERVERS.map((srv, idx) => (
-                <div
-                  key={idx}
-                  className={`menu-option-item ${videoProviderIndex === idx ? 'active' : ''}`}
-                  onClick={() => {
-                    setIsLoading(true);
-                    setVideoProviderIndex(idx);
-                    setShowServerMenu(false);
-                  }}
-                >
-                  <div className="option-main-text">
-                    <span className="option-title">
-                      {srv.name} {srv.isNoAds ? '🛡️ (No Ads)' : ''}
-                    </span>
-                    <span className="option-desc">{srv.specialty}</span>
-                  </div>
-                  {videoProviderIndex === idx && <Check size={18} color="#c8ff00" />}
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Quality Selection Popup */}
       <AnimatePresence>

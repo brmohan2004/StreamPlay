@@ -1,7 +1,7 @@
 import './FloatingNavBar.css';
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Home, Search, Music, Film } from 'lucide-react';
+import { Home, Search, Music, Film, RotateCcw } from 'lucide-react';
 import { useNavigation } from '../context/NavigationContext';
 
 export const FloatingNavBar: React.FC = () => {
@@ -9,14 +9,23 @@ export const FloatingNavBar: React.FC = () => {
     appMode,
     setAppMode,
     activeScreen,
-    setActiveScreen
+    setActiveScreen,
+    selectedOTT,
+    setSelectedOTT,
+    setActiveCategory
   } = useNavigation();
+
+  // Hide on Movie Details Screen (full-bleed immersive details view)
+  if (activeScreen === 'details') {
+    return null;
+  }
 
   const isSearchActive =
     activeScreen === 'search' ||
     activeScreen === 'movie-search' ||
     activeScreen === 'music-search';
   const isHomeActive = activeScreen === 'home';
+  const isInsideOTT = appMode === 'movies' && selectedOTT !== 'All';
 
   const handleModeSwitch = () => {
     if (appMode === 'movies') {
@@ -30,6 +39,11 @@ export const FloatingNavBar: React.FC = () => {
         setActiveScreen('movie-search');
       }
     }
+  };
+
+  const handleExitOTT = () => {
+    setSelectedOTT('All');
+    setActiveCategory('All');
   };
 
   const handleSearchClick = () => {
@@ -59,8 +73,20 @@ export const FloatingNavBar: React.FC = () => {
           {isHomeActive && <span className="nav-glow-dot" />}
         </button>
 
-        {/* 2. Movie and Music Switch (Center Circular Button) */}
-        {appMode === 'movies' ? (
+        {/* 2. Center Button: Changes to "Exit OTT" when inside any OTT, otherwise Mode Switch */}
+        {isInsideOTT ? (
+          <motion.button
+            className="floating-nav-btn big-circular-mode-btn exit-ott-mode-btn"
+            whileHover={{ scale: 1.12 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={handleExitOTT}
+            aria-label={`Exit ${selectedOTT}`}
+            title={`Exit ${selectedOTT} & Return to All Movies`}
+          >
+            <RotateCcw size={21} strokeWidth={2.6} />
+            <span className="mode-btn-glow-ring ott-exit-ring" />
+          </motion.button>
+        ) : appMode === 'movies' ? (
           <motion.button
             className="floating-nav-btn big-circular-mode-btn to-music"
             whileHover={{ scale: 1.12 }}

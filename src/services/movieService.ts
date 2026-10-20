@@ -61,22 +61,65 @@ export const OTT_PLATFORMS: OTTMetadata[] = [
   }
 ];
 
-let cachedTopMovies: MovieItem[] | null = null;
+let cachedTopMovies: { dateKey: string; items: MovieItem[] } | null = null;
 let cachedTopSeries: MovieItem[] | null = null;
 const ottCache = new Map<string, MovieItem[]>();
 
+/**
+ * Returns daily-varying Trending Movies.
+ * Rotates and curates dynamically based on the current day so the trending lineup
+ * changes daily rather than staying static for a month.
+ */
 export async function fetchTopMovies(): Promise<MovieItem[]> {
-  if (cachedTopMovies && cachedTopMovies.length > 0) {
-    return cachedTopMovies;
+  const todayKey = new Date().toISOString().slice(0, 10);
+  if (cachedTopMovies && cachedTopMovies.dateKey === todayKey && cachedTopMovies.items.length > 0) {
+    return cachedTopMovies.items;
   }
+
+  // Calculate day-of-year offset to vary daily content
+  const now = new Date();
+  const startOfYear = new Date(now.getFullYear(), 0, 0);
+  const dayOfYear = Math.floor((now.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24));
+  const dailySkip = (dayOfYear * 8) % 40;
+
+  // Daily rotating curation themes
+  const DAILY_THEMES = [
+    'Blockbuster', 'Action Thriller', 'Sci-Fi Adventure', 'Crime Drama',
+    'Mystery', 'Epic', 'Global Hits', 'Cyberpunk', 'Horror Thriller', 'Fantasy'
+  ];
+  const todayTheme = DAILY_THEMES[dayOfYear % DAILY_THEMES.length];
+
   try {
-    const res = await fetch(`${CINEMETA_BASE}/catalog/movie/top.json`);
-    const data = await res.json();
-    const result = (data.metas || []).map((m: any) => formatMovie(m, 'movie'));
-    if (result.length > 0) cachedTopMovies = result;
+    const [topBaseRes, themeSearch] = await Promise.all([
+      fetch(`${CINEMETA_BASE}/catalog/movie/top${dailySkip > 0 ? `/skip=${dailySkip}` : ''}.json`)
+        .then(r => r.json())
+        .catch(() => ({ metas: [] })),
+      searchMoviesAndShows(todayTheme).catch(() => [])
+    ]);
+
+    const baseMovies = (topBaseRes.metas || []).map((m: any) => formatMovie(m, 'movie'));
+    const themeMovies = themeSearch.filter(m => m.type !== 'series');
+
+    // Deterministic daily rotation so order changes each day
+    const combined = [...themeMovies.slice(0, 5), ...baseMovies];
+    const seen = new Set<string>();
+    const deduplicated = combined.filter(m => {
+      if (!m.id || seen.has(m.id)) return false;
+      seen.add(m.id);
+      return true;
+    });
+
+    // Deterministic daily permutation
+    const shift = dayOfYear % Math.max(1, deduplicated.length);
+    const dailyVarying = [...deduplicated.slice(shift), ...deduplicated.slice(0, shift)];
+
+    const result = dailyVarying.length > 0 ? dailyVarying : baseMovies;
+    if (result.length > 0) {
+      cachedTopMovies = { dateKey: todayKey, items: result };
+    }
     return result;
   } catch (err) {
-    console.error('Failed to fetch top movies:', err);
+    console.error('Failed to fetch daily trending movies:', err);
     return [];
   }
 }
@@ -291,9 +334,16 @@ export async function fetchMovieDetails(id: string, type: 'movie' | 'series'): P
       imdbRating: m.imdbRating || '8.5',
       genres: m.genres || ['Action', 'Drama'],
       cast: m.cast || [],
-      director: m.director || [],
       runtime: m.runtime || '',
-      trailer: m.trailerStreams?.[0]?.ytId ? `https://www.youtube.com/embed/${m.trailerStreams[0].ytId}` : undefined,
+      trailer: m.trailerStreams?.[0]?.ytId
+        ? `https://www.youtube.com/embed/${m.trailerStreams[0].ytId}`
+        : m.trailers?.[0]?.source
+        ? `https://www.youtube.com/embed/${m.trailers[0].source}`
+        : m.trailer_yt_id
+        ? `https://www.youtube.com/embed/${m.trailer_yt_id}`
+        : typeof m.trailer === 'string' && m.trailer.length > 5
+        ? (m.trailer.startsWith('http') ? m.trailer : `https://www.youtube.com/embed/${m.trailer}`)
+        : undefined,
       videos: (m.videos || []).map((v: any) => ({
         id: v.id || `${id}:${v.season || 1}:${v.number || v.episode || 1}`,
         name: v.name || v.title || `Episode ${v.number || v.episode || 1}`,

@@ -5,12 +5,55 @@
   z-index: 50;
   background: rgba(0, 0, 0, 0.92);
   backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0.85rem 1.25rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  transition: background 0.3s ease, border-color 0.3s ease;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease, background 0.3s ease;
+  will-change: transform, opacity;
+}
+
+/* Header is hidden while scrolled upward / at top */
+.mobile-top-header.header-scrolled-hidden {
+  transform: translateY(-100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Header smoothly slides in when user starts scrolling */
+.mobile-top-header.header-scrolled-visible {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Floating circle back button on screens with back navigation when at top */
+.floating-top-back-btn {
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(12, 16, 24, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 60;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.7);
+  transition: all 0.2s ease;
+}
+
+.floating-top-back-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.06);
 }
 
 /* In music mode, header color exactly matches the music mode content area (#101c0b) */
