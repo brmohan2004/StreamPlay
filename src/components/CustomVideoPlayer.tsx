@@ -25,7 +25,8 @@ import {
   List
 } from 'lucide-react';
 import { useMedia } from '../context/MediaContext';
-import { getStreamEmbedUrl } from '../services/movieService';
+import { getStreamEmbedUrl, STREAMING_SERVERS } from '../services/movieService';
+import { VideoBufferWatchdog } from '../services/streamingWatchdog';
 
 
 export const CustomVideoPlayer: React.FC = () => {
@@ -53,6 +54,11 @@ export const CustomVideoPlayer: React.FC = () => {
   const [isLocked, setIsLocked] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Failover toast state
+  const [failoverToast, setFailoverToast] = useState<string | null>(null);
+  const failoverTimeoutRef = useRef<any>(null);
+  const videoWatchdogRef = useRef<VideoBufferWatchdog | null>(null);
+
   // Menus & Modals
   const [showServerMenu, setShowServerMenu] = useState(false);
   const [showQualityMenu, setShowQualityMenu] = useState(false);
@@ -74,14 +80,6 @@ export const CustomVideoPlayer: React.FC = () => {
   const [ping, setPing] = useState(24);
   const [bitrate, setBitrate] = useState(48.5);
   const [bufferHealth, setBufferHealth] = useState(98);
-
-  const SERVERS = [
-    { name: 'Server 1 • VidLink Pro', desc: 'Ultra HD 4K • Global CDN (Fastest)', speed: 'Fast' },
-    { name: 'Server 2 • NetMirror Cloud', desc: '1080p FHD • Multi-Audio Tracks', speed: 'High Speed' },
-    { name: 'Server 3 • 2Embed Stream', desc: 'Dual Audio • Global Subtitles', speed: 'Stable' },
-    { name: 'Server 4 • CineSrc Direct', desc: 'Low Latency • Adaptive Stream', speed: 'Direct' },
-    { name: 'Server 5 • EmbedMaster', desc: 'Backup 4K Stream', speed: 'Backup' }
-  ];
 
   const QUALITIES = [
     { label: '4K Ultra HD (2160p)', badge: 'HDR' },
@@ -156,6 +154,34 @@ export const CustomVideoPlayer: React.FC = () => {
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
+
+  // Watchdog initialization & tracking
+  useEffect(() => {
+    if (!videoWatchdogRef.current) {
+      videoWatchdogRef.current = new VideoBufferWatchdog(
+        videoProviderIndex,
+        STREAMING_SERVERS.length,
+        (newIndex) => {
+          setVideoProviderIndex(newIndex);
+          const server = STREAMING_SERVERS[newIndex];
+          setFailoverToast(`Auto-routed to fast mirror: ${server?.name || `Server ${newIndex + 1}`}`);
+          if (failoverTimeoutRef.current) clearTimeout(failoverTimeoutRef.current);
+          failoverTimeoutRef.current = setTimeout(() => {
+            setFailoverToast(null);
+          }, 3200);
+        }
+      );
+    }
+  }, [setVideoProviderIndex]);
+
+  useEffect(() => {
+    if (videoWatchdogRef.current) {
+      videoWatchdogRef.current.setServer(videoProviderIndex);
+    }
+    if (isVideoModalOpen && activeMovie) {
+      videoWatchdogRef.current?.startIframeMonitor();
+    }
+  }, [videoProviderIndex, isVideoModalOpen, activeMovie]);
 
   if (!isVideoModalOpen || !activeMovie) return null;
 
@@ -247,7 +273,7 @@ export const CustomVideoPlayer: React.FC = () => {
           <div className="stream-loading-curtain">
             <div className="stream-glow-spinner" />
             <div className="stream-loading-info">
-              <p className="loading-server-title">Connecting to {SERVERS[videoProviderIndex % SERVERS.length].name}...</p>
+              <p className="loading-server-title">Connecting to {STREAMING_SERVERS[videoProviderIndex % STREAMING_SERVERS.length]?.name || 'Fast Streaming Server'}...</p>
               <span className="loading-speed-sub">Buffering {selectedQuality} • {ping}ms</span>
             </div>
           </div>
@@ -261,7 +287,10 @@ export const CustomVideoPlayer: React.FC = () => {
           title={activeMovie.name}
           allowFullScreen
           allow="autoplay; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-          onLoad={() => setIsLoading(false)}
+          onLoad={() => {
+            setIsLoading(false);
+            videoWatchdogRef.current?.markPlaybackStarted();
+          }}
         />
 
       </div>
@@ -278,6 +307,22 @@ export const CustomVideoPlayer: React.FC = () => {
           >
             <Zap size={18} fill="#c8ff00" color="#c8ff00" className="animate-bounce" />
             <span>2X SPEED PLAYBACK &gt;&gt;</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Auto-Failover Notification Pill */}
+      <AnimatePresence>
+        {failoverToast && (
+          <motion.div
+            className="auto-failover-pill-toast"
+            initial={{ opacity: 0, scale: 0.85, y: -20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.85, y: -20 }}
+            transition={{ duration: 0.25 }}
+          >
+            <Zap size={16} color="#c8ff00" />
+            <span>{failoverToast}</span>
           </motion.div>
         )}
       </AnimatePresence>
@@ -313,7 +358,7 @@ export const CustomVideoPlayer: React.FC = () => {
                 </span>
               )}
               <span className="chip-badge server-chip">
-                Server {videoProviderIndex + 1}
+                {STREAMING_SERVERS[videoProviderIndex % STREAMING_SERVERS.length]?.name || `Mirror ${videoProviderIndex + 1}`}
               </span>
             </div>
           </div>
@@ -477,10 +522,10 @@ export const CustomVideoPlayer: React.FC = () => {
               <button className="menu-close-x" onClick={() => setShowServerMenu(false)}>✕</button>
             </div>
             <div className="menu-options-list">
-              {SERVERS.map((srv, idx) => (
+              {STREAMING_SERVERS.map((srv, idx) => (
                 <div
                   key={idx}
-                  className={`menu-option-item ${videoProviderIndex % SERVERS.length === idx ? 'active' : ''}`}
+                  className={`menu-option-item ${videoProviderIndex === idx ? 'active' : ''}`}
                   onClick={() => {
                     setIsLoading(true);
                     setVideoProviderIndex(idx);
@@ -488,10 +533,12 @@ export const CustomVideoPlayer: React.FC = () => {
                   }}
                 >
                   <div className="option-main-text">
-                    <span className="option-title">{srv.name}</span>
-                    <span className="option-desc">{srv.desc}</span>
+                    <span className="option-title">
+                      {srv.name} {srv.isNoAds ? '🛡️ (No Ads)' : ''}
+                    </span>
+                    <span className="option-desc">{srv.specialty}</span>
                   </div>
-                  {videoProviderIndex % SERVERS.length === idx && <Check size={18} color="#c8ff00" />}
+                  {videoProviderIndex === idx && <Check size={18} color="#c8ff00" />}
                 </div>
               ))}
             </div>

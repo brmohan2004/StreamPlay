@@ -37,6 +37,7 @@ export interface SongItem {
   duration?: number;
   image: string;
   streamUrl: string;
+  backupStreamUrls?: string[]; // Multi-CDN failover audio mirrors
   videoUrl?: string; // YouTube / MP4 video stream URL for video song mode
   isVideo?: boolean;
   language?: string;

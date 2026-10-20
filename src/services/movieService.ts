@@ -17,7 +17,7 @@ export const OTT_PLATFORMS: OTTMetadata[] = [
     tagline: 'Unlimited original series & films',
     accentColor: '#E50914',
     logoText: 'NETFLIX',
-    popularQueries: ['Stranger Things', 'Squid Game', 'Wednesday', 'Money Heist', 'Extraction']
+    popularQueries: ['Stranger Things', 'Squid Game', 'Wednesday', 'Money Heist', 'Extraction', 'The Witcher', 'Red Notice']
   },
   {
     brand: 'JioHotstar',
@@ -25,7 +25,7 @@ export const OTT_PLATFORMS: OTTMetadata[] = [
     tagline: 'Disney, Marvel, HBO & Indian Blockbusters',
     accentColor: '#1288FF',
     logoText: 'JIOHOTSTAR',
-    popularQueries: ['Loki', 'The Mandalorian', 'Marvel', 'House of the Dragon', 'Aarya']
+    popularQueries: ['Loki', 'The Mandalorian', 'Marvel', 'House of the Dragon', 'Aarya', 'Special Ops', 'Brahmastra']
   },
   {
     brand: 'Prime Video',
@@ -33,7 +33,7 @@ export const OTT_PLATFORMS: OTTMetadata[] = [
     tagline: 'Amazon Originals & Global Hits',
     accentColor: '#00A8E1',
     logoText: 'PRIME',
-    popularQueries: ['The Boys', 'Reacher', 'Fallout', 'Mirzapur', 'Panchayat']
+    popularQueries: ['The Boys', 'Reacher', 'Fallout', 'Mirzapur', 'Panchayat', 'The Rings of Power', 'Family Man']
   },
   {
     brand: 'Apple TV+',
@@ -41,7 +41,7 @@ export const OTT_PLATFORMS: OTTMetadata[] = [
     tagline: 'Award-winning Apple Originals',
     accentColor: '#FFFFFF',
     logoText: 'APPLE TV+',
-    popularQueries: ['Severance', 'Ted Lasso', 'Foundation', 'Slow Horses', 'Silu']
+    popularQueries: ['Severance', 'Ted Lasso', 'Foundation', 'Slow Horses', 'Silo', 'Morning Show', 'Ted Lasso']
   },
   {
     brand: 'Sony LIV',
@@ -49,7 +49,7 @@ export const OTT_PLATFORMS: OTTMetadata[] = [
     tagline: 'Original series & Premium sports drama',
     accentColor: '#FD7E14',
     logoText: 'SONYLIV',
-    popularQueries: ['Scam 1992', 'Rocket Boys', 'Maharani', 'Gullak', 'Undekhi']
+    popularQueries: ['Scam 1992', 'Rocket Boys', 'Maharani', 'Gullak', 'Undekhi', 'Gullak', 'Tabbar']
   },
   {
     brand: 'Zee5',
@@ -57,7 +57,7 @@ export const OTT_PLATFORMS: OTTMetadata[] = [
     tagline: 'Blockbuster regional cinema & originals',
     accentColor: '#A855F7',
     logoText: 'ZEE5',
-    popularQueries: ['Taj', 'Manoj Bajpayee', 'Sunflower', 'Saas Bahu Achaar']
+    popularQueries: ['Taj', 'Manoj Bajpayee', 'Sunflower', 'Saas Bahu Achaar', 'Silence', 'Ghoomketu']
   }
 ];
 
@@ -102,8 +102,12 @@ export async function searchMoviesAndShows(query: string): Promise<MovieItem[]> 
   if (!trimmed) return [];
   try {
     const [movieRes, seriesRes] = await Promise.all([
-      fetch(`${CINEMETA_BASE}/catalog/movie/top/search=${encodeURIComponent(trimmed)}.json`).then(r => r.json()).catch(() => ({ metas: [] })),
-      fetch(`${CINEMETA_BASE}/catalog/series/top/search=${encodeURIComponent(trimmed)}.json`).then(r => r.json()).catch(() => ({ metas: [] }))
+      fetch(`${CINEMETA_BASE}/catalog/movie/top/search=${encodeURIComponent(trimmed)}.json`)
+        .then(r => r.json())
+        .catch(() => ({ metas: [] })),
+      fetch(`${CINEMETA_BASE}/catalog/series/top/search=${encodeURIComponent(trimmed)}.json`)
+        .then(r => r.json())
+        .catch(() => ({ metas: [] }))
     ]);
 
     const movies = (movieRes.metas || []).map((m: any) => formatMovie(m, 'movie'));
@@ -131,7 +135,6 @@ export async function fetchByOTT(brand: OTTBrand): Promise<MovieItem[]> {
   if (!platform) return [];
 
   try {
-    // Run all OTT popular queries in parallel rather than sequentially
     const queryResults = await Promise.all(
       platform.popularQueries.map(async q => {
         const items = await searchMoviesAndShows(q);
@@ -171,40 +174,97 @@ function formatMovie(item: any, type: 'movie' | 'series'): MovieItem {
 }
 
 export async function fetchGenreMovies(genre: string): Promise<MovieItem[]> {
+  return fetchPagedGenreMovies(genre, 0);
+}
+
+export async function fetchPagedGenreMovies(genre: string, skip = 0): Promise<MovieItem[]> {
   try {
-    const res = await fetch(`${CINEMETA_BASE}/catalog/movie/top/genre=${encodeURIComponent(genre)}.json`);
+    const skipSuffix = skip > 0 ? `/skip=${skip}.json` : '.json';
+    const res = await fetch(`${CINEMETA_BASE}/catalog/movie/top/genre=${encodeURIComponent(genre)}${skipSuffix}`);
     const data = await res.json();
     return (data.metas || []).map((m: any) => formatMovie(m, 'movie'));
   } catch (err) {
-    console.error(`Failed to fetch genre ${genre}:`, err);
+    console.error(`Failed to fetch genre ${genre} skip ${skip}:`, err);
     return [];
   }
 }
 
-export async function fetchLanguageMovies(language: string): Promise<MovieItem[]> {
-  const languageKeywords: Record<string, string[]> = {
-    Tamil: ['Leo', 'Jailer', 'Vikram', 'Ponniyin Selvan', 'Master'],
-    Hindi: ['Jawan', 'Animal', 'Pathaan', 'Stree', 'Fighter'],
-    Telugu: ['RRR', 'Salaar', 'Pushpa', 'Kalki', 'Devara'],
-    Malayalam: ['Manjummel Boys', 'Aadujeevitham', 'Aavesham', 'Premalu'],
-    Kannada: ['KGF', 'Kantara', 'Charlie 777', 'Kantara'],
-    English: ['Oppenheimer', 'Dune', 'Avatar', 'Interstellar', 'Batman'],
-    Korean: ['Parasite', 'Squid Game', 'Train to Busan', 'Oldboy']
-  };
+// === Rich Regional Cinema Seed Bank (30+ Titles per Language) ===
+export const MOVIE_LANGUAGE_SEEDS: Record<string, string[]> = {
+  Tamil: [
+    'Leo', 'Jailer', 'Vikram', 'Ponniyin Selvan', 'Master',
+    'Kaithi', 'Mankatha', 'Theri', 'Petta', 'Doctor',
+    'Thuppakki', 'Kaththi', 'Sivaji', 'Enthiran', 'Ghilli',
+    'Asuran', 'Karnan', 'Vada Chennai', 'Soorarai Pottru', 'Jai Bhim',
+    'Maanagaram', 'Vikram Vedha', 'Super Deluxe', 'Pizza', 'Jigarthanda',
+    'Kadaisi Vivasayi', 'Gargi', 'Chithha', 'Maharaja', 'Garudan',
+    'Kottukkaali', 'Lover', 'Parking', 'Vaathi', 'Ayalaan'
+  ],
+  Telugu: [
+    'RRR', 'Salaar', 'Pushpa', 'Kalki', 'Devara',
+    'Baahubali', 'Rangasthalam', 'Ala Vaikunthapurramuloo', 'Magadheera', 'Eega',
+    'Jersey', 'Saripodhaa Sanivaaram', 'HanuMan', 'Dasara', 'Waltair Veerayya'
+  ],
+  Hindi: [
+    'Jawan', 'Animal', 'Pathaan', 'Stree', 'Fighter',
+    'Dangal', '3 Idiots', 'Sholay', 'Gangs of Wasseypur', 'Drishyam',
+    'Brahmastra', 'Dunki', 'Tiger 3', 'Article 370', 'Kill'
+  ],
+  Malayalam: [
+    'Manjummel Boys', 'Aadujeevitham', 'Aavesham', 'Premalu', 'Bramayugam',
+    'Drishyam', 'Lucifer', 'Kumbalangi Nights', 'Minnal Murali', 'RDX'
+  ],
+  Kannada: [
+    'KGF', 'Kantara', '777 Charlie', 'Vikrant Rona', 'Ugramm',
+    'Sapta Sagaradaache Ello', 'Kabzaa', 'Tagaru'
+  ],
+  English: [
+    'Oppenheimer', 'Dune', 'Avatar', 'Interstellar', 'The Batman',
+    'Inception', 'The Dark Knight', 'Gladiator', 'Avengers', 'Spider-Man'
+  ],
+  Korean: [
+    'Parasite', 'Squid Game', 'Train to Busan', 'Oldboy', 'The Roundup',
+    'Exhuma', 'Memories of Murder', 'I Saw the Devil'
+  ]
+};
 
-  const keywords = languageKeywords[language] || [language, 'Cinema'];
-  const results: MovieItem[] = [];
+/**
+ * Dynamically fetches language movies with deep multi-query pagination.
+ * Avoids small 3-5 item caps by querying 6 seeds per batch and aggregating deduplicated titles.
+ */
+export async function fetchInfiniteLanguageMovies(
+  language: string,
+  batchIndex = 0,
+  limit = 20
+): Promise<MovieItem[]> {
+  const seeds = MOVIE_LANGUAGE_SEEDS[language] || [language, `${language} Blockbuster`, `${language} Cinema`];
+  const startIndex = (batchIndex * 6) % seeds.length;
+  const currentSeeds = seeds.slice(startIndex, startIndex + 6);
 
-  for (const q of keywords.slice(0, 3)) {
-    const list = await searchMoviesAndShows(q);
-    for (const item of list) {
-      if (!results.some(r => r.id === item.id)) {
-        results.push(item);
+  const queryResults = await Promise.all(
+    currentSeeds.map(async q => {
+      const list = await searchMoviesAndShows(q);
+      return list.slice(0, 3);
+    })
+  );
+
+  const flatList: MovieItem[] = [];
+  const seenIds = new Set<string>();
+
+  for (const group of queryResults) {
+    for (const movie of group) {
+      if (!seenIds.has(movie.id)) {
+        seenIds.add(movie.id);
+        flatList.push(movie);
       }
     }
   }
 
-  return results.length ? results : fetchGenreMovies('Action');
+  return flatList.slice(0, limit);
+}
+
+export async function fetchLanguageMovies(language: string): Promise<MovieItem[]> {
+  return fetchInfiniteLanguageMovies(language, 0, 25);
 }
 
 export async function fetchMovieDetails(id: string, type: 'movie' | 'series'): Promise<MovieItem> {
@@ -256,6 +316,348 @@ export async function fetchMovieDetails(id: string, type: 'movie' | 'series'): P
   }
 }
 
+// === Complete 30-Server Video Engine Registry ===
+export interface StreamingServerMeta {
+  id: number;
+  name: string;
+  isNoAds: boolean;
+  specialty: string;
+  getUrl: (cleanId: string, rawId: string, type: 'movie' | 'series', season: number, episode: number) => string;
+}
+
+export const STREAMING_SERVERS: StreamingServerMeta[] = [
+  // 1. Cinezo (No Ads)
+  {
+    id: 0,
+    name: 'Cinezo (No Ads)',
+    isNoAds: true,
+    specialty: 'High-speed zero-buffer CDN',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://cinezo.net/embed/tv/${id}/${s}/${e}`
+        : `https://cinezo.net/embed/movie/${id}`
+  },
+  // 2. CineSrc (No Ads)
+  {
+    id: 1,
+    name: 'CineSrc (No Ads)',
+    isNoAds: true,
+    specialty: 'Direct HLS 1080p stream',
+    getUrl: (_, rawId, type, s, e) =>
+      type === 'series'
+        ? `https://cinesrc.st/embed/tv/${rawId}/${s}/${e}`
+        : `https://cinesrc.st/embed/movie/${rawId}`
+  },
+  // 3. PeeStream (No Ads)
+  {
+    id: 2,
+    name: 'PeeStream (No Ads)',
+    isNoAds: true,
+    specialty: 'Fast zero-ad mirror',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://peestream.net/embed/tv/${id}/${s}/${e}`
+        : `https://peestream.net/embed/movie/${id}`
+  },
+  // 4. FlaxMovies (No Ads)
+  {
+    id: 3,
+    name: 'FlaxMovies (No Ads)',
+    isNoAds: true,
+    specialty: 'Clean player, responsive',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://flaxmovies.site/embed/tv/${id}/${s}/${e}`
+        : `https://flaxmovies.site/embed/movie/${id}`
+  },
+  // 5. MoviesAPI (No Ads)
+  {
+    id: 4,
+    name: 'MoviesAPI (No Ads)',
+    isNoAds: true,
+    specialty: 'Multi-resolution streaming',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://moviesapi.club/tv/${id}-${s}-${e}`
+        : `https://moviesapi.club/movie/${id}`
+  },
+  // 6. VidLink
+  {
+    id: 5,
+    name: 'VidLink',
+    isNoAds: false,
+    specialty: '4K Ultra HD mirror',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://vidlink.pro/tv/${id}/${s}/${e}`
+        : `https://vidlink.pro/movie/${id}`
+  },
+  // 7. VidSrc Embed
+  {
+    id: 6,
+    name: 'VidSrc Embed',
+    isNoAds: false,
+    specialty: 'Massive global catalog',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://vidsrc.xyz/embed/tv/${id}/${s}/${e}`
+        : `https://vidsrc.xyz/embed/movie/${id}`
+  },
+  // 8. VidEasy
+  {
+    id: 7,
+    name: 'VidEasy',
+    isNoAds: false,
+    specialty: 'Lightweight HTML5 stream',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://videasy.net/embed/tv/${id}/${s}/${e}`
+        : `https://videasy.net/embed/movie/${id}`
+  },
+  // 9. 111Movies
+  {
+    id: 8,
+    name: '111Movies',
+    isNoAds: false,
+    specialty: 'Regional Indian & Asian cinema',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://111movies.com/tv/${id}/${s}/${e}`
+        : `https://111movies.com/movie/${id}`
+  },
+  // 10. VidZee
+  {
+    id: 9,
+    name: 'VidZee',
+    isNoAds: false,
+    specialty: 'Clean player controls',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://vidzee.online/embed/tv/${id}/${s}/${e}`
+        : `https://vidzee.online/embed/movie/${id}`
+  },
+  // 11. VidSrc
+  {
+    id: 10,
+    name: 'VidSrc',
+    isNoAds: false,
+    specialty: 'Reliable classic origin',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://vidsrc.me/embed/tv?imdb=${id}&season=${s}&episode=${e}`
+        : `https://vidsrc.me/embed/movie?imdb=${id}`
+  },
+  // 12. 2Embed
+  {
+    id: 11,
+    name: '2Embed',
+    isNoAds: false,
+    specialty: 'Multi-audio and multi-subtitles',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://2embed.cc/embedtv/${id}&s=${s}&e=${e}`
+        : `https://2embed.cc/embed/${id}`
+  },
+  // 13. Mapple
+  {
+    id: 12,
+    name: 'Mapple',
+    isNoAds: false,
+    specialty: 'Mobile-first low bandwidth',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://mapple.tv/embed/tv/${id}/${s}/${e}`
+        : `https://mapple.tv/embed/movie/${id}`
+  },
+  // 14. PrimeSrc
+  {
+    id: 13,
+    name: 'PrimeSrc',
+    isNoAds: false,
+    specialty: 'Prime & Netflix mirror proxy',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://primesrc.net/embed/tv/${id}/${s}/${e}`
+        : `https://primesrc.net/embed/movie/${id}`
+  },
+  // 15. MultiEmbed
+  {
+    id: 14,
+    name: 'MultiEmbed',
+    isNoAds: false,
+    specialty: 'Dynamic auto-stream selector',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://multiembed.mov/?video_id=${id}&s=${s}&e=${e}`
+        : `https://multiembed.mov/?video_id=${id}`
+  },
+  // 16. AutoEmbed
+  {
+    id: 15,
+    name: 'AutoEmbed',
+    isNoAds: false,
+    specialty: 'Instant load buffer',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://player.autoembed.cc/embed/tv/${id}/${s}/${e}`
+        : `https://player.autoembed.cc/embed/movie/${id}`
+  },
+  // 17. VixSrc
+  {
+    id: 16,
+    name: 'VixSrc',
+    isNoAds: false,
+    specialty: 'High-bitrate audio & video',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://vixsrc.to/embed/tv/${id}/${s}/${e}`
+        : `https://vixsrc.to/embed/movie/${id}`
+  },
+  // 18. VidLove
+  {
+    id: 17,
+    name: 'VidLove',
+    isNoAds: false,
+    specialty: 'Stable European CDN nodes',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://vidlove.stream/embed/tv/${id}/${s}/${e}`
+        : `https://vidlove.stream/embed/movie/${id}`
+  },
+  // 19. VidFast
+  {
+    id: 18,
+    name: 'VidFast',
+    isNoAds: false,
+    specialty: 'Low-latency Asian CDN nodes',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://vidfast.stream/embed/tv/${id}/${s}/${e}`
+        : `https://vidfast.stream/embed/movie/${id}`
+  },
+  // 20. Filmu
+  {
+    id: 19,
+    name: 'Filmu',
+    isNoAds: false,
+    specialty: 'Bollywood & Kollywood fast cache',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://filmu.stream/embed/tv/${id}/${s}/${e}`
+        : `https://filmu.stream/embed/movie/${id}`
+  },
+  // 21. VidCore
+  {
+    id: 20,
+    name: 'VidCore',
+    isNoAds: false,
+    specialty: 'Core backbone mirror',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://vidcore.stream/embed/tv/${id}/${s}/${e}`
+        : `https://vidcore.stream/embed/movie/${id}`
+  },
+  // 22. VAPlayer
+  {
+    id: 21,
+    name: 'VAPlayer',
+    isNoAds: false,
+    specialty: 'Smooth HTML5 pipeline',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://vaplayer.stream/embed/tv/${id}/${s}/${e}`
+        : `https://vaplayer.stream/embed/movie/${id}`
+  },
+  // 23. Vares
+  {
+    id: 22,
+    name: 'Vares',
+    isNoAds: false,
+    specialty: 'Fast reverse proxy',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://vares.stream/embed/tv/${id}/${s}/${e}`
+        : `https://vares.stream/embed/movie/${id}`
+  },
+  // 24. VidKing
+  {
+    id: 23,
+    name: 'VidKing',
+    isNoAds: false,
+    specialty: 'High availability cluster',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://vidking.stream/embed/tv/${id}/${s}/${e}`
+        : `https://vidking.stream/embed/movie/${id}`
+  },
+  // 25. VidBolt
+  {
+    id: 24,
+    name: 'VidBolt',
+    isNoAds: false,
+    specialty: 'Lightning fast start time',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://vidbolt.stream/embed/tv/${id}/${s}/${e}`
+        : `https://vidbolt.stream/embed/movie/${id}`
+  },
+  // 26. VidNest
+  {
+    id: 25,
+    name: 'VidNest',
+    isNoAds: false,
+    specialty: 'Ad-free edge cache',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://vidnest.stream/embed/tv/${id}/${s}/${e}`
+        : `https://vidnest.stream/embed/movie/${id}`
+  },
+  // 27. VidSrc.su
+  {
+    id: 26,
+    name: 'VidSrc.su',
+    isNoAds: false,
+    specialty: 'Dedicated high-bandwidth node',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://vidsrc.su/embed/tv/${id}/${s}/${e}`
+        : `https://vidsrc.su/embed/movie/${id}`
+  },
+  // 28. VidGod
+  {
+    id: 27,
+    name: 'VidGod',
+    isNoAds: false,
+    specialty: 'Multi-source dynamic fallback',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://vidgod.stream/embed/tv/${id}/${s}/${e}`
+        : `https://vidgod.stream/embed/movie/${id}`
+  },
+  // 29. VidSrc.me
+  {
+    id: 28,
+    name: 'VidSrc.me',
+    isNoAds: false,
+    specialty: 'Direct mirror with episode router',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://vidsrc.me/embed/${id}/${s}-${e}`
+        : `https://vidsrc.me/embed/${id}`
+  },
+  // 30. 1Embed
+  {
+    id: 29,
+    name: '1Embed',
+    isNoAds: false,
+    specialty: 'Universal emergency fallback',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://1embed.to/embed/${id}/${s}/${e}`
+        : `https://1embed.to/embed/${id}`
+  }
+];
+
 export function getStreamEmbedUrl(
   id: string,
   type: 'movie' | 'series',
@@ -266,34 +668,7 @@ export function getStreamEmbedUrl(
   const cleanId = id.trim();
   const rawId = cleanId.replace('tt', '');
 
-  // Multi-source clean streaming providers
-  const providers = [
-    // Server 1: VidLink (Ultra HD Fast CDN)
-    type === 'series'
-      ? `https://vidlink.pro/tv/${cleanId}/${season}/${episode}`
-      : `https://vidlink.pro/movie/${cleanId}`,
-
-    // Server 2: NetMirror / SmashyStream
-    type === 'series'
-      ? `https://player.smashy.stream/tv/${cleanId}?s=${season}&e=${episode}`
-      : `https://player.smashy.stream/movie/${cleanId}`,
-
-    // Server 3: 2Embed (Multi-Audio & Subs)
-    type === 'series'
-      ? `https://2embed.cc/embedtv/${cleanId}&s=${season}&e=${episode}`
-      : `https://2embed.cc/embed/${cleanId}`,
-
-    // Server 4: CineSrc Direct CDN
-    type === 'series'
-      ? `https://cinesrc.st/embed/tv/${rawId}/${season}/${episode}`
-      : `https://cinesrc.st/embed/movie/${rawId}`,
-
-    // Server 5: EmbedMaster / SuperEmbed
-    type === 'series'
-      ? `https://embedmaster.link/tv/${cleanId}/${season}/${episode}`
-      : `https://embedmaster.link/movie/${cleanId}`
-  ];
-
-  return providers[Math.abs(providerIndex) % providers.length];
+  const serverIndex = Math.abs(providerIndex) % STREAMING_SERVERS.length;
+  const server = STREAMING_SERVERS[serverIndex];
+  return server.getUrl(cleanId, rawId, type, season, episode);
 }
-

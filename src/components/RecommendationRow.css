@@ -1,0 +1,230 @@
+/* === StreamPlay Recommendation Row Styling === */
+
+.rec-row-container {
+  padding: 0.85rem 1rem;
+  margin-bottom: 0.5rem;
+  position: relative;
+}
+
+.rec-row-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.rec-row-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.rec-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.rec-ai-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(0, 210, 255, 0.15), rgba(200, 255, 0, 0.15));
+  border: 1px solid rgba(0, 210, 255, 0.35);
+  color: #00d2ff;
+}
+
+.rec-free-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(200, 255, 0, 0.12);
+  border: 1px solid rgba(200, 255, 0, 0.3);
+  color: #c8ff00;
+}
+
+.rec-row-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-display, inherit);
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: -0.2px;
+}
+
+.rec-row-title-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #00d2ff;
+}
+
+.rec-row-subtitle {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0;
+}
+
+.rec-row-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.rec-arrow-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.rec-arrow-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(0, 210, 255, 0.4);
+  color: #00d2ff;
+}
+
+.rec-row-scroll {
+  display: flex;
+  gap: 0.85rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 0.2rem 0.1rem 0.5rem 0.1rem;
+}
+
+.rec-row-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* Movie Card in Rec Row */
+.rec-movie-item {
+  position: relative;
+  flex: 0 0 135px;
+}
+
+.rec-reason-tag {
+  margin-top: 0.25rem;
+  font-size: 0.65rem;
+  color: #00d2ff;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* Music Song Card in Rec Row */
+.rec-song-card {
+  flex: 0 0 145px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  user-select: none;
+}
+
+.rec-song-art-wrap {
+  position: relative;
+  width: 145px;
+  height: 145px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #111;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.rec-song-card:hover .rec-song-art-wrap {
+  transform: translateY(-4px);
+  border-color: rgba(200, 255, 0, 0.4);
+}
+
+.rec-song-art {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.rec-song-play-btn {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #c8ff00;
+  color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transform: scale(0.8);
+  transition: all 0.2s ease;
+}
+
+.rec-song-card:hover .rec-song-play-btn {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.rec-song-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.rec-song-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rec-song-artist {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.6);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rec-song-reason {
+  font-size: 0.65rem;
+  color: #c8ff00;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.1rem;
+}

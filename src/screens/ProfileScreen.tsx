@@ -9,11 +9,15 @@ import {
   Shield,
   Smartphone,
   ChevronRight,
-  Sparkles
+  Sparkles,
+  RotateCcw,
+  Gift,
+  Cpu
 } from 'lucide-react';
 import { TopAppHeader } from '../components/TopAppHeader';
 import { useMedia } from '../context/MediaContext';
 import { useNavigation } from '../context/NavigationContext';
+import { getProfile, getTopGenres, getTopArtists, resetProfile } from '../services/recommendationTracker';
 
 export const ProfileScreen: React.FC = () => {
   const { watchLater, primaryLanguage, setPrimaryLanguage, secondaryLanguage, setSecondaryLanguage } = useMedia();
@@ -23,6 +27,19 @@ export const ProfileScreen: React.FC = () => {
   const [notifications, setNotifications] = useState(true);
   const [autoPlay, setAutoPlay] = useState(true);
   const [highBitrate, setHighBitrate] = useState(true);
+  const [recResetSuccess, setRecResetSuccess] = useState(false);
+  const [recProfile, setRecProfile] = useState(() => getProfile());
+
+  const handleResetRecommendations = () => {
+    resetProfile();
+    setRecProfile(getProfile());
+    setRecResetSuccess(true);
+    window.dispatchEvent(new CustomEvent('streamplay-rec-update'));
+    setTimeout(() => setRecResetSuccess(false), 3000);
+  };
+
+  const topGenres = getTopGenres(3);
+  const topArtists = getTopArtists(3);
 
   const availableLanguages = [
     'Tamil',
@@ -183,6 +200,65 @@ export const ProfileScreen: React.FC = () => {
               />
               <span className="slider-round" />
             </label>
+          </div>
+
+          <h3 className="group-heading">AI Recommendation Profile</h3>
+
+          {/* AI Recommendation Engine Card */}
+          <div className="rec-profile-card">
+            <div className="rec-profile-head">
+              <div className="rec-profile-title">
+                <Cpu size={18} className="text-cyan" />
+                <span>Smart Taste Profile</span>
+              </div>
+              <span className="rec-free-pill">100% FREE</span>
+            </div>
+
+            <div className="rec-stat-grid">
+              <div className="rec-stat-box">
+                <span className="rec-stat-label">Top Genres</span>
+                <span className="rec-stat-val" title={topGenres.join(', ')}>
+                  {topGenres.length > 0 ? topGenres.join(', ') : 'Learning tastes'}
+                </span>
+              </div>
+
+              <div className="rec-stat-box">
+                <span className="rec-stat-label">Top Artists</span>
+                <span className="rec-stat-val" title={topArtists.join(', ')}>
+                  {topArtists.length > 0 ? topArtists.join(', ') : 'Learning artists'}
+                </span>
+              </div>
+
+              <div className="rec-stat-box">
+                <span className="rec-stat-label">Taste Signals Logged</span>
+                <span className="rec-stat-val">
+                  {recProfile.totalInteractions} interactions
+                </span>
+              </div>
+
+              <div className="rec-stat-box">
+                <span className="rec-stat-label">Storage & Privacy</span>
+                <span className="rec-stat-val" style={{ color: '#c8ff00' }}>
+                  Local Device Only
+                </span>
+              </div>
+            </div>
+
+            <button className="rec-reset-btn" onClick={handleResetRecommendations}>
+              <RotateCcw size={14} />
+              <span>{recResetSuccess ? 'Profile Reset Complete!' : 'Reset Taste History'}</span>
+            </button>
+          </div>
+
+          {/* 100% Free Guarantee Banner */}
+          <div className="free-guarantee-card">
+            <Gift size={22} className="free-guarantee-icon" />
+            <div className="free-guarantee-text">
+              <h4>StreamPlay Free Forever</h4>
+              <p>
+                All movies, web series, songs, and 4K music videos are completely free. No subscriptions, no hidden paywalls, and no payment required ever.
+              </p>
+            </div>
           </div>
 
           {/* System & Privacy Details */}

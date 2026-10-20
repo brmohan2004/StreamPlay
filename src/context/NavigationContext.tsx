@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState } from 'react';
 import { OTTBrand } from '../types/media';
 
 export type AppMode = 'movies' | 'music';
-export type ScreenName = 'home' | 'search' | 'playlist' | 'profile' | 'watchlater' | 'details';
+export type ScreenName = 'home' | 'search' | 'movie-search' | 'music-search' | 'playlist' | 'profile' | 'watchlater' | 'details';
 
 
 interface NavigationContextType {
@@ -12,10 +12,16 @@ interface NavigationContextType {
   setActiveScreen: (screen: ScreenName) => void;
   selectedOTT: OTTBrand;
   setSelectedOTT: (brand: OTTBrand) => void;
+  selectedLanguage: string;
+  setSelectedLanguage: (lang: string) => void;
   searchQuery: string;
   setSearchQuery: (q: string) => void;
   activeCategory: string;
   setActiveCategory: (cat: string) => void;
+  isFilterSheetOpen: boolean;
+  setIsFilterSheetOpen: (open: boolean) => void;
+  openFilterSheet: () => void;
+  closeFilterSheet: () => void;
 }
 
 const NavigationContext = createContext<NavigationContextType | undefined>(undefined);
@@ -44,8 +50,13 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const [activeScreen, setActiveScreen] = useState<ScreenName>('home');
   const [selectedOTT, setSelectedOTT] = useState<OTTBrand>('All');
+  const [selectedLanguage, setSelectedLanguage] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
+  const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
+
+  const openFilterSheet = () => setIsFilterSheetOpen(true);
+  const closeFilterSheet = () => setIsFilterSheetOpen(false);
 
   return (
     <NavigationContext.Provider
@@ -56,10 +67,16 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         setActiveScreen,
         selectedOTT,
         setSelectedOTT,
+        selectedLanguage,
+        setSelectedLanguage,
         searchQuery,
         setSearchQuery,
         activeCategory,
-        setActiveCategory
+        setActiveCategory,
+        isFilterSheetOpen,
+        setIsFilterSheetOpen,
+        openFilterSheet,
+        closeFilterSheet
       }}
     >
       {children}

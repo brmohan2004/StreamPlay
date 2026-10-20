@@ -1,5 +1,12 @@
 import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
 import { MovieItem, SongItem } from '../types/media';
+import { logSignal } from '../services/recommendationTracker';
+import { AudioBufferWatchdog } from '../services/streamingWatchdog';
+
+// Helper: fire a custom event so RecommendationContext knows to refresh
+function notifyRecUpdate() {
+  window.dispatchEvent(new CustomEvent('streamplay-rec-update'));
+}
 
 interface MediaContextType {
   // Movie Details state
@@ -89,6 +96,19 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const openMovieDetails = (movie: MovieItem) => {
     setSelectedMovie(movie);
+    // Track: user opened movie details
+    logSignal({
+      type: 'detail_view',
+      itemId: movie.id,
+      itemType: movie.type || 'movie',
+      timestamp: Date.now(),
+      metadata: {
+        genres: movie.genres,
+        ottProvider: movie.ottProvider,
+        query: movie.name,
+      },
+    });
+    notifyRecUpdate();
   };
 
   const closeMovieDetails = () => {
@@ -145,8 +165,25 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const toggleLikeSong = (songId: string) => {
     setLikedSongs(prev => {
-      const updated = prev.includes(songId) ? prev.filter(id => id !== songId) : [...prev, songId];
+      const wasLiked = prev.includes(songId);
+      const updated = wasLiked ? prev.filter(id => id !== songId) : [...prev, songId];
       localStorage.setItem('streamplay_liked_songs', JSON.stringify(updated));
+
+      // Track: like or unlike
+      const song = currentSongRef.current;
+      logSignal({
+        type: wasLiked ? 'unlike' : 'like',
+        itemId: songId,
+        itemType: 'song',
+        timestamp: Date.now(),
+        metadata: {
+          artist: song?.artist,
+          language: song?.language,
+          query: song?.title,
+        },
+      });
+      notifyRecUpdate();
+
       return updated;
     });
   };
@@ -196,6 +233,23 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const exists = prev.some(m => m.id === movie.id);
       const updated = exists ? prev.filter(m => m.id !== movie.id) : [movie, ...prev];
       localStorage.setItem('streamplay_watchlater', JSON.stringify(updated));
+
+      // Track: add to watchlist (only on add, not remove)
+      if (!exists) {
+        logSignal({
+          type: 'add_watchlist',
+          itemId: movie.id,
+          itemType: movie.type || 'movie',
+          timestamp: Date.now(),
+          metadata: {
+            genres: movie.genres,
+            ottProvider: movie.ottProvider,
+            query: movie.name,
+          },
+        });
+        notifyRecUpdate();
+      }
+
       return updated;
     });
   };
@@ -268,9 +322,24 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       localStorage.setItem('streamplay_playlists', JSON.stringify(updated));
       return updated;
     });
+
+    // Track: song added to playlist
+    logSignal({
+      type: 'add_playlist',
+      itemId: song.id,
+      itemType: 'song',
+      timestamp: Date.now(),
+      metadata: {
+        artist: song.artist,
+        language: song.language,
+        query: song.title,
+      },
+    });
+    notifyRecUpdate();
   };
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioWatchdogRef = useRef<AudioBufferWatchdog | null>(null);
   const currentSongRef = useRef<SongItem | null>(null);
   const songQueueRef = useRef<SongItem[]>([]);
   const isShuffleRef = useRef(false);
@@ -297,6 +366,11 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const audio = new Audio();
     audioRef.current = audio;
 
+    const watchdog = new AudioBufferWatchdog(audio, [], (newUrl) => {
+      setCurrentSong(prev => prev ? { ...prev, streamUrl: newUrl } : null);
+    });
+    audioWatchdogRef.current = watchdog;
+
     audio.volume = songVolume;
 
     const handleTimeUpdate = () => {
@@ -321,6 +395,7 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     audio.addEventListener('pause', handlePause);
 
     return () => {
+      watchdog.detach();
       audio.pause();
       audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('ended', handleEnded);
@@ -340,6 +415,19 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (audioRef.current && isPlayingSong) {
       audioRef.current.pause();
     }
+    // Track: user started watching a movie/series
+    logSignal({
+      type: 'watch_start',
+      itemId: movie.id,
+      itemType: movie.type || 'movie',
+      timestamp: Date.now(),
+      metadata: {
+        genres: movie.genres,
+        ottProvider: movie.ottProvider,
+        query: movie.name,
+      },
+    });
+    notifyRecUpdate();
   };
 
   const closeMoviePlayer = () => {
@@ -361,6 +449,38 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const playSong = (song: SongItem, queue?: SongItem[]) => {
+    // Track skip/completion of previous song before switching
+    const prevSongForTracking = currentSongRef.current;
+    if (prevSongForTracking && audioRef.current && audioRef.current.duration > 0) {
+      const progress = audioRef.current.currentTime / audioRef.current.duration;
+      if (progress < 0.15 && audioRef.current.currentTime < 30) {
+        logSignal({
+          type: 'skip',
+          itemId: prevSongForTracking.id,
+          itemType: 'song',
+          timestamp: Date.now(),
+          metadata: {
+            artist: prevSongForTracking.artist,
+            language: prevSongForTracking.language,
+            progress,
+          },
+        });
+      } else if (progress > 0.75) {
+        logSignal({
+          type: 'watch_complete',
+          itemId: prevSongForTracking.id,
+          itemType: 'song',
+          timestamp: Date.now(),
+          metadata: {
+            artist: prevSongForTracking.artist,
+            language: prevSongForTracking.language,
+            query: prevSongForTracking.title,
+            progress,
+          },
+        });
+      }
+    }
+
     setCurrentSong(song);
     currentSongRef.current = song;
 
@@ -379,6 +499,10 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
 
     if (audioRef.current) {
+      if (audioWatchdogRef.current) {
+        const mirrors = [song.streamUrl, ...(song.backupStreamUrls || [])];
+        audioWatchdogRef.current.setMirrors(Array.from(new Set(mirrors)));
+      }
       audioRef.current.src = song.streamUrl;
       audioRef.current
         .play()
@@ -387,6 +511,20 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           console.warn('Playback blocked or failed, retrying on interaction:', err);
         });
     }
+
+    // Track: user started playing a song
+    logSignal({
+      type: 'watch_start',
+      itemId: song.id,
+      itemType: 'song',
+      timestamp: Date.now(),
+      metadata: {
+        artist: song.artist,
+        language: song.language,
+        query: song.title,
+      },
+    });
+    notifyRecUpdate();
   };
 
   const toggleSongPlay = () => {

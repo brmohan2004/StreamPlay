@@ -1,10 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigation, NavigationProvider } from './context/NavigationContext';
 import { MediaProvider } from './context/MediaContext';
+import { RecommendationProvider } from './context/RecommendationContext';
 import { FloatingNavBar } from './components/FloatingNavBar';
+import { FloatingFilterPill } from './components/FloatingFilterPill';
+import { useSwipeNavigation } from './hooks/useSwipeNavigation';
 import { MoviesHomeScreen } from './screens/MoviesHomeScreen';
 import { MusicHomeScreen } from './screens/MusicHomeScreen';
-import { CommonSearchScreen } from './screens/CommonSearchScreen';
+import { MovieSearchScreen } from './screens/MovieSearchScreen';
+import { MusicSearchScreen } from './screens/MusicSearchScreen';
 import { ProfileScreen } from './screens/ProfileScreen';
 import { PlaylistScreen } from './screens/PlaylistScreen';
 import { WatchLaterScreen } from './screens/WatchLaterScreen';
@@ -12,6 +16,10 @@ import { MovieDetailsScreen } from './screens/MovieDetailsScreen';
 import { VideoPlayerModal } from './components/VideoPlayerModal';
 import { MusicPlayerModal } from './components/MusicPlayerModal';
 import { AudioPlayerBar } from './components/AudioPlayerBar';
+import { FilterSheetModal } from './components/FilterSheetModal';
+import { PartyProvider } from './context/PartyContext';
+import { PartyRoomModal } from './components/PartyRoomModal';
+import { FloatingReactionLayer } from './components/FloatingReactionLayer';
 import {
   fetchTopMovies,
   fetchTopSeries,
@@ -25,7 +33,10 @@ import './App.css';
 export function AppContent() {
   const { appMode, activeScreen } = useNavigation();
 
-  // Movies State
+  // Active Swipe Gestures:
+  // Movies: Swipe Right -> Watch Later | Swipe Left -> Movies Home
+  // Music:  Swipe Right -> Playlist    | Swipe Left -> Music Home
+  useSwipeNavigation();
   const [topMovies, setTopMovies] = useState<MovieItem[]>([]);
   const [topSeries, setTopSeries] = useState<MovieItem[]>([]);
   const [netflixHits, setNetflixHits] = useState<MovieItem[]>([]);
@@ -140,58 +151,105 @@ export function AppContent() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [isLoadingMore, genreIndex, loadedGenreRows]);
 
+  // Aggregate loaded content catalogs for the Recommendation Engine
+  const combinedMovieCatalog = useMemo(() => {
+    const list = [
+      ...topMovies,
+      ...topSeries,
+      ...netflixHits,
+      ...hotstarHits,
+      ...primeHits,
+      ...appleHits,
+      ...sonyHits,
+      ...zeeHits,
+      ...loadedGenreRows.flatMap(r => r.items)
+    ];
+    const seen = new Set<string>();
+    return list.filter(m => {
+      if (!m.id || seen.has(m.id)) return false;
+      seen.add(m.id);
+      return true;
+    });
+  }, [topMovies, topSeries, netflixHits, hotstarHits, primeHits, appleHits, sonyHits, zeeHits, loadedGenreRows]);
+
+  const combinedSongCatalog = useMemo(() => {
+    const list = [...trendingSongs, ...newSongs, ...recentSongs];
+    const seen = new Set<string>();
+    return list.filter(s => {
+      if (!s.id || seen.has(s.id)) return false;
+      seen.add(s.id);
+      return true;
+    });
+  }, [trendingSongs, newSongs, recentSongs]);
+
   return (
-    <div className={`streamplay-app pure-black-theme mode-${appMode}`}>
-      <main className="app-main-content">
-        {/* Screen Routing */}
-        {activeScreen === 'search' ? (
-          <CommonSearchScreen />
-        ) : activeScreen === 'profile' ? (
-          <ProfileScreen />
-        ) : activeScreen === 'playlist' ? (
-          <PlaylistScreen />
-        ) : activeScreen === 'watchlater' ? (
-          <WatchLaterScreen />
-        ) : activeScreen === 'details' ? (
-          <MovieDetailsScreen />
-        ) : appMode === 'movies' ? (
-          /* Movies Home Mode */
-          <MoviesHomeScreen
-            topMovies={topMovies}
-            topSeries={topSeries}
-            netflixHits={netflixHits}
-            hotstarHits={hotstarHits}
-            primeHits={primeHits}
-            appleHits={appleHits}
-            sonyHits={sonyHits}
-            zeeHits={zeeHits}
-            loadedGenreRows={loadedGenreRows}
-            isLoadingMore={isLoadingMore}
-            onLoadMoreGenres={loadNextGenres}
-            hasMoreGenres={genreIndex < GENRE_LIST.length}
-          />
-        ) : (
-          /* Music Home Mode */
-          <MusicHomeScreen
-            trendingSongs={trendingSongs}
-            newSongs={newSongs}
-            recentSongs={recentSongs}
-          />
-        )}
-      </main>
+    <RecommendationProvider movieCatalog={combinedMovieCatalog} songCatalog={combinedSongCatalog}>
+      <div className={`streamplay-app pure-black-theme mode-${appMode}`}>
+        <main className="app-main-content">
+          {/* Screen Routing */}
+          {activeScreen === 'movie-search' || (activeScreen === 'search' && appMode === 'movies') ? (
+            <MovieSearchScreen />
+          ) : activeScreen === 'music-search' || (activeScreen === 'search' && appMode === 'music') ? (
+            <MusicSearchScreen />
+          ) : activeScreen === 'profile' ? (
+            <ProfileScreen />
+          ) : activeScreen === 'playlist' ? (
+            <PlaylistScreen />
+          ) : activeScreen === 'watchlater' ? (
+            <WatchLaterScreen />
+          ) : activeScreen === 'details' ? (
+            <MovieDetailsScreen />
+          ) : appMode === 'movies' ? (
+            /* Movies Home Mode */
+            <MoviesHomeScreen
+              topMovies={topMovies}
+              topSeries={topSeries}
+              netflixHits={netflixHits}
+              hotstarHits={hotstarHits}
+              primeHits={primeHits}
+              appleHits={appleHits}
+              sonyHits={sonyHits}
+              zeeHits={zeeHits}
+              loadedGenreRows={loadedGenreRows}
+              isLoadingMore={isLoadingMore}
+              onLoadMoreGenres={loadNextGenres}
+              hasMoreGenres={genreIndex < GENRE_LIST.length}
+            />
+          ) : (
+            /* Music Home Mode */
+            <MusicHomeScreen
+              trendingSongs={trendingSongs}
+              newSongs={newSongs}
+              recentSongs={recentSongs}
+            />
+          )}
+        </main>
 
-      {/* Persistent Audio Player Bar */}
-      <AudioPlayerBar />
+        {/* Persistent Audio Player Bar */}
+        <AudioPlayerBar />
 
-      {/* Bottom Center Floating Navigation Bar */}
-      <FloatingNavBar />
+        {/* Floating Filter Capsule Pill (Above Bottom Nav, Screenshot 2 Design) */}
+        <FloatingFilterPill />
 
-      {/* Full-Screen In-App Video Player Modal */}
-      <VideoPlayerModal />
+        {/* Bottom Center Floating Navigation Bar */}
+        <FloatingNavBar />
 
-      {/* Full-Screen Immersive Music Player Modal */}
-      <MusicPlayerModal />
-    </div>
+        {/* Full-Screen In-App Video Player Modal */}
+        <VideoPlayerModal />
+
+        {/* Full-Screen Immersive Music Player Modal */}
+        <MusicPlayerModal />
+
+        {/* Slide-Up Filter & OTT Bottom Sheet Modal */}
+        <FilterSheetModal />
+
+        {/* Friends Mode Watch & Listen Party Modal */}
+        <PartyRoomModal />
+
+        {/* Floating Real-Time Reaction Burst Layer */}
+        <FloatingReactionLayer />
+      </div>
+    </RecommendationProvider>
   );
 }
 
@@ -199,7 +257,9 @@ export default function App() {
   return (
     <NavigationProvider>
       <MediaProvider>
-        <AppContent />
+        <PartyProvider>
+          <AppContent />
+        </PartyProvider>
       </MediaProvider>
     </NavigationProvider>
   );

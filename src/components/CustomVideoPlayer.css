@@ -624,3 +624,26 @@
     height: 44px;
   }
 }
+
+/* Auto Failover Pill Toast */
+.auto-failover-pill-toast {
+  position: absolute;
+  top: 75px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 1.2rem;
+  border-radius: 9999px;
+  background: rgba(10, 15, 20, 0.92);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(200, 255, 0, 0.4);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6), 0 0 15px rgba(200, 255, 0, 0.25);
+  color: #f4f4f5;
+  font-family: var(--font-display, 'Outfit', sans-serif);
+  font-size: 0.85rem;
+  font-weight: 600;
+  pointer-events: none;
+}

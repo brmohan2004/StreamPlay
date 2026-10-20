@@ -4,8 +4,10 @@ import { TopAppHeader } from '../components/TopAppHeader';
 import { SongItem } from '../types/media';
 import { useMedia } from '../context/MediaContext';
 import { useNavigation } from '../context/NavigationContext';
-import { Play, ArrowRight, Video, Sparkles, Clock, Globe, RotateCcw } from 'lucide-react';
-import { fetchLanguageSongs, fetchVideoSongs, fetchGenreSongs } from '../services/musicService';
+import { Play, ArrowRight, Video, Sparkles, Clock, Globe, RotateCcw, Headphones, Compass } from 'lucide-react';
+import { fetchVideoSongs, fetchGenreSongs, fetchInfiniteLanguageSongs } from '../services/musicService';
+import { useRecommendations } from '../context/RecommendationContext';
+import { RecommendationRow } from '../components/RecommendationRow';
 
 interface MusicHomeScreenProps {
   trendingSongs: SongItem[];
@@ -20,6 +22,7 @@ export const MusicHomeScreen: React.FC<MusicHomeScreenProps> = ({
   const [activeCategory, setActiveCategory] = useState('All');
   const { playSong, openMusicPlayer, openVideoSong, primaryLanguage, secondaryLanguage } = useMedia();
   const { setActiveScreen } = useNavigation();
+  const { dailyMix, forYouSongs, becauseYouListened, discoverWeekly, hasPersonalization } = useRecommendations();
 
   // Language Curated Songs State
   const [primaryLangSongs, setPrimaryLangSongs] = useState<SongItem[]>([]);
@@ -96,9 +99,9 @@ export const MusicHomeScreen: React.FC<MusicHomeScreenProps> = ({
     async function loadCuratedMusic() {
       try {
         const [primList, secList, vids] = await Promise.all([
-          fetchLanguageSongs(primaryLanguage, 12),
-          fetchLanguageSongs(secondaryLanguage, 12),
-          fetchVideoSongs(primaryLanguage, 8)
+          fetchInfiniteLanguageSongs(primaryLanguage, 0, 25),
+          fetchInfiniteLanguageSongs(secondaryLanguage, 0, 20),
+          fetchVideoSongs(primaryLanguage, 12)
         ]);
         if (isMounted) {
           setPrimaryLangSongs(primList);
@@ -133,15 +136,34 @@ export const MusicHomeScreen: React.FC<MusicHomeScreenProps> = ({
     }
   }, [activeCategory, categoryMusicCache]);
 
-  // Load next infinite scroll batch
+  // Load next infinite scroll batch (never-ending continuous music feed)
   const loadNextMusicBatch = async () => {
-    if (isLoadingMoreMusic || infiniteBatchIndex >= MUSIC_GENRE_BATCHES.length || activeCategory !== 'All') return;
+    if (isLoadingMoreMusic || activeCategory !== 'All') return;
     setIsLoadingMoreMusic(true);
 
     try {
-      const genre = MUSIC_GENRE_BATCHES[infiniteBatchIndex];
-      const items = await fetchGenreSongs(genre, 10);
-      setInfiniteMusicRows(prev => [...prev, { title: genre, songs: items }]);
+      if (infiniteBatchIndex < MUSIC_GENRE_BATCHES.length) {
+        const genre = MUSIC_GENRE_BATCHES[infiniteBatchIndex];
+        const items = await fetchGenreSongs(genre, 15);
+        if (items.length > 0) {
+          setInfiniteMusicRows(prev => [...prev, { title: genre, songs: items }]);
+        }
+      } else {
+        // Continue loading deep seed batches of user's primary language
+        const langBatch = infiniteBatchIndex - MUSIC_GENRE_BATCHES.length + 1;
+        const items = await fetchInfiniteLanguageSongs(primaryLanguage, langBatch, 20);
+        if (items.length > 0) {
+          const titles = [
+            `${primaryLanguage} Retro Hits`,
+            `${primaryLanguage} Indie Spotlight`,
+            `${primaryLanguage} Acoustic Melodies`,
+            `${primaryLanguage} Golden Era Classics`,
+            `${primaryLanguage} Dance Anthems`
+          ];
+          const rowTitle = titles[(langBatch - 1) % titles.length];
+          setInfiniteMusicRows(prev => [...prev, { title: `${rowTitle} Vol. ${langBatch}`, songs: items }]);
+        }
+      }
       setInfiniteBatchIndex(prev => prev + 1);
     } catch (err) {
       console.error('Failed to load next music batch:', err);
@@ -154,7 +176,7 @@ export const MusicHomeScreen: React.FC<MusicHomeScreenProps> = ({
   useEffect(() => {
     const observer = new IntersectionObserver(
       entries => {
-        if (entries[0].isIntersecting && !isLoadingMoreMusic && infiniteBatchIndex < MUSIC_GENRE_BATCHES.length && activeCategory === 'All') {
+        if (entries[0].isIntersecting && !isLoadingMoreMusic && activeCategory === 'All') {
           loadNextMusicBatch();
         }
       },
@@ -166,7 +188,7 @@ export const MusicHomeScreen: React.FC<MusicHomeScreenProps> = ({
     }
 
     return () => observer.disconnect();
-  }, [isLoadingMoreMusic, infiniteBatchIndex, activeCategory]);
+  }, [isLoadingMoreMusic, infiniteBatchIndex, activeCategory, primaryLanguage]);
 
   // Accent colors for vertical bars on song cards (matching Image 1)
   const ACCENT_BAR_COLORS = ['#ff9800', '#00e5ff', '#c8ff00', '#ff4081', '#7c4dff', '#00e676'];
@@ -286,7 +308,60 @@ export const MusicHomeScreen: React.FC<MusicHomeScreenProps> = ({
         ) : (
           /* Default All Music Sections (when activeCategory === 'All') */
           <>
-            {/* 3. Popular Songs Carousel (Matching User Image 1) */}
+            {/* 1. Daily Mix (Personalized for Current Time of Day) */}
+            {dailyMix.length > 0 && (
+              <RecommendationRow
+                title="Your Daily Mix"
+                subtitle="Curated for this time of day based on your audio habits • 100% Free"
+                badgeText="Daily Mix"
+                items={dailyMix}
+                type="song"
+                icon={<Clock size={18} className="text-cyan" />}
+              />
+            )}
+
+            {/* 2. Top Picks For You (Affinity & Language Match) */}
+            {forYouSongs.length > 0 && (
+              <RecommendationRow
+                title="Top Picks For You"
+                subtitle={
+                  hasPersonalization
+                    ? "Curated dynamically from your favorite artists & tracks • 100% Free"
+                    : "Top viral tracks curated for your library • 100% Free"
+                }
+                badgeText={hasPersonalization ? "AI Match" : "Top Pick"}
+                items={forYouSongs}
+                type="song"
+                icon={<Sparkles size={18} className="text-lime" />}
+              />
+            )}
+
+            {/* 3. Because You Listened (Similar tracks) */}
+            {becauseYouListened.map((entry, idx) => (
+              <RecommendationRow
+                key={`byl-${entry.anchor.id}-${idx}`}
+                title={`Because You Listened to "${entry.anchor.title}"`}
+                subtitle={`Similar artists and vibe to ${entry.anchor.artist || 'recent tracks'} • 100% Free`}
+                badgeText="Similarity"
+                items={entry.songs}
+                type="song"
+                icon={<Headphones size={18} className="text-cyan" />}
+              />
+            ))}
+
+            {/* 4. Discover Weekly (Exploration Picks) */}
+            {discoverWeekly.length > 0 && (
+              <RecommendationRow
+                title="Discover Weekly"
+                subtitle="Fresh sounds & new artists outside your usual taste • 100% Free"
+                badgeText="Explore"
+                items={discoverWeekly}
+                type="song"
+                icon={<Compass size={18} className="text-lime" />}
+              />
+            )}
+
+            {/* 5. Popular Songs Carousel (Matching User Image 1) */}
             <div className="popular-songs-section">
               <div className="section-head-split">
                 <h3 className="music-section-title">Popular Songs</h3>

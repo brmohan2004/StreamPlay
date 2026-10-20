@@ -1,0 +1,174 @@
+/* FloatingFilterPill.css - Compact Floating Filter Pill matching Movies & Music Themes */
+
+.floating-filter-pill-container {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 82px; /* Floating cleanly directly above bottom navbar */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 850;
+  pointer-events: none;
+  padding: 0 1rem;
+}
+
+/* Offset when persistent audio player bar is visible */
+body.has-audio-player .floating-filter-pill-container {
+  bottom: 144px;
+}
+
+/* Base Compact Pill */
+.floating-filter-pill {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  padding: 2px 5px;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s, background 0.2s, border-color 0.2s;
+  height: 33px; /* Reduced from 44px for sleek compact feel */
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+/* ========================================================
+   THEME 1: Movies Mode Theme (Deep Cinema Navy + Electric Cyan)
+   ======================================================== */
+.floating-filter-pill.mode-movies {
+  background: linear-gradient(90deg, rgba(12, 22, 50, 0.94) 0%, rgba(18, 25, 62, 0.94) 45%, rgba(38, 14, 56, 0.94) 100%);
+  border: 1px solid rgba(0, 210, 255, 0.32);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.8), 
+              0 0 14px rgba(0, 210, 255, 0.22),
+              inset 0 1px 1px rgba(255, 255, 255, 0.2);
+}
+
+.floating-filter-pill.mode-movies:hover {
+  transform: translateY(-2px) scale(1.02);
+  border-color: rgba(0, 210, 255, 0.55);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.85), 
+              0 0 20px rgba(0, 210, 255, 0.4),
+              inset 0 1px 1px rgba(255, 255, 255, 0.3);
+}
+
+.floating-filter-pill.mode-movies .pill-divider {
+  background: rgba(0, 210, 255, 0.22);
+}
+
+.floating-filter-pill.mode-movies .filter-pill-expand-btn {
+  color: #00d2ff;
+}
+
+.floating-filter-pill.mode-movies .filter-pill-segment:hover {
+  color: #00d2ff;
+}
+
+/* ========================================================
+   THEME 2: Music Mode Theme (Deep Obsidian Emerald + Neon Lime)
+   ======================================================== */
+.floating-filter-pill.mode-music {
+  background: linear-gradient(90deg, rgba(9, 22, 14, 0.94) 0%, rgba(15, 30, 18, 0.94) 45%, rgba(22, 38, 12, 0.94) 100%);
+  border: 1px solid rgba(200, 255, 0, 0.35);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.8), 
+              0 0 14px rgba(200, 255, 0, 0.22),
+              inset 0 1px 1px rgba(255, 255, 255, 0.2);
+}
+
+.floating-filter-pill.mode-music:hover {
+  transform: translateY(-2px) scale(1.02);
+  border-color: rgba(200, 255, 0, 0.6);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.85), 
+              0 0 20px rgba(200, 255, 0, 0.4),
+              inset 0 1px 1px rgba(255, 255, 255, 0.3);
+}
+
+.floating-filter-pill.mode-music .pill-divider {
+  background: rgba(200, 255, 0, 0.24);
+}
+
+.floating-filter-pill.mode-music .filter-pill-expand-btn {
+  color: #c8ff00;
+}
+
+.floating-filter-pill.mode-music .filter-pill-segment:hover {
+  color: #c8ff00;
+}
+
+/* ========================================================
+   Pill Segment Typography & Divider (Reduced Size)
+   ======================================================== */
+.filter-pill-segment {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-family: var(--font-main, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+  font-size: 0.78rem; /* Reduced from 0.95rem */
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  padding: 0 8px; /* Reduced from 14px */
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: color 0.15s, opacity 0.15s, transform 0.15s;
+  opacity: 0.92;
+}
+
+.filter-pill-segment.active-seg {
+  color: #00e5ff;
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.7);
+  opacity: 1;
+}
+
+.filter-pill-segment.active-seg-lime {
+  color: #c8ff00;
+  text-shadow: 0 0 8px rgba(200, 255, 0, 0.7);
+  opacity: 1;
+}
+
+/* Hairline dividers */
+.pill-divider {
+  width: 1px;
+  height: 13px; /* Reduced from 20px */
+  flex-shrink: 0;
+}
+
+/* Expand button with ChevronUp */
+.filter-pill-expand-btn {
+  background: transparent;
+  border: none;
+  padding: 0 5px 0 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0.95;
+  transition: transform 0.2s, opacity 0.2s;
+}
+
+.filter-pill-expand-btn:hover {
+  opacity: 1;
+  transform: translateY(-2px);
+}
+
+@media (max-width: 480px) {
+  .floating-filter-pill-container {
+    bottom: 78px;
+  }
+  
+  .floating-filter-pill {
+    height: 31px;
+    padding: 2px 4px;
+  }
+  
+  .filter-pill-segment {
+    font-size: 0.74rem;
+    padding: 0 6px;
+  }
+  
+  .pill-divider {
+    height: 11px;
+  }
+}

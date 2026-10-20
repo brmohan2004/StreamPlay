@@ -1,0 +1,21 @@
+.floating-reaction-container {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100000;
+  overflow: hidden;
+}
+
+.floating-reaction-bubble {
+  position: absolute;
+  bottom: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.6));
+}
+
+.reaction-emoji-symbol {
+  font-size: 2.4rem;
+  line-height: 1;
+}

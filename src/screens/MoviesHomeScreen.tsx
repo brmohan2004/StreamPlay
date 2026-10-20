@@ -1,14 +1,22 @@
 import './MoviesHomeScreen.css';
 import React, { useState, useEffect, useRef } from 'react';
 import { TopAppHeader } from '../components/TopAppHeader';
-import { CategoryCapsules } from '../components/CategoryCapsules';
 import { TrendingFlipCards } from '../components/TrendingFlipCards';
 import { MediaRow } from '../components/MediaRow';
 import { MediaCard } from '../components/MediaCard';
 import { MovieItem } from '../types/media';
 import { useMedia } from '../context/MediaContext';
-import { History, Play, Sparkles, RotateCcw } from 'lucide-react';
-import { fetchLanguageMovies, fetchGenreMovies } from '../services/movieService';
+import { useNavigation } from '../context/NavigationContext';
+import { useRecommendations } from '../context/RecommendationContext';
+import { RecommendationRow } from '../components/RecommendationRow';
+import { History, Play, Sparkles, RotateCcw, Film, Compass } from 'lucide-react';
+import {
+  fetchLanguageMovies,
+  fetchInfiniteLanguageMovies,
+  fetchGenreMovies,
+  fetchByOTT,
+  OTT_PLATFORMS
+} from '../services/movieService';
 
 interface MoviesHomeScreenProps {
   topMovies: MovieItem[];
@@ -39,8 +47,16 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
   onLoadMoreGenres,
   hasMoreGenres
 }) => {
-  const [activeCategory, setActiveCategory] = useState('All');
+  const {
+    activeCategory,
+    setActiveCategory,
+    selectedOTT,
+    setSelectedOTT,
+    selectedLanguage,
+    setSelectedLanguage
+  } = useNavigation();
   const { continueWatching, openMoviePlayer, primaryLanguage, secondaryLanguage } = useMedia();
+  const { forYouMovies, becauseYouWatched, explorationMovies, hasPersonalization } = useRecommendations();
 
   const [primaryLangMovies, setPrimaryLangMovies] = useState<MovieItem[]>([]);
   const [secondaryLangMovies, setSecondaryLangMovies] = useState<MovieItem[]>([]);
@@ -50,12 +66,79 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
   const [genreCache, setGenreCache] = useState<Record<string, MovieItem[]>>({});
   const [isGenreLoading, setIsGenreLoading] = useState(false);
 
+  // Regional Language Universe State
+  const [languageUniverseMovies, setLanguageUniverseMovies] = useState<MovieItem[]>([]);
+  const [langBatchIndex, setLangBatchIndex] = useState(0);
+  const [isLoadingLangMore, setIsLoadingLangMore] = useState(false);
+
+  // OTT Universe State
+  const [ottUniverseMovies, setOttUniverseMovies] = useState<MovieItem[]>([]);
+  const [isLoadingOtt, setIsLoadingOtt] = useState(false);
+
+  // Fetch OTT Universe Catalog when selectedOTT changes
+  useEffect(() => {
+    if (selectedOTT === 'All') return;
+    let isMounted = true;
+    setIsLoadingOtt(true);
+    fetchByOTT(selectedOTT).then(res => {
+      if (isMounted) {
+        setOttUniverseMovies(res);
+        setIsLoadingOtt(false);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedOTT]);
+
+  // Fetch Language Universe Catalog when selectedLanguage changes
+  useEffect(() => {
+    if (selectedLanguage === 'All') return;
+    let isMounted = true;
+    setIsLoadingLangMore(true);
+    setLangBatchIndex(0);
+    fetchInfiniteLanguageMovies(selectedLanguage, 0, 35).then(res => {
+      if (isMounted) {
+        setLanguageUniverseMovies(res);
+        setIsLoadingLangMore(false);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedLanguage]);
+
+  // Infinite Scroll loader for language batches
+  const loadNextLanguageBatch = async () => {
+    if (isLoadingLangMore) return;
+    setIsLoadingLangMore(true);
+    try {
+      const nextBatch = langBatchIndex + 1;
+      const more = await fetchInfiniteLanguageMovies(selectedLanguage, nextBatch, 20);
+      setLanguageUniverseMovies(prev => {
+        const seen = new Set(prev.map(p => p.id));
+        const filtered = more.filter(m => !seen.has(m.id));
+        return [...prev, ...filtered];
+      });
+      setLangBatchIndex(nextBatch);
+    } catch (err) {
+      console.error('Failed to load next language batch:', err);
+    } finally {
+      setIsLoadingLangMore(false);
+    }
+  };
+
   // Automatic Infinite Scroll
   useEffect(() => {
     const observer = new IntersectionObserver(
       entries => {
-        if (entries[0].isIntersecting && !isLoadingMore && hasMoreGenres && activeCategory === 'All') {
-          onLoadMoreGenres();
+        if (!entries[0].isIntersecting) return;
+        if (selectedLanguage !== 'All') {
+          loadNextLanguageBatch();
+        } else if (activeCategory === 'All' && selectedOTT === 'All') {
+          if (!isLoadingMore && hasMoreGenres) {
+            onLoadMoreGenres();
+          }
         }
       },
       { rootMargin: '300px' }
@@ -66,9 +149,9 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
     }
 
     return () => observer.disconnect();
-  }, [isLoadingMore, hasMoreGenres, onLoadMoreGenres, activeCategory]);
+  }, [isLoadingMore, hasMoreGenres, onLoadMoreGenres, activeCategory, selectedLanguage, selectedOTT, langBatchIndex, isLoadingLangMore]);
 
-  // Load language-based movies
+  // Load language-based movies for standard home
   useEffect(() => {
     let isMounted = true;
     async function loadLangMovies() {
@@ -110,20 +193,7 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
     }
   }, [activeCategory, genreCache]);
 
-  const movieCategories = [
-    'All',
-    'Series',
-    'Movies',
-    'Shows',
-    'Drama',
-    'Comedy',
-    'Action',
-    'Horror',
-    'Romance',
-    'Sci-Fi'
-  ];
-
-  // Derive New Movies (Simulate releases within 1 month with OTT tags)
+  // Derive New Movies (Simulate releases with OTT tags)
   const newMoviesWithTags = [...netflixHits.slice(0, 4), ...hotstarHits.slice(0, 4), ...primeHits.slice(0, 4)].map(
     (item, index) => {
       const otts = ['Netflix', 'JioHotstar', 'Prime Video', 'Apple TV+'];
@@ -134,34 +204,11 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
     }
   );
 
-  // Compute movies for capsule-based listing
+  // Compute movies for category capsule listing
   const getCategoryMovies = (): MovieItem[] => {
     if (activeCategory === 'All') return [];
 
-    if (activeCategory === 'Series' || activeCategory === 'Shows') {
-      const allSeries = [
-        ...topSeries,
-        ...netflixHits.filter(m => m.type === 'series'),
-        ...hotstarHits.filter(m => m.type === 'series'),
-        ...primeHits.filter(m => m.type === 'series')
-      ];
-      return Array.from(new Map(allSeries.map(m => [m.id, m])).values());
-    }
-
-    if (activeCategory === 'Movies') {
-      const allMovies = [
-        ...topMovies,
-        ...netflixHits.filter(m => m.type !== 'series'),
-        ...hotstarHits.filter(m => m.type !== 'series'),
-        ...primeHits.filter(m => m.type !== 'series'),
-        ...appleHits.filter(m => m.type !== 'series')
-      ];
-      return Array.from(new Map(allMovies.map(m => [m.id, m])).values());
-    }
-
-    // Genre-based category
-    const apiItems = genreCache[activeCategory] || [];
-    const pool = [
+    let pool = [
       ...topMovies,
       ...topSeries,
       ...netflixHits,
@@ -171,36 +218,214 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
       ...sonyHits,
       ...zeeHits
     ];
+
+    if (activeCategory === 'Series' || activeCategory === 'Shows') {
+      return Array.from(new Map(pool.filter(m => m.type === 'series').map(m => [m.id, m])).values());
+    }
+
+    if (activeCategory === 'Movies') {
+      return Array.from(new Map(pool.filter(m => m.type !== 'series').map(m => [m.id, m])).values());
+    }
+
+    const apiItems = genreCache[activeCategory] || [];
     const poolFiltered = pool.filter(m =>
       m.genres?.some(g => g.toLowerCase().includes(activeCategory.toLowerCase()))
     );
-
     const merged = [...apiItems, ...poolFiltered];
     return Array.from(new Map(merged.map(m => [m.id, m])).values());
   };
 
+  const ottMeta = OTT_PLATFORMS.find(p => p.brand === selectedOTT);
   const categoryFilteredMovies = getCategoryMovies();
 
   return (
     <div className="movies-home-screen">
-      {/* 1. Header: Streamplay logo (left), Watch later logo, profile logo (right) */}
+      {/* 1. Top Header */}
       <TopAppHeader />
 
       <div className="movies-home-scrollable">
-        {/* 2. Trending Flip Cards (Placed above Category Capsules) */}
-        <TrendingFlipCards movies={topMovies} />
+        {/* ========================================================================= */}
+        {/* CASE 1: REGIONAL LANGUAGE UNIVERSE (e.g. Tamil Cinema Universe)            */}
+        {/* ========================================================================= */}
+        {selectedLanguage !== 'All' ? (
+          <>
+            <div className="universe-banner language-universe">
+              <div className="universe-meta">
+                <span className="universe-pill lang-pill">
+                  🔥 {selectedLanguage.toUpperCase()} CINEMA UNIVERSE
+                </span>
+                <h2 className="universe-title">{selectedLanguage} Blockbusters & Hits</h2>
+                <p className="universe-sub">
+                  Infinite catalog curated across all streaming platforms • 100% Free
+                </p>
+              </div>
+              <button
+                className="capsule-reset-btn"
+                onClick={() => {
+                  setSelectedLanguage('All');
+                  setActiveCategory('All');
+                }}
+                title="Return to All Content"
+              >
+                <RotateCcw size={14} />
+                <span>Exit {selectedLanguage}</span>
+              </button>
+            </div>
 
-        {/* 3. Category capsules: series, movies, shows, drama, comedy, etc. */}
-        <div className="capsules-header-wrapper">
-          <CategoryCapsules
-            categories={movieCategories}
-            activeCategory={activeCategory}
-            onSelectCategory={cat => setActiveCategory(cat)}
-          />
-        </div>
+            {/* Trending Flip Cards for this language */}
+            <TrendingFlipCards
+              movies={languageUniverseMovies.length > 0 ? languageUniverseMovies.slice(0, 8) : topMovies.slice(0, 5)}
+            />
 
-        {/* 4. Capsule-Based Dynamic Listing View */}
-        {activeCategory !== 'All' ? (
+            {/* Continue Watching */}
+            {continueWatching.length > 0 && (
+              <div className="continue-watching-section">
+                <div className="section-title-wrap continue-head">
+                  <History size={18} className="text-cyan" />
+                  <h3 className="section-heading">Continue Watching</h3>
+                </div>
+                <div className="continue-cards-scroll">
+                  {continueWatching.map(item => (
+                    <div
+                      key={item.id}
+                      className="continue-card-item"
+                      onClick={() => openMoviePlayer(item)}
+                    >
+                      <div className="continue-thumb-wrap">
+                        <img src={item.poster} alt={item.name} className="continue-thumb" />
+                        <div className="continue-play-hover">
+                          <Play size={20} fill="#fff" />
+                        </div>
+                        <div className="continue-progress-bar">
+                          <div className="progress-fill" style={{ width: '45%' }} />
+                        </div>
+                      </div>
+                      <span className="continue-name">{item.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Language Curated Media Rows */}
+            <MediaRow title={`Trending in ${selectedLanguage} Today`} items={languageUniverseMovies.slice(0, 10)} />
+            <MediaRow title={`${selectedLanguage} Action Blockbusters`} items={languageUniverseMovies.slice(10, 20)} />
+            <MediaRow title={`Top Picks in ${selectedLanguage}`} items={languageUniverseMovies.slice(20, 30)} />
+            <MediaRow title={`New Releases in ${selectedLanguage}`} items={languageUniverseMovies.slice(30, 40)} />
+            {languageUniverseMovies.length > 40 && (
+              <MediaRow
+                title={`Critically Acclaimed ${selectedLanguage} Cinema`}
+                items={languageUniverseMovies.slice(40, 55)}
+              />
+            )}
+
+            {/* Infinite Scroll Anchor & Loader */}
+            <div ref={movieBottomRef} className="movie-bottom-loader-anchor">
+              {isLoadingLangMore && (
+                <div className="infinite-scroll-loading">
+                  <div className="spinner cyan-spinner" />
+                  <span>Loading more {selectedLanguage} movies...</span>
+                </div>
+              )}
+            </div>
+          </>
+        ) : selectedOTT !== 'All' ? (
+          /* ========================================================================= */
+          /* CASE 2: DEDICATED OTT UNIVERSE (e.g. Netflix Crimson Universe)            */
+          /* ========================================================================= */
+          <>
+            <div
+              className="universe-banner ott-universe"
+              style={{ borderColor: ottMeta?.accentColor || '#00d2ff' }}
+            >
+              <div className="universe-meta">
+                <span
+                  className="universe-pill"
+                  style={{
+                    background: `${ottMeta?.accentColor || '#00d2ff'}25`,
+                    color: ottMeta?.accentColor || '#00d2ff',
+                    border: `1px solid ${ottMeta?.accentColor || '#00d2ff'}40`
+                  }}
+                >
+                  {selectedOTT.toUpperCase()} UNIVERSE
+                </span>
+                <h2 className="universe-title">{ottMeta?.displayName || selectedOTT}</h2>
+                <p className="universe-sub">
+                  {ottMeta?.tagline || 'Streaming original series & films • 100% Free'}
+                </p>
+              </div>
+              <button
+                className="capsule-reset-btn"
+                onClick={() => {
+                  setSelectedOTT('All');
+                  setActiveCategory('All');
+                }}
+                title="Return to All Platforms"
+              >
+                <RotateCcw size={14} />
+                <span>Exit {selectedOTT}</span>
+              </button>
+            </div>
+
+            {/* Trending Flip Cards for this OTT */}
+            <TrendingFlipCards
+              movies={ottUniverseMovies.length > 0 ? ottUniverseMovies.slice(0, 8) : topMovies.slice(0, 5)}
+            />
+
+            {/* Continue Watching */}
+            {continueWatching.length > 0 && (
+              <div className="continue-watching-section">
+                <div className="section-title-wrap continue-head">
+                  <History size={18} className="text-cyan" />
+                  <h3 className="section-heading">Continue Watching on {selectedOTT}</h3>
+                </div>
+                <div className="continue-cards-scroll">
+                  {continueWatching.map(item => (
+                    <div
+                      key={item.id}
+                      className="continue-card-item"
+                      onClick={() => openMoviePlayer(item)}
+                    >
+                      <div className="continue-thumb-wrap">
+                        <img src={item.poster} alt={item.name} className="continue-thumb" />
+                        <div className="continue-play-hover">
+                          <Play size={20} fill="#fff" />
+                        </div>
+                        <div className="continue-progress-bar">
+                          <div className="progress-fill" style={{ width: '45%' }} />
+                        </div>
+                      </div>
+                      <span className="continue-name">{item.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {isLoadingOtt ? (
+              <div className="capsule-loading-box">
+                <div className="spinner cyan-spinner" />
+                <p>Connecting to {selectedOTT} catalog...</p>
+              </div>
+            ) : (
+              <>
+                <MediaRow title={`Trending on ${selectedOTT}`} items={ottUniverseMovies.slice(0, 10)} />
+                <MediaRow title={`Top 10 in India Today • ${selectedOTT}`} items={ottUniverseMovies.slice(10, 20)} />
+                <MediaRow title={`${selectedOTT} Originals & Blockbusters`} items={ottUniverseMovies.slice(20, 30)} />
+                {ottUniverseMovies.filter(m => m.type === 'series').length > 0 && (
+                  <MediaRow
+                    title={`${selectedOTT} Binge-Worthy Series`}
+                    items={ottUniverseMovies.filter(m => m.type === 'series')}
+                  />
+                )}
+                <MediaRow title={`${selectedOTT} Suspense & Thrillers`} items={ottUniverseMovies.slice(5, 18)} />
+              </>
+            )}
+          </>
+        ) : activeCategory !== 'All' ? (
+          /* ========================================================================= */
+          /* CASE 3: CATEGORY / GENRE CAPSULE LISTING                                   */
+          /* ========================================================================= */
           <div className="capsule-filtered-section">
             <div className="capsule-filtered-header">
               <div>
@@ -221,7 +446,10 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
 
               <button
                 className="capsule-reset-btn"
-                onClick={() => setActiveCategory('All')}
+                onClick={() => {
+                  setActiveCategory('All');
+                  setSelectedOTT('All');
+                }}
                 title="Return to full home catalog"
               >
                 <RotateCcw size={14} />
@@ -253,9 +481,14 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
             )}
           </div>
         ) : (
-          /* Full Multi-Row Home View (when activeCategory === 'All') */
+          /* ========================================================================= */
+          /* CASE 4: STANDARD FULL HOME VIEW (All Platforms, Personalization & Rows)    */
+          /* ========================================================================= */
           <>
-            {/* 4. Continue Watching */}
+            {/* 2. Trending Flip Cards */}
+            <TrendingFlipCards movies={topMovies} />
+
+            {/* 3. Continue Watching */}
             {continueWatching.length > 0 && (
               <div className="continue-watching-section">
                 <div className="section-title-wrap continue-head">
@@ -274,7 +507,6 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
                         <div className="continue-play-hover">
                           <Play size={20} fill="#fff" />
                         </div>
-                        {/* Simulated resume progress bar */}
                         <div className="continue-progress-bar">
                           <div className="progress-fill" style={{ width: '45%' }} />
                         </div>
@@ -286,7 +518,35 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
               </div>
             )}
 
-            {/* 5. New Releases with OTT tags */}
+            {/* Personalized Recommendation Engine Rows */}
+            {forYouMovies.length > 0 && (
+              <RecommendationRow
+                title="Top Picks For You"
+                subtitle={
+                  hasPersonalization
+                    ? "Curated from your viewing patterns & preferences • 100% Free"
+                    : "Trending blockbusters tailored for you • 100% Free"
+                }
+                badgeText={hasPersonalization ? "AI Match" : "Top Pick"}
+                items={forYouMovies}
+                type="movie"
+                icon={<Sparkles size={18} className="text-cyan" />}
+              />
+            )}
+
+            {becauseYouWatched.map((entry, idx) => (
+              <RecommendationRow
+                key={`byw-${entry.anchor.id}-${idx}`}
+                title={`Because You Watched "${entry.anchor.name}"`}
+                subtitle="Similar genres & cast alignment • 100% Free"
+                badgeText="Similarity"
+                items={entry.movies}
+                type="movie"
+                icon={<Film size={18} className="text-cyan" />}
+              />
+            ))}
+
+            {/* New Releases with OTT tags */}
             <div className="new-movies-section">
               <MediaRow
                 title="New Releases"
@@ -294,7 +554,7 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
               />
             </div>
 
-            {/* 6. Language Curated Movies (Primary & Secondary Languages) */}
+            {/* Language Curated Movies (Primary & Secondary Languages) */}
             {primaryLangMovies.length > 0 && (
               <MediaRow
                 title={`${primaryLanguage} Blockbusters`}
@@ -309,7 +569,19 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
               />
             )}
 
-            {/* 7. OTT Brand Catalogs & Series */}
+            {/* Exploration Picks: Anti-Filter-Bubble Discovery */}
+            {explorationMovies.length > 0 && (
+              <RecommendationRow
+                title="Discover Something New"
+                subtitle="High-rated gems beyond your usual genres • 100% Free"
+                badgeText="Explore"
+                items={explorationMovies}
+                type="movie"
+                icon={<Compass size={18} className="text-lime" />}
+              />
+            )}
+
+            {/* OTT Brand Catalogs & Series */}
             <div className="ott-branded-sections">
               <MediaRow title="Web Series" items={topSeries} />
               <MediaRow title="JioHotstar" items={hotstarHits} />
@@ -320,7 +592,7 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
               <MediaRow title="Zee5" items={zeeHits} />
             </div>
 
-            {/* 8. Infinite Scrolling Dynamic Movie Categories */}
+            {/* Infinite Scrolling Dynamic Movie Categories */}
             {loadedGenreRows.map((row, idx) => (
               <MediaRow
                 key={idx}

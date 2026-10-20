@@ -1,16 +1,26 @@
 import './TopAppHeader.css';
 import React from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Bookmark, ListMusic, User, Users } from 'lucide-react';
 import { useNavigation } from '../context/NavigationContext';
+import { useMedia } from '../context/MediaContext';
+import { useParty } from '../context/PartyContext';
 
 interface TopAppHeaderProps {
   title?: string;
   showBack?: boolean;
   onBack?: () => void;
+  hideRightActions?: boolean;
 }
 
-export const TopAppHeader: React.FC<TopAppHeaderProps> = ({ title, showBack, onBack }) => {
-  const { appMode, setActiveScreen } = useNavigation();
+export const TopAppHeader: React.FC<TopAppHeaderProps> = ({
+  title,
+  showBack,
+  onBack,
+  hideRightActions = false
+}) => {
+  const { appMode, activeScreen, setActiveScreen } = useNavigation();
+  const { watchLater, playlists } = useMedia();
+  const { isInParty, memberCount, openPartyModal } = useParty();
 
   const handleBack = () => {
     if (onBack) {
@@ -37,7 +47,77 @@ export const TopAppHeader: React.FC<TopAppHeaderProps> = ({ title, showBack, onB
         {title && <h2 className="header-custom-title">{title}</h2>}
       </div>
 
-      {/* Header right side options removed as requested */}
+      {!hideRightActions && (
+        <div className="header-right">
+          {/* Friends Mode (Watch & Listen with Friends) */}
+          <button
+            className={`header-action-btn party-header-btn ${isInParty ? 'active in-party' : ''}`}
+            onClick={openPartyModal}
+            aria-label="Friends Mode"
+            title={isInParty ? `Party Room Active (${memberCount} connected)` : 'Friends Mode (Watch & Listen Together)'}
+          >
+            <Users size={18} />
+            {isInParty && (
+              <span className="header-badge lime-badge">{memberCount}</span>
+            )}
+            <span className="desktop-btn-label">Friends</span>
+          </button>
+
+          {appMode === 'movies' ? (
+            /* Movie Mode: Watch Later + Profile at header right side */
+            <>
+              <button
+                className={`header-action-btn ${activeScreen === 'watchlater' ? 'active' : ''}`}
+                onClick={() => setActiveScreen('watchlater')}
+                aria-label="Watch Later"
+                title="Watch Later"
+              >
+                <Bookmark size={19} />
+                {watchLater.length > 0 && (
+                  <span className="header-badge cyan-badge">{watchLater.length}</span>
+                )}
+                <span className="desktop-btn-label">Watch Later</span>
+              </button>
+
+              <button
+                className={`header-action-btn ${activeScreen === 'profile' ? 'active' : ''}`}
+                onClick={() => setActiveScreen('profile')}
+                aria-label="Profile"
+                title="Profile"
+              >
+                <User size={19} />
+                <span className="desktop-btn-label">Profile</span>
+              </button>
+            </>
+          ) : (
+            /* Music Mode: Playlist + Profile at header right side */
+            <>
+              <button
+                className={`header-action-btn ${activeScreen === 'playlist' ? 'active' : ''}`}
+                onClick={() => setActiveScreen('playlist')}
+                aria-label="Playlists"
+                title="Playlists"
+              >
+                <ListMusic size={19} />
+                {playlists.length > 0 && (
+                  <span className="header-badge lime-badge">{playlists.length}</span>
+                )}
+                <span className="desktop-btn-label">Playlists</span>
+              </button>
+
+              <button
+                className={`header-action-btn ${activeScreen === 'profile' ? 'active' : ''}`}
+                onClick={() => setActiveScreen('profile')}
+                aria-label="Profile"
+                title="Profile"
+              >
+                <User size={19} />
+                <span className="desktop-btn-label">Profile</span>
+              </button>
+            </>
+          )}
+        </div>
+      )}
     </header>
   );
 };

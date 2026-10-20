@@ -1,0 +1,427 @@
+/* Friends Mode Watch & Listen Party Modal Styles */
+.party-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.party-modal-card {
+  width: 100%;
+  max-width: 460px;
+  background: linear-gradient(135deg, rgba(16, 20, 28, 0.96) 0%, rgba(8, 10, 14, 0.98) 100%);
+  border: 1px solid rgba(200, 255, 0, 0.25);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 25px rgba(200, 255, 0, 0.15);
+  border-radius: 24px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+.party-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.4rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.party-header-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.party-header-icon-box {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: rgba(200, 255, 0, 0.12);
+  border: 1px solid rgba(200, 255, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.party-modal-title {
+  font-family: var(--font-display, 'Outfit', sans-serif);
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0;
+}
+
+.party-modal-subtitle {
+  font-size: 0.75rem;
+  color: #a1a1aa;
+}
+
+.party-modal-close-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.party-modal-close-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Media Sync Banner */
+.party-current-media-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.4rem;
+  background: rgba(200, 255, 0, 0.06);
+  border-bottom: 1px solid rgba(200, 255, 0, 0.12);
+  font-size: 0.78rem;
+}
+
+.media-sync-label {
+  color: #a1a1aa;
+  font-weight: 600;
+}
+
+.media-sync-title {
+  color: #c8ff00;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Setup View */
+.party-setup-view {
+  padding: 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.party-setup-card {
+  padding: 1.15rem;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.party-setup-card h4 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+}
+
+.party-setup-card p {
+  font-size: 0.78rem;
+  color: #a1a1aa;
+  line-height: 1.4;
+  margin: 0 0 0.5rem 0;
+}
+
+.party-primary-btn {
+  padding: 0.7rem 1.2rem;
+  border-radius: 12px;
+  background: #c8ff00;
+  color: #000000;
+  font-family: var(--font-display, 'Outfit', sans-serif);
+  font-size: 0.88rem;
+  font-weight: 800;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 15px rgba(200, 255, 0, 0.3);
+}
+
+.party-primary-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(200, 255, 0, 0.45);
+}
+
+.party-divider-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.party-divider-text::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.party-divider-text span {
+  position: relative;
+  background: #0f131a;
+  padding: 0 0.75rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #71717a;
+}
+
+.party-join-form {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.party-code-input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 0.65rem 0.85rem;
+  color: #ffffff;
+  font-family: monospace;
+  font-size: 0.9rem;
+  font-weight: 700;
+  outline: none;
+  text-transform: uppercase;
+}
+
+.party-code-input:focus {
+  border-color: #00d2ff;
+}
+
+.party-secondary-btn {
+  padding: 0.65rem 1.1rem;
+  border-radius: 10px;
+  background: #00d2ff;
+  color: #000000;
+  font-family: var(--font-display, 'Outfit', sans-serif);
+  font-size: 0.82rem;
+  font-weight: 800;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.party-secondary-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Active Party View */
+.party-active-view {
+  padding: 1.25rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.party-room-code-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 0.75rem 1rem;
+}
+
+.room-code-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.room-code-label {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #a1a1aa;
+  letter-spacing: 0.08em;
+}
+
+.room-code-value {
+  font-family: monospace;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #c8ff00;
+  letter-spacing: 0.05em;
+}
+
+.party-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 0.45rem 0.85rem;
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.party-copy-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+/* Reaction Bar */
+.party-reaction-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(200, 255, 0, 0.05);
+  border: 1px solid rgba(200, 255, 0, 0.15);
+  border-radius: 12px;
+  padding: 0.5rem 0.85rem;
+}
+
+.reaction-bar-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #c8ff00;
+}
+
+.reaction-buttons-list {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.reaction-emoji-btn {
+  background: none;
+  border: none;
+  font-size: 1.35rem;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+/* Live Chat */
+.party-chat-container {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  height: 200px;
+}
+
+.party-chat-scroll {
+  flex: 1;
+  padding: 0.85rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.chat-empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #71717a;
+  font-size: 0.78rem;
+}
+
+.party-chat-bubble {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 0.45rem 0.7rem;
+  max-width: 85%;
+  align-self: flex-start;
+}
+
+.chat-bubble-sender {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #00d2ff;
+  margin-bottom: 2px;
+}
+
+.chat-bubble-text {
+  font-size: 0.82rem;
+  color: #ffffff;
+  word-break: break-word;
+}
+
+.party-chat-input-row {
+  display: flex;
+  padding: 0.5rem;
+  background: rgba(0, 0, 0, 0.4);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  gap: 0.4rem;
+}
+
+.party-chat-input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 0.45rem 0.75rem;
+  color: #ffffff;
+  font-size: 0.82rem;
+  outline: none;
+}
+
+.party-chat-input:focus {
+  border-color: #c8ff00;
+}
+
+.party-chat-send-btn {
+  background: #c8ff00;
+  border: none;
+  border-radius: 8px;
+  padding: 0 0.85rem;
+  color: #000000;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.party-chat-send-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.party-active-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.party-leave-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 8px;
+  padding: 0.45rem 0.85rem;
+  color: #ef4444;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.party-leave-btn:hover {
+  background: rgba(239, 68, 68, 0.25);
+}

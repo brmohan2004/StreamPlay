@@ -1,0 +1,756 @@
+/* FilterSheetModal.css - Matches Screenshot 1 Hotstar-Style Deep OLED Dark Sheet */
+
+.filter-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 950;
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+}
+
+.filter-sheet-drawer {
+  width: 100%;
+  max-width: 600px;
+  max-height: 86vh;
+  /* Deep slate black matching Screenshot 1 */
+  background: #0f1017;
+  border-radius: 26px 26px 0 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: none;
+  box-shadow: 0 -12px 48px rgba(0, 0, 0, 0.95);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Pull Handle Bar */
+.sheet-drag-handle {
+  width: 44px;
+  height: 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.22);
+  margin: 10px auto 4px;
+}
+
+/* Header Bar */
+.sheet-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 1.25rem 0.65rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.sheet-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sheet-heading {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.sheet-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.sheet-reset-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 0.24rem 0.6rem;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.sheet-reset-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+
+.sheet-close-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.sheet-close-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  transform: scale(1.08);
+}
+
+/* Scrollable Sheet Body */
+.sheet-scroll-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.15rem 1.25rem 2.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.6rem;
+  scrollbar-width: thin;
+}
+
+.sheet-section-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.sheet-section-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+/* SECTION 1: Browse Cards */
+.browse-cards-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.65rem;
+}
+
+.browse-card {
+  position: relative;
+  height: 68px;
+  border-radius: 12px;
+  overflow: hidden;
+  padding: 0.75rem;
+  display: flex;
+  align-items: flex-end;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s;
+}
+
+.browse-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
+}
+
+.browse-sparks {
+  background: linear-gradient(135deg, #10252d 0%, #173641 100%);
+}
+
+.browse-news {
+  background: linear-gradient(135deg, #24163b 0%, #351c56 100%);
+}
+
+.browse-newhot {
+  background: linear-gradient(135deg, #131e34 0%, #1c2b4c 100%);
+}
+
+.browse-watermark-icon {
+  position: absolute;
+  right: 6px;
+  top: 8px;
+  color: rgba(255, 255, 255, 0.16);
+  pointer-events: none;
+}
+
+.browse-card-label {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #ffffff;
+  z-index: 1;
+}
+
+/* SECTION 2: Studios Grid */
+.studios-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.65rem;
+}
+
+.studio-card {
+  position: relative;
+  height: 64px;
+  border-radius: 12px;
+  background: #191c26;
+  border: 1.5px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem 0.6rem;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.studio-card:hover {
+  background: #202432;
+  border-color: rgba(255, 255, 255, 0.18);
+  transform: translateY(-2px);
+}
+
+.studio-card.selected {
+  background: #1e2538;
+  border-color: #00d2ff;
+  box-shadow: 0 0 16px rgba(0, 210, 255, 0.35);
+}
+
+.studio-check-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #00d2ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Studio Real Logos */
+.logo-hotstar-specials {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.05;
+}
+
+.hotstar-white {
+  font-size: 0.86rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+}
+
+.specials-cyan {
+  font-size: 0.78rem;
+  font-weight: 900;
+  color: #00d2ff;
+  letter-spacing: -0.02em;
+}
+
+.logo-disney-plus {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.disney-svg-logo {
+  height: 24px;
+  width: auto;
+}
+
+.logo-hbo-max {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+}
+
+.hbo-bold {
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: 0.04em;
+}
+
+.hbo-o-dot {
+  color: #ffffff;
+}
+
+.max-purple {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #a855f7;
+  letter-spacing: -0.01em;
+}
+
+.logo-netflix {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.netflix-red-wordmark {
+  font-family: var(--font-display, Impact, "Arial Black", sans-serif);
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #e50914;
+  letter-spacing: 0.07em;
+  text-shadow: 0 0 10px rgba(229, 9, 20, 0.4);
+}
+
+.logo-prime-video {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.prime-text {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+}
+
+.prime-smile-svg {
+  width: 44px;
+  height: 9px;
+}
+
+.logo-apple-tv {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.apple-logo-icon {
+  width: 17px;
+  height: 17px;
+}
+
+.tv-plus-text {
+  font-size: 0.94rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.logo-sony-liv {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.sony-word {
+  font-size: 0.8rem;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: 0.06em;
+}
+
+.liv-word {
+  font-size: 0.86rem;
+  font-weight: 900;
+  color: #ff3366;
+}
+
+.logo-zee5 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.zee5-badge {
+  font-size: 0.92rem;
+  font-weight: 900;
+  color: #ff9900;
+  letter-spacing: 0.05em;
+}
+
+/* SECTION 3: Popular Languages */
+.languages-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.65rem;
+}
+
+.language-card {
+  position: relative;
+  height: 68px;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-left: 0.75rem;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s;
+}
+
+.language-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.language-card-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  z-index: 2;
+}
+
+.lang-native {
+  font-size: 0.94rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.lang-english {
+  font-size: 0.68rem;
+  color: rgba(255, 255, 255, 0.65);
+  font-weight: 500;
+}
+
+.language-card-img-wrap {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 58px;
+  height: 100%;
+}
+
+.language-actor-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+}
+
+.language-fade-mask {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(15, 16, 23, 0.95) 0%, rgba(15, 16, 23, 0.2) 65%, transparent 100%);
+}
+
+/* SECTION 4: Popular Channels */
+.channels-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.65rem;
+}
+
+.channel-card {
+  height: 64px;
+  border-radius: 12px;
+  background: #191c26;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 0.4rem;
+}
+
+.channel-card:hover {
+  background: #202432;
+  border-color: rgba(255, 255, 255, 0.18);
+  transform: translateY(-2px);
+}
+
+.channel-starplus {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+.starplus-icon-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.starplus-star-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.starplus-sparkle {
+  position: absolute;
+  top: -4px;
+  right: -5px;
+  color: #ffd700;
+}
+
+.starplus-text {
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.starplus-sub {
+  font-size: 0.5rem;
+  color: #f5a623;
+  font-weight: 500;
+}
+
+.channel-colors {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.colors-petals {
+  display: flex;
+  gap: 2px;
+}
+
+.petal {
+  width: 5px;
+  height: 11px;
+  border-radius: 5px;
+}
+
+.petal-1 { background: #f53855; }
+.petal-2 { background: #ff9900; }
+.petal-3 { background: #ff007f; }
+.petal-4 { background: #00ccff; }
+
+.colors-text {
+  font-size: 0.84rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+}
+
+.channel-vijay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.vijay-star-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.vijay-tamil-text {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #ffd700;
+}
+
+.channel-zeetv {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.zeetv-circle {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #f5a623;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.zeetv-z {
+  font-size: 0.75rem;
+  font-weight: 900;
+  color: #000000;
+}
+
+.zeetv-label {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.channel-sonyset {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sony-s-badge {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bar {
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.bar-g { background: #00e676; }
+.bar-b { background: #00b0ff; }
+.bar-r { background: #ff1744; }
+
+.sony-label {
+  font-size: 0.84rem;
+  font-weight: 900;
+  color: #ffffff;
+}
+
+.channel-hbo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hbo-channel-title {
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: 0.04em;
+}
+
+.dot-o {
+  color: #ffffff;
+}
+
+/* SECTION 5: Popular Genres with Cinema Stills */
+.genres-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.65rem;
+}
+
+.genre-photo-card {
+  position: relative;
+  height: 68px;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  padding: 0.65rem;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s;
+}
+
+.genre-photo-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.7);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.genre-photo-card.selected {
+  border-color: #00d2ff;
+  box-shadow: 0 0 16px rgba(0, 210, 255, 0.4);
+}
+
+.genre-photo-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.genre-photo-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.15) 0%, rgba(0, 0, 0, 0.8) 100%);
+}
+
+.genre-photo-name {
+  position: relative;
+  z-index: 1;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #ffffff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95);
+}
+
+.genre-selected-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #00d2ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+/* Music Mode Studio / Label Badges */
+.music-label-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.t-series-badge .t-box {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  background: #ff0000;
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.yrf-text {
+  font-weight: 900;
+  color: #ffcc00;
+  font-size: 0.85rem;
+}
+
+.warner-w {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #0066cc;
+  color: #ffffff;
+  font-weight: 900;
+  font-size: 0.72rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.defjam-text {
+  font-weight: 900;
+  color: #ff3333;
+  font-size: 0.88rem;
+}
+
+.label-name {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+@media (max-width: 440px) {
+  .browse-card-label {
+    font-size: 0.82rem;
+  }
+  
+  .lang-native {
+    font-size: 0.86rem;
+  }
+  
+  .genre-photo-name {
+    font-size: 0.8rem;
+  }
+}

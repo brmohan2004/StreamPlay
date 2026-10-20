@@ -202,3 +202,56 @@
   border: none;
   cursor: pointer;
 }
+
+/* OTT & Regional Universe Banners */
+.universe-banner {
+  margin: 0.5rem 1rem 1.25rem;
+  padding: 1.2rem 1.4rem;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(20, 24, 32, 0.95) 0%, rgba(10, 12, 16, 0.98) 100%);
+  border: 1.5px solid rgba(0, 229, 255, 0.25);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.universe-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.universe-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-display, 'Outfit', sans-serif);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  width: fit-content;
+}
+
+.universe-pill.lang-pill {
+  background: rgba(255, 107, 0, 0.18);
+  color: #ff8c00;
+  border: 1px solid rgba(255, 107, 0, 0.35);
+}
+
+.universe-title {
+  font-family: var(--font-display, 'Outfit', sans-serif);
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0;
+}
+
+.universe-sub {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.65);
+  margin: 0;
+}
