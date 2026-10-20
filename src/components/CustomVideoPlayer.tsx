@@ -3,11 +3,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
-  Play,
-  Pause,
-  RotateCcw,
-  RotateCw,
-  FastForward,
   Volume2,
   VolumeX,
   Maximize2,
@@ -19,14 +14,12 @@ import {
   ChevronRight,
   Zap,
   Lock,
-  Unlock,
   Check,
-  List
+  List,
+  Server
 } from 'lucide-react';
 import { useMedia } from '../context/MediaContext';
 import { getStreamEmbedUrl, STREAMING_SERVERS } from '../services/movieService';
-import { VideoBufferWatchdog } from '../services/streamingWatchdog';
-
 
 export const CustomVideoPlayer: React.FC = () => {
   const {
@@ -46,17 +39,11 @@ export const CustomVideoPlayer: React.FC = () => {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
   // Player UI states
-  const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [isLocked, setIsLocked] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-
-  // Failover toast state
-  const [failoverToast, setFailoverToast] = useState<string | null>(null);
-  const failoverTimeoutRef = useRef<any>(null);
-  const videoWatchdogRef = useRef<VideoBufferWatchdog | null>(null);
 
   // Menus & Modals
   const [showQualityMenu, setShowQualityMenu] = useState(false);
@@ -107,7 +94,6 @@ export const CustomVideoPlayer: React.FC = () => {
     'French'
   ];
 
-
   // Inactivity controls timer
   useEffect(() => {
     if (!isVideoModalOpen) return;
@@ -153,34 +139,6 @@ export const CustomVideoPlayer: React.FC = () => {
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
-  // Watchdog initialization & tracking
-  useEffect(() => {
-    if (!videoWatchdogRef.current) {
-      videoWatchdogRef.current = new VideoBufferWatchdog(
-        videoProviderIndex,
-        STREAMING_SERVERS.length,
-        (newIndex) => {
-          setVideoProviderIndex(newIndex);
-          const server = STREAMING_SERVERS[newIndex];
-          setFailoverToast(`Auto-routed to fast mirror: ${server?.name || `Server ${newIndex + 1}`}`);
-          if (failoverTimeoutRef.current) clearTimeout(failoverTimeoutRef.current);
-          failoverTimeoutRef.current = setTimeout(() => {
-            setFailoverToast(null);
-          }, 3200);
-        }
-      );
-    }
-  }, [setVideoProviderIndex]);
-
-  useEffect(() => {
-    if (videoWatchdogRef.current) {
-      videoWatchdogRef.current.setServer(videoProviderIndex);
-    }
-    if (isVideoModalOpen && activeMovie) {
-      videoWatchdogRef.current?.startIframeMonitor();
-    }
-  }, [videoProviderIndex, isVideoModalOpen, activeMovie]);
-
   if (!isVideoModalOpen || !activeMovie) return null;
 
   const currentEmbedUrl = getStreamEmbedUrl(
@@ -205,13 +163,12 @@ export const CustomVideoPlayer: React.FC = () => {
   // Hold to 2x Play Handlers
   const handlePointerDown = (e: React.PointerEvent) => {
     if (isLocked) return;
-    // Don't trigger if clicking buttons or menus
     if ((e.target as HTMLElement).closest('button, .player-menu-modal, .player-header-bar, .player-bottom-bar')) {
       return;
     }
     holdTimeoutRef.current = setTimeout(() => {
       setIsHolding2X(true);
-    }, 250);
+    }, 300);
   };
 
   const handlePointerUp = () => {
@@ -239,22 +196,6 @@ export const CustomVideoPlayer: React.FC = () => {
     const modes: ('fit' | 'fill' | 'zoom' | '16-9')[] = ['fit', 'fill', 'zoom', '16-9'];
     const nextIdx = (modes.indexOf(aspectRatioMode) + 1) % modes.length;
     setAspectRatioMode(modes[nextIdx]);
-  };
-
-  const handleSkipForward = () => {
-    // Visual feedback for skip +10s
-    setIsLoading(true);
-    setTimeout(() => setIsLoading(false), 300);
-  };
-
-  const handleSkipBackward = () => {
-    setIsLoading(true);
-    setTimeout(() => setIsLoading(false), 300);
-  };
-
-  const handleSkipIntro = () => {
-    setIsLoading(true);
-    setTimeout(() => setIsLoading(false), 350);
   };
 
   return (
@@ -287,10 +228,8 @@ export const CustomVideoPlayer: React.FC = () => {
           allow="autoplay; encrypted-media; gyroscope; picture-in-picture; fullscreen"
           onLoad={() => {
             setIsLoading(false);
-            videoWatchdogRef.current?.markPlaybackStarted();
           }}
         />
-
       </div>
 
       {/* 2. "HOLD TO 2X PLAY" Floating Pill Indicator */}
@@ -309,40 +248,28 @@ export const CustomVideoPlayer: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* Auto-Failover Notification Pill */}
+      {/* 3. Screen Locked Floating Unlock Button */}
       <AnimatePresence>
-        {failoverToast && (
-          <motion.div
-            className="auto-failover-pill-toast"
-            initial={{ opacity: 0, scale: 0.85, y: -20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.85, y: -20 }}
-            transition={{ duration: 0.25 }}
+        {isLocked && (
+          <motion.button
+            className="player-locked-floating-pill"
+            initial={{ scale: 0.85, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.85, opacity: 0 }}
+            onClick={() => setIsLocked(false)}
+            title="Screen Locked — Tap to Unlock"
+            aria-label="Unlock Screen"
           >
-            <Zap size={16} color="#c8ff00" />
-            <span>{failoverToast}</span>
-          </motion.div>
+            <Lock size={18} />
+            <span>Screen Locked (Tap to Unlock)</span>
+          </motion.button>
         )}
       </AnimatePresence>
 
-      {/* 3. "SKIP INTRO" Floating Action Pill */}
-      {showControls && !isLocked && (
-        <motion.button
-          className="skip-intro-floating-btn"
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={handleSkipIntro}
-          title="Skip Intro (+85s)"
-        >
-          <FastForward size={16} />
-          <span>Skip Intro (+85s)</span>
-        </motion.button>
-      )}
-
-      {/* 4. Top Header Overlay Bar */}
-      <div className={`player-header-bar ${showControls ? 'visible' : 'hidden'}`}>
+      {/* 4. Top Header Overlay Bar — Only Title and Connection Health */}
+      <div className={`player-header-bar ${showControls && !isLocked ? 'visible' : 'hidden'}`}>
         <div className="header-left-meta">
-          <button className="player-ctrl-round-btn" onClick={closeMoviePlayer} title="Close Player">
+          <button className="player-ctrl-round-btn" onClick={closeMoviePlayer} title="Close Player" aria-label="Close">
             <X size={20} />
           </button>
 
@@ -359,154 +286,168 @@ export const CustomVideoPlayer: React.FC = () => {
           </div>
         </div>
 
-        {/* Top Right Quick Controls */}
+        {/* Top Right: Connection Health Pill ONLY */}
         <div className="header-right-tools">
-          {/* Health of Connection Pill */}
           <button
             className="connection-health-pill-btn"
             onClick={() => setShowHealthModal(prev => !prev)}
             title="Connection Health"
+            aria-label="Connection Health"
           >
             <span className="health-dot-indicator green" />
             <Activity size={14} />
             <span className="health-ping-text">{ping}ms</span>
           </button>
-
-          {/* Quality Selector */}
-          <button
-            className={`player-tool-icon-btn ${showQualityMenu ? 'active' : ''}`}
-            onClick={() => setShowQualityMenu(prev => !prev)}
-            title="Video Quality"
-          >
-            <Settings size={18} />
-            <span className="btn-label-hide-mobile">Quality</span>
-          </button>
-
-          {/* Language / Audio / Subs */}
-          <button
-            className={`player-tool-icon-btn ${showLangMenu ? 'active' : ''}`}
-            onClick={() => setShowLangMenu(prev => !prev)}
-            title="Audio & Subtitles"
-          >
-            <Languages size={18} />
-          </button>
-
-          {/* Lock Controls Toggle */}
-          <button
-            className={`player-tool-icon-btn ${isLocked ? 'locked' : ''}`}
-            onClick={() => setIsLocked(prev => !prev)}
-            title={isLocked ? 'Unlock Screen' : 'Lock Screen'}
-          >
-            {isLocked ? <Lock size={18} /> : <Unlock size={18} />}
-          </button>
         </div>
       </div>
 
-      {/* 5. Center Play/Pause & Skip Controls */}
-      {showControls && !isLocked && (
-        <div className="player-center-controls">
-          <button className="center-skip-btn" onClick={handleSkipBackward} title="Skip 10s Backward">
-            <RotateCcw size={26} />
-            <span className="skip-time-tag">10</span>
-          </button>
-
-          <button
-            className="center-big-play-btn"
-            onClick={() => setIsPlaying(prev => !prev)}
-            aria-label={isPlaying ? 'Pause' : 'Play'}
-          >
-            {isPlaying ? (
-              <Pause size={32} fill="#000000" color="#000000" />
-            ) : (
-              <Play size={32} fill="#000000" color="#000000" style={{ marginLeft: 4 }} />
-            )}
-          </button>
-
-          <button className="center-skip-btn" onClick={handleSkipForward} title="Skip 10s Forward">
-            <RotateCw size={26} />
-            <span className="skip-time-tag">10</span>
-          </button>
-        </div>
-      )}
-
-      {/* 6. Bottom Controls Bar */}
+      {/* 5. Bottom Controls Bar — ALL OPTIONS IN BOTTOM BAR (LOGO ONLY) */}
       <div className={`player-bottom-bar ${showControls && !isLocked ? 'visible' : 'hidden'}`}>
         <div className="bottom-left-controls">
-          {/* Mute toggle */}
+          {/* Mute toggle — logo only */}
           <button
             className="player-ctrl-round-btn small"
             onClick={() => setIsMuted(prev => !prev)}
             title={isMuted ? 'Unmute' : 'Mute'}
+            aria-label="Mute"
           >
             {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
           </button>
 
-          {/* Aspect Ratio Screen Size Adjustment */}
+          {/* Aspect Ratio Screen Size — logo only */}
           <button
-            className="screen-size-adjust-btn"
+            className="player-ctrl-round-btn small"
             onClick={cycleAspectRatio}
-            title="Screen Size Adjustment (Fit, Stretch, Zoom 21:9)"
+            title={`Screen Size: ${aspectRatioMode.toUpperCase()}`}
+            aria-label="Screen Size"
           >
-            <Layers size={16} />
-            <span>Size: {aspectRatioMode.toUpperCase()}</span>
+            <Layers size={18} />
           </button>
         </div>
 
-        {/* Center / Right Bottom Controls */}
+        {/* Right Bottom Controls — ALL LOGO ONLY */}
         <div className="bottom-right-controls">
-          {/* Episodes List & Next Episode Buttons (Series only) */}
+          {/* Server & Quality Selector — logo only */}
+          <button
+            className={`player-ctrl-round-btn small ${showQualityMenu ? 'active' : ''}`}
+            onClick={() => {
+              setShowQualityMenu(prev => !prev);
+              setShowLangMenu(false);
+              setShowHealthModal(false);
+              setShowEpisodeDrawer(false);
+            }}
+            title="Video Quality & Server"
+            aria-label="Video Quality & Server"
+          >
+            <Settings size={18} />
+          </button>
+
+          {/* Language / Audio & Subtitles — logo only */}
+          <button
+            className={`player-ctrl-round-btn small ${showLangMenu ? 'active' : ''}`}
+            onClick={() => {
+              setShowLangMenu(prev => !prev);
+              setShowQualityMenu(false);
+              setShowHealthModal(false);
+              setShowEpisodeDrawer(false);
+            }}
+            title="Audio & Subtitles"
+            aria-label="Audio & Subtitles"
+          >
+            <Languages size={18} />
+          </button>
+
+          {/* Screen Lock — logo only */}
+          <button
+            className="player-ctrl-round-btn small"
+            onClick={() => setIsLocked(true)}
+            title="Lock Screen"
+            aria-label="Lock Screen"
+          >
+            <Lock size={18} />
+          </button>
+
+          {/* Episodes Drawer (Series only) — logo only */}
           {activeMovie.type === 'series' && (
             <>
               <button
-                className="player-ctrl-round-btn small"
-                onClick={() => setShowEpisodeDrawer(prev => !prev)}
+                className={`player-ctrl-round-btn small ${showEpisodeDrawer ? 'active' : ''}`}
+                onClick={() => {
+                  setShowEpisodeDrawer(prev => !prev);
+                  setShowQualityMenu(false);
+                  setShowLangMenu(false);
+                  setShowHealthModal(false);
+                }}
                 title="All Episodes"
+                aria-label="All Episodes"
               >
                 <List size={18} />
               </button>
 
               <motion.button
-                className="player-next-episode-btn"
+                className="player-ctrl-round-btn small text-lime-btn"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={playNextEpisode}
                 title={`Next Episode (S${activeSeason}:E${activeEpisode + 1})`}
+                aria-label="Next Episode"
               >
-                <span>Next Episode</span>
                 <ChevronRight size={18} />
               </motion.button>
             </>
           )}
 
-          {/* Fullscreen Toggle Button */}
+          {/* Fullscreen Toggle — logo only */}
           <button
             className="player-ctrl-round-btn small"
             onClick={toggleFullscreen}
             title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+            aria-label="Fullscreen"
           >
             {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
           </button>
         </div>
       </div>
 
+      {/* 6. POPUP MODALS */}
 
-      {/* 7. POPUP MODALS */}
-
-      {/* Quality Selection Popup */}
+      {/* Quality & Server Selection Popup */}
       <AnimatePresence>
         {showQualityMenu && (
           <motion.div
             className="player-menu-modal quality-menu"
-            initial={{ opacity: 0, scale: 0.95, y: -10 }}
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: -10 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
           >
             <div className="menu-modal-header">
               <Settings size={18} className="text-cyan" />
-              <h4>Playback Quality</h4>
+              <h4>Playback & Servers</h4>
               <button className="menu-close-x" onClick={() => setShowQualityMenu(false)}>✕</button>
             </div>
             <div className="menu-options-list">
+              <span className="lang-col-title" style={{ padding: '0.4rem 0.6rem 0.1rem', fontSize: '0.72rem' }}>
+                Streaming Server
+              </span>
+              {STREAMING_SERVERS.slice(0, 5).map((srv, idx) => (
+                <div
+                  key={srv.id}
+                  className={`menu-option-item ${videoProviderIndex === idx ? 'active' : ''}`}
+                  onClick={() => {
+                    setVideoProviderIndex(idx);
+                    setIsLoading(true);
+                  }}
+                >
+                  <Server size={14} style={{ marginRight: 6, opacity: 0.7 }} />
+                  <span className="option-title">{srv.name}</span>
+                  <span className="option-badge-tag">{srv.isNoAds ? 'Fast' : 'HD'}</span>
+                  {videoProviderIndex === idx && <Check size={18} color="#00d2ff" />}
+                </div>
+              ))}
+
+              <span className="lang-col-title" style={{ padding: '0.6rem 0.6rem 0.1rem', fontSize: '0.72rem' }}>
+                Video Quality
+              </span>
               {QUALITIES.map((q, idx) => (
                 <div
                   key={idx}
@@ -531,9 +472,9 @@ export const CustomVideoPlayer: React.FC = () => {
         {showLangMenu && (
           <motion.div
             className="player-menu-modal lang-menu"
-            initial={{ opacity: 0, scale: 0.95, y: -10 }}
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: -10 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
           >
             <div className="menu-modal-header">
               <Languages size={18} className="text-lime" />
@@ -623,9 +564,9 @@ export const CustomVideoPlayer: React.FC = () => {
         {showEpisodeDrawer && activeMovie.type === 'series' && (
           <motion.div
             className="player-menu-modal episodes-drawer-modal"
-            initial={{ opacity: 0, scale: 0.95, y: -10 }}
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: -10 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
           >
             <div className="menu-modal-header">
               <List size={18} className="text-lime" />
@@ -664,4 +605,3 @@ export const CustomVideoPlayer: React.FC = () => {
     </div>
   );
 };
-

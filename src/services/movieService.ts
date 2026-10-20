@@ -376,75 +376,64 @@ export interface StreamingServerMeta {
 }
 
 export const STREAMING_SERVERS: StreamingServerMeta[] = [
-  // 1. Cinezo (No Ads)
+  // 1. VidLink (Ultra HD 4K/1080p - Primary)
   {
     id: 0,
-    name: 'Cinezo (No Ads)',
+    name: 'VidLink (Ultra HD)',
     isNoAds: true,
-    specialty: 'High-speed zero-buffer CDN',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://cinezo.net/embed/tv/${id}/${s}/${e}`
-        : `https://cinezo.net/embed/movie/${id}`
-  },
-  // 2. CineSrc (No Ads)
-  {
-    id: 1,
-    name: 'CineSrc (No Ads)',
-    isNoAds: true,
-    specialty: 'Direct HLS 1080p stream',
-    getUrl: (_, rawId, type, s, e) =>
-      type === 'series'
-        ? `https://cinesrc.st/embed/tv/${rawId}/${s}/${e}`
-        : `https://cinesrc.st/embed/movie/${rawId}`
-  },
-  // 3. PeeStream (No Ads)
-  {
-    id: 2,
-    name: 'PeeStream (No Ads)',
-    isNoAds: true,
-    specialty: 'Fast zero-ad mirror',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://peestream.net/embed/tv/${id}/${s}/${e}`
-        : `https://peestream.net/embed/movie/${id}`
-  },
-  // 4. FlaxMovies (No Ads)
-  {
-    id: 3,
-    name: 'FlaxMovies (No Ads)',
-    isNoAds: true,
-    specialty: 'Clean player, responsive',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://flaxmovies.site/embed/tv/${id}/${s}/${e}`
-        : `https://flaxmovies.site/embed/movie/${id}`
-  },
-  // 5. MoviesAPI (No Ads)
-  {
-    id: 4,
-    name: 'MoviesAPI (No Ads)',
-    isNoAds: true,
-    specialty: 'Multi-resolution streaming',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://moviesapi.club/tv/${id}-${s}-${e}`
-        : `https://moviesapi.club/movie/${id}`
-  },
-  // 6. VidLink
-  {
-    id: 5,
-    name: 'VidLink',
-    isNoAds: false,
-    specialty: '4K Ultra HD mirror',
+    specialty: 'High-speed 4K/1080p fast CDN',
     getUrl: (id, _, type, s, e) =>
       type === 'series'
         ? `https://vidlink.pro/tv/${id}/${s}/${e}`
         : `https://vidlink.pro/movie/${id}`
   },
-  // 7. VidSrc Embed
+  // 2. AutoEmbed (Adaptive CDN)
   {
-    id: 6,
+    id: 1,
+    name: 'AutoEmbed (Adaptive)',
+    isNoAds: true,
+    specialty: 'Instant fast buffer & multi-source',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://autoembed.co/tv/imdb/${id}-${s}-${e}`
+        : `https://autoembed.co/movie/imdb/${id}`
+  },
+  // 3. VidSrc PM (Direct HTML5)
+  {
+    id: 2,
+    name: 'VidSrc PM',
+    isNoAds: true,
+    specialty: 'Reliable fast origin cluster',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://vidsrc.pm/embed/tv/${id}/${s}/${e}`
+        : `https://vidsrc.pm/embed/movie/${id}`
+  },
+  // 4. 2Embed (Multi-Audio & Subs)
+  {
+    id: 3,
+    name: '2Embed',
+    isNoAds: false,
+    specialty: 'Multi-subtitles & audio tracks',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://2embed.cc/embedtv/${id}&s=${s}&e=${e}`
+        : `https://2embed.cc/embed/${id}`
+  },
+  // 5. 123Embed
+  {
+    id: 4,
+    name: '123Embed',
+    isNoAds: false,
+    specialty: 'Global multi-mirror cluster',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://play2.123embed.net/tv/${id}/${s}/${e}`
+        : `https://play2.123embed.net/movie/${id}`
+  },
+  // 6. VidSrc Embed
+  {
+    id: 5,
     name: 'VidSrc Embed',
     isNoAds: false,
     specialty: 'Massive global catalog',
@@ -452,6 +441,28 @@ export const STREAMING_SERVERS: StreamingServerMeta[] = [
       type === 'series'
         ? `https://vidsrc.xyz/embed/tv/${id}/${s}/${e}`
         : `https://vidsrc.xyz/embed/movie/${id}`
+  },
+  // 7. MultiEmbed
+  {
+    id: 6,
+    name: 'MultiEmbed',
+    isNoAds: false,
+    specialty: 'Dynamic auto-stream selector',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://multiembed.mov/?video_id=${id}&s=${s}&e=${e}`
+        : `https://multiembed.mov/?video_id=${id}`
+  },
+  // 8. MoviesAPI
+  {
+    id: 7,
+    name: 'MoviesAPI',
+    isNoAds: true,
+    specialty: 'Multi-resolution streaming',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://moviesapi.club/tv/${id}-${s}-${e}`
+        : `https://moviesapi.club/movie/${id}`
   },
   // 8. VidEasy
   {

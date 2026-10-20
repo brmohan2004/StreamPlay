@@ -143,11 +143,11 @@ export class VideoBufferWatchdog {
   }
 
   public startIframeMonitor() {
-    if (this.stallTimer) clearTimeout(this.stallTimer);
-    // If iframe takes longer than 4.5s to start buffering or load, auto-failover to next server
-    this.stallTimer = setTimeout(() => {
-      this.failoverToNextServer('Iframe response timeout (>4.5s)');
-    }, 4500);
+    // Disabled aggressive timer-based auto-failover to ensure uninterrupted playback
+    if (this.stallTimer) {
+      clearTimeout(this.stallTimer);
+      this.stallTimer = null;
+    }
   }
 
   public markPlaybackStarted() {
