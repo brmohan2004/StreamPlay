@@ -770,64 +770,103 @@ export interface StreamingServerMeta {
 }
 
 export const STREAMING_SERVERS: StreamingServerMeta[] = [
-  // 1. AutoEmbed CC / CO (Instant 1080p, Multi-Audio, Zero Sandbox Error)
+  // 1. AutoEmbed CO (Ultra High-Speed, Multi-Audio & Subtitles, Zero Sandbox Error)
   {
     id: 0,
     name: 'AutoEmbed (Multi-Audio & Subs)',
     isNoAds: true,
-    specialty: 'Multi-language audio & subtitles with 0 sandbox blocks',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://player.autoembed.cc/embed/tv/${id}/${s}/${e}`
-        : `https://player.autoembed.cc/embed/movie/${id}`
+    specialty: 'Multi-language audio & subtitles with zero sandbox blocks',
+    getUrl: (id, _, type, s, e) => {
+      const isImdb = id.startsWith('tt');
+      const prefix = isImdb ? 'imdb/' : 'tmdb/';
+      return type === 'series'
+        ? `https://autoembed.co/tv/${prefix}${id}-${s}-${e}`
+        : `https://autoembed.co/movie/${prefix}${id}`;
+    }
   },
-  // 2. SmashyStream (High-Speed Cluster, Zero Sandbox)
+  // 2. 2Embed CC (Multi-Language & Audio Tracks)
   {
     id: 1,
-    name: 'SmashyStream (Ultra Clean)',
-    isNoAds: true,
-    specialty: 'High-speed cluster with multiple audio & CC tracks',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://embed.smashystream.com/playere.php?tmdb=${id}&season=${s}&episode=${e}`
-        : `https://embed.smashystream.com/playere.php?tmdb=${id}`
-  },
-  // 3. MultiEmbed / SuperEmbed (Universal Dynamic Mirrors)
-  {
-    id: 2,
-    name: 'MultiEmbed (Universal Mirrors)',
-    isNoAds: true,
-    specialty: 'Dynamic multi-source selector with auto-fallback',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${s}&e=${e}`
-        : `https://multiembed.mov/?video_id=${id}&tmdb=1`
-  },
-  // 4. 2Embed (Multi-Audio & Subs)
-  {
-    id: 3,
     name: '2Embed CC (Multi-Audio)',
-    isNoAds: false,
-    specialty: 'Multi-subtitles & audio tracks',
+    isNoAds: true,
+    specialty: 'High compatibility multi-audio & CC subtitles',
     getUrl: (id, _, type, s, e) =>
       type === 'series'
         ? `https://www.2embed.cc/embedtv/${id}&s=${s}&e=${e}`
         : `https://www.2embed.cc/embed/${id}`
   },
-  // 5. MoviesAPI (Ad-Free Fast CDN)
+  // 3. VidSrc PM (Origin Cluster)
   {
-    id: 4,
-    name: 'MoviesAPI (No Ads)',
+    id: 2,
+    name: 'VidSrc PM (Origin Cluster)',
     isNoAds: true,
-    specialty: 'Multi-resolution streaming with adaptive bitrate',
+    specialty: 'Fast origin cluster with zero popup breakout',
     getUrl: (id, _, type, s, e) =>
       type === 'series'
-        ? `https://moviesapi.club/tv/${id}-${s}-${e}`
-        : `https://moviesapi.club/movie/${id}`
+        ? `https://vidsrc.pm/embed/tv/${id}/${s}/${e}`
+        : `https://vidsrc.pm/embed/movie/${id}`
   },
-  // 6. VidSrc CC (Clean 1080p Full HD)
+  // 4. VidBinge (Clean Ad-Free Player)
+  {
+    id: 3,
+    name: 'VidBinge (Zero Ads & CC)',
+    isNoAds: true,
+    specialty: 'Clean ad-free HTML5 stream player with subtitle selection',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://vidbinge.dev/embed/tv/${id}/${s}/${e}`
+        : `https://vidbinge.dev/embed/movie/${id}`
+  },
+  // 5. VidSrc NL (High Bitrate Stream)
+  {
+    id: 4,
+    name: 'VidSrc NL (High Bitrate)',
+    isNoAds: true,
+    specialty: 'Direct smooth stream with multi-resolution',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://player.vidsrc.nl/embed/tv/${id}/${s}/${e}`
+        : `https://player.vidsrc.nl/embed/movie/${id}`
+  },
+  // 6. AutoEmbed TO (Backup Mirror)
   {
     id: 5,
+    name: 'AutoEmbed Mirror (TO)',
+    isNoAds: true,
+    specialty: 'High-availability mirror node for AutoEmbed',
+    getUrl: (id, _, type, s, e) => {
+      const isImdb = id.startsWith('tt');
+      const prefix = isImdb ? 'imdb/' : 'tmdb/';
+      return type === 'series'
+        ? `https://autoembed.to/tv/${prefix}${id}-${s}-${e}`
+        : `https://autoembed.to/movie/${prefix}${id}`;
+    }
+  },
+  // 7. 111Movies (Asian & Regional Cinema)
+  {
+    id: 6,
+    name: '111Movies (Asian & Regional)',
+    isNoAds: false,
+    specialty: 'Regional Indian & Asian cinema catalog',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://111movies.com/tv/${id}/${s}/${e}`
+        : `https://111movies.com/movie/${id}`
+  },
+  // 8. VidLink Pro (Alternative Mirror)
+  {
+    id: 7,
+    name: 'VidLink Pro (Alternative)',
+    isNoAds: false,
+    specialty: 'High-speed 4K/1080p mirror',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://vidlink.pro/tv/${id}/${s}/${e}`
+        : `https://vidlink.pro/movie/${id}`
+  },
+  // 9. VidSrc CC (Clean 1080p)
+  {
+    id: 8,
     name: 'VidSrc CC (Clean 1080p)',
     isNoAds: true,
     specialty: 'High-bitrate pristine 1080p stream with multi-audio',
@@ -836,291 +875,38 @@ export const STREAMING_SERVERS: StreamingServerMeta[] = [
         ? `https://vidsrc.cc/v2/embed/tv/${id}/${s}/${e}`
         : `https://vidsrc.cc/v2/embed/movie/${id}`
   },
-  // 7. VidSrc PM (Origin Cluster)
-  {
-    id: 6,
-    name: 'VidSrc PM (Origin)',
-    isNoAds: true,
-    specialty: 'High-speed origin cluster',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://vidsrc.pm/embed/tv/${id}/${s}/${e}`
-        : `https://vidsrc.pm/embed/movie/${id}`
-  },
-  // 8. VidLink Pro (Ultra HD Alternative)
-  {
-    id: 7,
-    name: 'VidLink Pro (Alternative)',
-    isNoAds: true,
-    specialty: 'High-speed 4K/1080p mirror',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://vidlink.pro/tv/${id}/${s}/${e}`
-        : `https://vidlink.pro/movie/${id}`
-  },
-  // 9. 111Movies (Regional Indian & Asian Cinema)
-  {
-    id: 8,
-    name: '111Movies',
-    isNoAds: false,
-    specialty: 'Regional Indian & Asian cinema',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://111movies.com/tv/${id}/${s}/${e}`
-        : `https://111movies.com/movie/${id}`
-  },
-  // 8. VidEasy
-  {
-    id: 7,
-    name: 'VidEasy',
-    isNoAds: false,
-    specialty: 'Lightweight HTML5 stream',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://videasy.net/embed/tv/${id}/${s}/${e}`
-        : `https://videasy.net/embed/movie/${id}`
-  },
-  // 9. 111Movies
-  {
-    id: 8,
-    name: '111Movies',
-    isNoAds: false,
-    specialty: 'Regional Indian & Asian cinema',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://111movies.com/tv/${id}/${s}/${e}`
-        : `https://111movies.com/movie/${id}`
-  },
-  // 10. VidZee
+  // 10. SmashyStream (AnyEmbed)
   {
     id: 9,
-    name: 'VidZee',
-    isNoAds: false,
-    specialty: 'Clean player controls',
+    name: 'SmashyStream (Ultra Clean)',
+    isNoAds: true,
+    specialty: 'High-speed cluster with multiple audio & CC tracks',
     getUrl: (id, _, type, s, e) =>
       type === 'series'
-        ? `https://vidzee.online/embed/tv/${id}/${s}/${e}`
-        : `https://vidzee.online/embed/movie/${id}`
+        ? `https://embed.smashystream.com/playere.php?tmdb=${id}&season=${s}&episode=${e}`
+        : `https://embed.smashystream.com/playere.php?tmdb=${id}`
   },
-  // 11. VidSrc
+  // 11. MoviesAPI (Ad-Free Fast CDN)
   {
     id: 10,
-    name: 'VidSrc',
-    isNoAds: false,
-    specialty: 'Reliable classic origin',
+    name: 'MoviesAPI (No Ads)',
+    isNoAds: true,
+    specialty: 'Multi-resolution streaming with adaptive bitrate',
     getUrl: (id, _, type, s, e) =>
       type === 'series'
-        ? `https://vidsrc.me/embed/tv?imdb=${id}&season=${s}&episode=${e}`
-        : `https://vidsrc.me/embed/movie?imdb=${id}`
+        ? `https://moviesapi.club/tv/${id}-${s}-${e}`
+        : `https://moviesapi.club/movie/${id}`
   },
-  // 12. 2Embed
+  // 12. MultiEmbed (Universal Mirrors)
   {
     id: 11,
-    name: '2Embed',
-    isNoAds: false,
-    specialty: 'Multi-audio and multi-subtitles',
+    name: 'MultiEmbed (Universal Mirrors)',
+    isNoAds: true,
+    specialty: 'Dynamic multi-source selector with auto-fallback',
     getUrl: (id, _, type, s, e) =>
       type === 'series'
-        ? `https://2embed.cc/embedtv/${id}&s=${s}&e=${e}`
-        : `https://2embed.cc/embed/${id}`
-  },
-  // 13. Mapple
-  {
-    id: 12,
-    name: 'Mapple',
-    isNoAds: false,
-    specialty: 'Mobile-first low bandwidth',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://mapple.tv/embed/tv/${id}/${s}/${e}`
-        : `https://mapple.tv/embed/movie/${id}`
-  },
-  // 14. PrimeSrc
-  {
-    id: 13,
-    name: 'PrimeSrc',
-    isNoAds: false,
-    specialty: 'Prime & Netflix mirror proxy',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://primesrc.net/embed/tv/${id}/${s}/${e}`
-        : `https://primesrc.net/embed/movie/${id}`
-  },
-  // 15. MultiEmbed
-  {
-    id: 14,
-    name: 'MultiEmbed',
-    isNoAds: false,
-    specialty: 'Dynamic auto-stream selector',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://multiembed.mov/?video_id=${id}&s=${s}&e=${e}`
-        : `https://multiembed.mov/?video_id=${id}`
-  },
-  // 16. AutoEmbed
-  {
-    id: 15,
-    name: 'AutoEmbed',
-    isNoAds: false,
-    specialty: 'Instant load buffer',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://player.autoembed.cc/embed/tv/${id}/${s}/${e}`
-        : `https://player.autoembed.cc/embed/movie/${id}`
-  },
-  // 17. VixSrc
-  {
-    id: 16,
-    name: 'VixSrc',
-    isNoAds: false,
-    specialty: 'High-bitrate audio & video',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://vixsrc.to/embed/tv/${id}/${s}/${e}`
-        : `https://vixsrc.to/embed/movie/${id}`
-  },
-  // 18. VidLove
-  {
-    id: 17,
-    name: 'VidLove',
-    isNoAds: false,
-    specialty: 'Stable European CDN nodes',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://vidlove.stream/embed/tv/${id}/${s}/${e}`
-        : `https://vidlove.stream/embed/movie/${id}`
-  },
-  // 19. VidFast
-  {
-    id: 18,
-    name: 'VidFast',
-    isNoAds: false,
-    specialty: 'Low-latency Asian CDN nodes',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://vidfast.stream/embed/tv/${id}/${s}/${e}`
-        : `https://vidfast.stream/embed/movie/${id}`
-  },
-  // 20. Filmu
-  {
-    id: 19,
-    name: 'Filmu',
-    isNoAds: false,
-    specialty: 'Bollywood & Kollywood fast cache',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://filmu.stream/embed/tv/${id}/${s}/${e}`
-        : `https://filmu.stream/embed/movie/${id}`
-  },
-  // 21. VidCore
-  {
-    id: 20,
-    name: 'VidCore',
-    isNoAds: false,
-    specialty: 'Core backbone mirror',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://vidcore.stream/embed/tv/${id}/${s}/${e}`
-        : `https://vidcore.stream/embed/movie/${id}`
-  },
-  // 22. VAPlayer
-  {
-    id: 21,
-    name: 'VAPlayer',
-    isNoAds: false,
-    specialty: 'Smooth HTML5 pipeline',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://vaplayer.stream/embed/tv/${id}/${s}/${e}`
-        : `https://vaplayer.stream/embed/movie/${id}`
-  },
-  // 23. Vares
-  {
-    id: 22,
-    name: 'Vares',
-    isNoAds: false,
-    specialty: 'Fast reverse proxy',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://vares.stream/embed/tv/${id}/${s}/${e}`
-        : `https://vares.stream/embed/movie/${id}`
-  },
-  // 24. VidKing
-  {
-    id: 23,
-    name: 'VidKing',
-    isNoAds: false,
-    specialty: 'High availability cluster',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://vidking.stream/embed/tv/${id}/${s}/${e}`
-        : `https://vidking.stream/embed/movie/${id}`
-  },
-  // 25. VidBolt
-  {
-    id: 24,
-    name: 'VidBolt',
-    isNoAds: false,
-    specialty: 'Lightning fast start time',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://vidbolt.stream/embed/tv/${id}/${s}/${e}`
-        : `https://vidbolt.stream/embed/movie/${id}`
-  },
-  // 26. VidNest
-  {
-    id: 25,
-    name: 'VidNest',
-    isNoAds: false,
-    specialty: 'Ad-free edge cache',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://vidnest.stream/embed/tv/${id}/${s}/${e}`
-        : `https://vidnest.stream/embed/movie/${id}`
-  },
-  // 27. VidSrc.su
-  {
-    id: 26,
-    name: 'VidSrc.su',
-    isNoAds: false,
-    specialty: 'Dedicated high-bandwidth node',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://vidsrc.su/embed/tv/${id}/${s}/${e}`
-        : `https://vidsrc.su/embed/movie/${id}`
-  },
-  // 28. VidGod
-  {
-    id: 27,
-    name: 'VidGod',
-    isNoAds: false,
-    specialty: 'Multi-source dynamic fallback',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://vidgod.stream/embed/tv/${id}/${s}/${e}`
-        : `https://vidgod.stream/embed/movie/${id}`
-  },
-  // 29. VidSrc.me
-  {
-    id: 28,
-    name: 'VidSrc.me',
-    isNoAds: false,
-    specialty: 'Direct mirror with episode router',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://vidsrc.me/embed/${id}/${s}-${e}`
-        : `https://vidsrc.me/embed/${id}`
-  },
-  // 30. 1Embed
-  {
-    id: 29,
-    name: '1Embed',
-    isNoAds: false,
-    specialty: 'Universal emergency fallback',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://1embed.to/embed/${id}/${s}/${e}`
-        : `https://1embed.to/embed/${id}`
+        ? `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${s}&e=${e}`
+        : `https://multiembed.mov/?video_id=${id}&tmdb=1`
   }
 ];
 

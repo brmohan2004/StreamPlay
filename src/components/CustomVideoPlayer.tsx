@@ -53,6 +53,31 @@ export const CustomVideoPlayer: React.FC = () => {
   const [isLocked, setIsLocked] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [hasPlayerCrashed, setHasPlayerCrashed] = useState(false);
+  const [serverToast, setServerToast] = useState<string | null>(null);
+  const [showSlowNotice, setShowSlowNotice] = useState(false);
+
+  const handleSwitchServer = (nextIdx: number) => {
+    const safeIdx = Math.abs(nextIdx) % STREAMING_SERVERS.length;
+    const targetServer = STREAMING_SERVERS[safeIdx];
+    setVideoProviderIndex(safeIdx);
+    setIsLoading(true);
+    setHasPlayerCrashed(false);
+    setShowSlowNotice(false);
+    setServerToast(`Switched to ${targetServer?.name || 'Mirror Server'}`);
+    setTimeout(() => {
+      setServerToast(null);
+    }, 2800);
+  };
+
+  // Auto-dismiss loading curtain after 2.5s so iframe controls are instantly visible & responsive
+  useEffect(() => {
+    if (!isVideoModalOpen) return;
+    setIsLoading(true);
+    const dismissTimer = setTimeout(() => {
+      setIsLoading(false);
+    }, 2500);
+    return () => clearTimeout(dismissTimer);
+  }, [isVideoModalOpen, videoProviderIndex, activeMovie?.id, activeSeason, activeEpisode]);
 
   // Popup Guard: Prevent external embed ads from opening new Chrome tabs/windows
   // Returns a mock Window proxy so embedded players pass anti-sandbox/popup capability checks without opening external tabs
@@ -380,11 +405,7 @@ export const CustomVideoPlayer: React.FC = () => {
             <div className="crash-actions">
               <button
                 className="crash-action-btn primary"
-                onClick={() => {
-                  setHasPlayerCrashed(false);
-                  setIsLoading(true);
-                  setVideoProviderIndex((videoProviderIndex + 1) % STREAMING_SERVERS.length);
-                }}
+                onClick={() => handleSwitchServer(videoProviderIndex + 1)}
               >
                 Switch to Next Server ({STREAMING_SERVERS[(videoProviderIndex + 1) % STREAMING_SERVERS.length]?.name || 'Next'})
               </button>
@@ -394,6 +415,38 @@ export const CustomVideoPlayer: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Slow or Blocked Connection Auto-Watchdog Pill */}
+        <AnimatePresence>
+          {showSlowNotice && isLoading && (
+            <motion.div
+              className="player-slow-stream-toast"
+              initial={{ opacity: 0, y: -10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.95 }}
+              onClick={() => handleSwitchServer(videoProviderIndex + 1)}
+              title="Click to switch to next fast mirror server"
+            >
+              <Zap size={14} color="#c8ff00" />
+              <span>Slow or blocked stream? Tap to switch to Mirror ({STREAMING_SERVERS[(videoProviderIndex + 1) % STREAMING_SERVERS.length]?.name.split(' ')[0]}) ⚡</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Server Switched Notification Toast */}
+        <AnimatePresence>
+          {serverToast && (
+            <motion.div
+              className="player-server-switched-toast"
+              initial={{ opacity: 0, y: 15, scale: 0.92 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 15, scale: 0.92 }}
+            >
+              <Server size={14} color="#00d2ff" />
+              <span>{serverToast}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {activeMovie.streamUrl ? (
           <video
@@ -486,10 +539,7 @@ export const CustomVideoPlayer: React.FC = () => {
         <div className="header-right-tools">
           <button
             className="connection-health-pill-btn server-pill-btn"
-            onClick={() => {
-              setIsLoading(true);
-              setVideoProviderIndex((videoProviderIndex + 1) % STREAMING_SERVERS.length);
-            }}
+            onClick={() => handleSwitchServer(videoProviderIndex + 1)}
             title={`Current Server: ${STREAMING_SERVERS[videoProviderIndex % STREAMING_SERVERS.length]?.name}. Click to switch server`}
             aria-label="Switch Server"
           >
@@ -648,23 +698,28 @@ export const CustomVideoPlayer: React.FC = () => {
             </div>
             <div className="menu-options-list">
               <span className="lang-col-title" style={{ padding: '0.4rem 0.6rem 0.1rem', fontSize: '0.72rem' }}>
-                Streaming Server
+                Streaming Server ({STREAMING_SERVERS.length} Verified Mirrors)
               </span>
-              {STREAMING_SERVERS.slice(0, 5).map((srv, idx) => (
-                <div
-                  key={srv.id}
-                  className={`menu-option-item ${videoProviderIndex === idx ? 'active' : ''}`}
-                  onClick={() => {
-                    setVideoProviderIndex(idx);
-                    setIsLoading(true);
-                  }}
-                >
-                  <Server size={14} style={{ marginRight: 6, opacity: 0.7 }} />
-                  <span className="option-title">{srv.name}</span>
-                  <span className="option-badge-tag">{srv.isNoAds ? 'Fast' : 'HD'}</span>
-                  {videoProviderIndex === idx && <Check size={18} color="#00d2ff" />}
-                </div>
-              ))}
+              <div className="servers-scrollable-container">
+                {STREAMING_SERVERS.map((srv, idx) => (
+                  <div
+                    key={srv.id}
+                    className={`menu-option-item ${videoProviderIndex === idx ? 'active' : ''}`}
+                    onClick={() => {
+                      handleSwitchServer(idx);
+                      setShowQualityMenu(false);
+                    }}
+                  >
+                    <Server size={14} style={{ opacity: 0.85, color: videoProviderIndex === idx ? '#00d2ff' : '#c8ff00' }} />
+                    <div className="server-option-meta">
+                      <span className="option-title">{srv.name}</span>
+                      <span className="server-specialty-sub">{srv.specialty}</span>
+                    </div>
+                    <span className="option-badge-tag">{srv.isNoAds ? 'Ultra Fast' : 'HD'}</span>
+                    {videoProviderIndex === idx && <Check size={18} color="#00d2ff" />}
+                  </div>
+                ))}
+              </div>
 
               <span className="lang-col-title" style={{ padding: '0.6rem 0.6rem 0.1rem', fontSize: '0.72rem' }}>
                 Video Quality
