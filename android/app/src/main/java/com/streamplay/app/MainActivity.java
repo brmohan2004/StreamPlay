@@ -4,6 +4,7 @@ import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Message;
+import android.view.View;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
@@ -19,6 +20,7 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         registerPlugin(AppUpdaterPlugin.class);
+        registerPlugin(BackgroundAudioPlugin.class);
 
         // Auto-request microphone permission for voice search on app launch
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
@@ -38,6 +40,12 @@ public class MainActivity extends BridgeActivity {
         try {
             WebView webView = getBridge().getWebView();
             if (webView != null) {
+                // Completely hide right side & bottom scroll indicators for all screens and modes
+                webView.setVerticalScrollBarEnabled(false);
+                webView.setHorizontalScrollBarEnabled(false);
+                webView.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
+                webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
+
                 webView.getSettings().setSupportMultipleWindows(true);
                 webView.getSettings().setJavaScriptCanOpenWindowsAutomatically(true);
                 webView.getSettings().setMediaPlaybackRequiresUserGesture(false);
@@ -72,5 +80,40 @@ public class MainActivity extends BridgeActivity {
         } catch (Exception e) {
             // Safe fallback
         }
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        try {
+            WebView webView = getBridge().getWebView();
+            if (webView != null) {
+                // Keep background audio playback, event dispatch, and auto-next track timers running smoothly
+                webView.resumeTimers();
+            }
+        } catch (Exception ignored) {}
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        try {
+            WebView webView = getBridge().getWebView();
+            if (webView != null) {
+                // Keep JS timers active even when screen is locked or app is sent to background
+                webView.resumeTimers();
+            }
+        } catch (Exception ignored) {}
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        try {
+            WebView webView = getBridge().getWebView();
+            if (webView != null) {
+                webView.resumeTimers();
+            }
+        } catch (Exception ignored) {}
     }
 }

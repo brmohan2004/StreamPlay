@@ -124,13 +124,14 @@ export const MusicPlayerScreen: React.FC<MusicPlayerScreenProps> = ({ onClose })
         onSelectTrack={track => playSong(track, songQueue)}
       />
 
-      {/* 4. Arc Scrubber Deck */}
+      {/* 4. Interactive Semi-Circle Arc Scrubber */}
       <ArcScrubber
         progressRatio={progressRatio}
         songProgress={songProgress}
         songDuration={songDuration}
         isLiked={isLiked}
         onToggleLike={() => toggleLikeSong(currentSong.id)}
+        onSeek={seekSong}
       />
 
       {/* 5. Controls Deck */}
@@ -138,14 +139,11 @@ export const MusicPlayerScreen: React.FC<MusicPlayerScreenProps> = ({ onClose })
         isPlaying={isPlayingSong}
         isShuffle={isShuffle}
         isRepeat={isRepeat}
-        songDuration={songDuration}
-        songProgress={songProgress}
         onTogglePlay={toggleSongPlay}
         onNext={nextSong}
         onPrev={prevSong}
         onToggleShuffle={toggleShuffle}
         onToggleRepeat={toggleRepeat}
-        onSeek={seekSong}
       />
     </div>
   );

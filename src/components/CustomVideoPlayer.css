@@ -747,15 +747,14 @@
   max-height: 220px;
   overflow-y: auto;
   padding-right: 4px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .servers-scrollable-container::-webkit-scrollbar {
-  width: 4px;
-}
-
-.servers-scrollable-container::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 .server-option-meta {

@@ -13,28 +13,22 @@ interface PlayerControlsDeckProps {
   isPlaying: boolean;
   isShuffle: boolean;
   isRepeat: boolean;
-  songDuration: number;
-  songProgress: number;
   onTogglePlay: () => void;
   onNext: () => void;
   onPrev: () => void;
   onToggleShuffle: () => void;
   onToggleRepeat: () => void;
-  onSeek: (time: number) => void;
 }
 
 export const PlayerControlsDeck: React.FC<PlayerControlsDeckProps> = ({
   isPlaying,
   isShuffle,
   isRepeat,
-  songDuration,
-  songProgress,
   onTogglePlay,
   onNext,
   onPrev,
   onToggleShuffle,
-  onToggleRepeat,
-  onSeek
+  onToggleRepeat
 }) => {
   return (
     <div className="player-controls-deck">
@@ -83,18 +77,6 @@ export const PlayerControlsDeck: React.FC<PlayerControlsDeckProps> = ({
         <button className="ctrl-skip-btn" onClick={onNext} title="Next Track">
           <SkipForward size={24} />
         </button>
-      </div>
-
-      {/* Scrubber slider fallback for touch scrubbing */}
-      <div className="player-hidden-scrub-input">
-        <input
-          type="range"
-          min={0}
-          max={songDuration || 100}
-          value={songProgress}
-          onChange={e => onSeek(parseFloat(e.target.value))}
-          className="modal-scrub-slider"
-        />
       </div>
     </div>
   );

@@ -21,7 +21,6 @@ import { PartyProvider } from './context/PartyContext';
 import { PartyRoomModal } from './components/PartyRoomModal';
 import { FloatingReactionLayer } from './components/FloatingReactionLayer';
 import { SplashScreen } from './components/SplashScreen';
-import { DynamicMiniCapsule } from './components/DynamicMiniCapsule';
 import { NetworkOfflineModal } from './components/NetworkOfflineModal';
 import {
   fetchTopMovies,
@@ -273,9 +272,6 @@ export function AppContent() {
             </>
           )}
         </main>
-
-        {/* Universal Dynamic Island & Android Mini Capsule Playback Bar */}
-        <DynamicMiniCapsule />
 
         {/* Network Offline / Auto-Reconnect & Refresh Modal */}
         <NetworkOfflineModal onReconnect={refreshLiveCatalogs} />

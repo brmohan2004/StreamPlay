@@ -3,6 +3,12 @@ import { MovieItem, SongItem } from '../types/media';
 import { logSignal } from '../services/recommendationTracker';
 import { AudioBufferWatchdog } from '../services/streamingWatchdog';
 import { getAudioStreamForQuality, fetchInfiniteLanguageSongs, AudioQualitySetting } from '../services/musicService';
+import {
+  startNativeBackgroundAudio,
+  updateNativeBackgroundAudio,
+  stopNativeBackgroundAudio,
+  enableAudioPipelineKeepAlive
+} from '../services/nativeBackgroundAudio';
 
 // Helper: fire a custom event so RecommendationContext knows to refresh
 function notifyRecUpdate() {
@@ -363,6 +369,7 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const audioWatchdogRef = useRef<AudioBufferWatchdog | null>(null);
   const currentSongRef = useRef<SongItem | null>(null);
   const songQueueRef = useRef<SongItem[]>([]);
+  const isPlayingSongRef = useRef(false);
   const isShuffleRef = useRef(false);
   const isRepeatRef = useRef(false);
   const nextSongRef = useRef<() => void>(() => {});
@@ -375,6 +382,12 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const queue = songQueueRef.current.length > 0 ? songQueueRef.current : songQueue;
     const current = currentSongRef.current || currentSong;
     if (!current || queue.length === 0) return null;
+
+    // Prune session history if it gets too large to prevent memory growth and starvation
+    if (sessionPlayedSongIds.current.size > 80) {
+      const arr = Array.from(sessionPlayedSongIds.current);
+      sessionPlayedSongIds.current = new Set(arr.slice(arr.length - 40));
+    }
 
     const currentIndex = queue.findIndex(s => String(s.id) === String(current.id));
     let candidate: SongItem | null = null;
@@ -405,6 +418,8 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     if (!candidate && currentIndex >= 0 && currentIndex < queue.length - 1) {
       candidate = queue[currentIndex + 1];
+    } else if (!candidate && queue.length > 0) {
+      candidate = queue[0];
     }
     return candidate;
   };
@@ -412,6 +427,40 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Session-wide played song tracking to avoid repeating played songs (infinite songs playing)
   const sessionPlayedSongIds = useRef<Set<string>>(new Set());
   const autoNextBatchIndexRef = useRef(1);
+
+  // Proactive background queue replenishment: ensures endless infinite tracks
+  const replenishQueueIfNeeded = (force = false) => {
+    const queue = songQueueRef.current;
+    const current = currentSongRef.current;
+    const currentIndex = queue.findIndex(s => String(s.id) === String(current?.id));
+    const remainingInQueue = queue.length - (currentIndex >= 0 ? currentIndex : 0);
+
+    if ((force || remainingInQueue <= 8) && !isPrefetchingBatchRef.current) {
+      isPrefetchingBatchRef.current = true;
+      const nextBatch = autoNextBatchIndexRef.current + 1;
+      autoNextBatchIndexRef.current = nextBatch;
+      const lang = current?.language || localStorage.getItem('streamplay_primary_lang') || 'Tamil';
+      fetchInfiniteLanguageSongs(lang, nextBatch, 25)
+        .then(moreSongs => {
+          const existingIds = new Set(songQueueRef.current.map(s => String(s.id)));
+          const freshSongs = moreSongs.filter(s =>
+            !existingIds.has(String(s.id)) &&
+            !s.isShortClip &&
+            !sessionPlayedSongIds.current.has(String(s.id)) &&
+            !sessionPlayedSongIds.current.has(`${s.title.toLowerCase().trim()} - ${s.artist.toLowerCase().trim()}`)
+          );
+          if (freshSongs.length > 0) {
+            const updatedQueue = [...songQueueRef.current, ...freshSongs];
+            setSongQueue(updatedQueue);
+            songQueueRef.current = updatedQueue;
+          }
+        })
+        .catch(console.warn)
+        .finally(() => {
+          isPrefetchingBatchRef.current = false;
+        });
+    }
+  };
 
   // Multi-Provider Audio Quality Setting
   const [audioQuality, setAudioQualityState] = useState<AudioQualitySetting>(() => {
@@ -441,6 +490,10 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [songQueue]);
 
   useEffect(() => {
+    isPlayingSongRef.current = isPlayingSong;
+  }, [isPlayingSong]);
+
+  useEffect(() => {
     isShuffleRef.current = isShuffle;
   }, [isShuffle]);
 
@@ -458,22 +511,52 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     preloadAudio.volume = 0;
     preloadAudioRef.current = preloadAudio;
 
-    const watchdog = new AudioBufferWatchdog(audio, [], (newUrl: string) => {
-      setCurrentSong(prev => prev ? { ...prev, streamUrl: newUrl } : null);
-    });
+    let isTransitioning = false;
+    const triggerNextSong = () => {
+      if (isTransitioning) return;
+      isTransitioning = true;
+      if (nextSongRef.current) {
+        nextSongRef.current();
+      }
+      setTimeout(() => {
+        isTransitioning = false;
+      }, 800);
+    };
+
+    const watchdog = new AudioBufferWatchdog(
+      audio,
+      [],
+      (newUrl: string) => {
+        setCurrentSong(prev => prev ? { ...prev, streamUrl: newUrl } : null);
+      },
+      () => {
+        // Fallback: mirrors exhausted or dead stream URL, auto-advance
+        triggerNextSong();
+      }
+    );
     audioWatchdogRef.current = watchdog;
 
     audio.volume = songVolume;
+
+    const handleEnded = () => {
+      triggerNextSong();
+    };
 
     const handleTimeUpdate = () => {
       setSongProgress(audio.currentTime);
       if (audio.duration && !isNaN(audio.duration)) {
         setSongDuration(audio.duration);
 
+        // Screen-off / background auto next fallback: if audio reached the end within 0.3s and is not paused
+        const remaining = audio.duration - audio.currentTime;
+        if (remaining <= 0.3 && !audio.paused && audio.duration > 3) {
+          triggerNextSong();
+          return;
+        }
+
         // Gapless background audio preloader:
         // When current track has <= 25 seconds remaining or is >= 70% played,
         // proactively preload the next track into the browser audio cache
-        const remaining = audio.duration - audio.currentTime;
         if (remaining <= 25 || (audio.currentTime / audio.duration) >= 0.7) {
           const candidate = getNextCandidateSong();
           if (candidate && candidate.streamUrl && preloadAudioRef.current) {
@@ -484,50 +567,49 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             }
           }
 
-          // Proactive background queue replenishment before it reaches the end
-          const queue = songQueueRef.current;
-          const current = currentSongRef.current;
-          const currentIndex = queue.findIndex(s => String(s.id) === String(current?.id));
-          if ((queue.length - currentIndex <= 4) && !isPrefetchingBatchRef.current) {
-            isPrefetchingBatchRef.current = true;
-            const nextBatch = autoNextBatchIndexRef.current + 1;
-            autoNextBatchIndexRef.current = nextBatch;
-            const primLang = localStorage.getItem('streamplay_primary_lang') || 'Tamil';
-            fetchInfiniteLanguageSongs(primLang, nextBatch, 25).then(moreSongs => {
-              const existingIds = new Set(queue.map(s => String(s.id)));
-              const freshSongs = moreSongs.filter(s =>
-                !existingIds.has(String(s.id)) &&
-                !s.isShortClip &&
-                !sessionPlayedSongIds.current.has(String(s.id))
-              );
-              if (freshSongs.length > 0) {
-                const updatedQueue = [...queue, ...freshSongs];
-                setSongQueue(updatedQueue);
-                songQueueRef.current = updatedQueue;
-              }
-            }).catch(console.warn).finally(() => {
-              isPrefetchingBatchRef.current = false;
-            });
-          }
+          // Proactive background queue replenishment
+          replenishQueueIfNeeded();
         }
       }
     };
 
-    const handleEnded = () => {
-      if (nextSongRef.current) {
-        nextSongRef.current();
-      }
+    const handlePlay = () => {
+      setIsPlayingSong(true);
+      isPlayingSongRef.current = true;
+      enableAudioPipelineKeepAlive();
     };
 
-    const handlePlay = () => setIsPlayingSong(true);
-    const handlePause = () => setIsPlayingSong(false);
+    const handlePause = () => {
+      setIsPlayingSong(false);
+      isPlayingSongRef.current = false;
+    };
+
+    const handleError = (e: Event) => {
+      console.warn('[Audio Player] Audio element error encountered, auto-advancing:', e);
+      triggerNextSong();
+    };
 
     audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('ended', handleEnded);
     audio.addEventListener('play', handlePlay);
     audio.addEventListener('pause', handlePause);
+    audio.addEventListener('error', handleError);
+
+    // Independent screen-off watchdog: ticks every 1 second
+    // Detects when the song has reached duration or stalled at EOF without firing ended
+    const watchdogTimer = setInterval(() => {
+      if (!audioRef.current || !isPlayingSongRef.current) return;
+      const a = audioRef.current;
+      if (a.duration && !isNaN(a.duration) && a.duration > 3) {
+        const remaining = a.duration - a.currentTime;
+        if ((remaining <= 0.35 || a.currentTime >= a.duration) && !a.paused) {
+          triggerNextSong();
+        }
+      }
+    }, 1000);
 
     return () => {
+      clearInterval(watchdogTimer);
       watchdog.detach();
       audio.pause();
       if (preloadAudioRef.current) {
@@ -537,6 +619,7 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('play', handlePlay);
       audio.removeEventListener('pause', handlePause);
+      audio.removeEventListener('error', handleError);
     };
   }, []);
 
@@ -645,6 +728,9 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       });
     }
 
+    // Start native background audio (Foreground Service + CPU WakeLock + WifiLock)
+    startNativeBackgroundAudio(updatedSong.title, updatedSong.artist);
+
     if (audioRef.current) {
       if (audioWatchdogRef.current) {
         const mirrors = [updatedSong.streamUrl, ...(updatedSong.backupStreamUrls || [])];
@@ -653,11 +739,26 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       audioRef.current.src = updatedSong.streamUrl;
       audioRef.current
         .play()
-        .then(() => setIsPlayingSong(true))
+        .then(() => {
+          setIsPlayingSong(true);
+          isPlayingSongRef.current = true;
+          updateNativeMediaSession(updatedSong, true);
+          updateNativeBackgroundAudio(updatedSong.title, updatedSong.artist);
+        })
         .catch(err => {
-          console.warn('Playback blocked or failed, retrying on interaction:', err);
+          console.warn('Playback blocked or failed, auto-advancing to next playable track:', err);
+          // If playback failed immediately (e.g. 403 or corrupted stream URL), auto-advance
+          if (nextSongRef.current) {
+            nextSongRef.current();
+          }
         });
     }
+
+    // Immediately update OS-level Dynamic Island & Notification MediaSession
+    updateNativeMediaSession(updatedSong, true);
+
+    // Proactively top up queue with fresh songs so playback never terminates
+    replenishQueueIfNeeded(queue ? queue.length <= 5 : true);
 
     // Track: user started playing a song
     logSignal({
@@ -678,8 +779,21 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (!audioRef.current || !currentSong) return;
     if (isPlayingSong) {
       audioRef.current.pause();
+      setIsPlayingSong(false);
+      isPlayingSongRef.current = false;
+      stopNativeBackgroundAudio();
+      if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
+        navigator.mediaSession.playbackState = 'paused';
+      }
     } else {
-      audioRef.current.play().catch(e => console.error(e));
+      startNativeBackgroundAudio(currentSong.title, currentSong.artist);
+      audioRef.current.play().then(() => {
+        setIsPlayingSong(true);
+        isPlayingSongRef.current = true;
+        if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
+          navigator.mediaSession.playbackState = 'playing';
+        }
+      }).catch(e => console.error(e));
     }
   };
 
@@ -688,10 +802,14 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       audioRef.current.pause();
     }
     setIsPlayingSong(false);
+    isPlayingSongRef.current = false;
     setCurrentSong(null);
+    stopNativeBackgroundAudio();
+    updateNativeMediaSession(null, false);
   };
 
-  const nextSong = async () => {
+  // Synchronous next track transition: prevents background audio suspension when screen is turned off
+  const nextSong = () => {
     const queue = songQueueRef.current.length > 0 ? songQueueRef.current : songQueue;
     const current = currentSongRef.current || currentSong;
     if (!current || queue.length === 0) return;
@@ -704,43 +822,23 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     let nextCandidate = getNextCandidateSong();
 
-    // If queue is exhausted or candidate not found, fetch more in background
-    if (!nextCandidate) {
-      try {
-        const nextBatch = autoNextBatchIndexRef.current + 1;
-        autoNextBatchIndexRef.current = nextBatch;
-        const primLang = localStorage.getItem('streamplay_primary_lang') || 'Tamil';
-        const moreSongs = await fetchInfiniteLanguageSongs(primLang, nextBatch, 25);
-        
-        const existingIds = new Set(queue.map(s => String(s.id)));
-        const freshSongs = moreSongs.filter(s => 
-          !existingIds.has(String(s.id)) &&
-          !s.isShortClip &&
-          !sessionPlayedSongIds.current.has(String(s.id)) &&
-          !sessionPlayedSongIds.current.has(`${s.title.toLowerCase().trim()} - ${s.artist.toLowerCase().trim()}`)
-        );
-
-        if (freshSongs.length > 0) {
-          const updatedQueue = [...queue, ...freshSongs];
-          setSongQueue(updatedQueue);
-          songQueueRef.current = updatedQueue;
-          nextCandidate = freshSongs[0];
-        }
-      } catch (e) {
-        console.warn('Infinite auto-fetch next songs failed:', e);
-      }
-    }
-
-    if (nextCandidate) {
-      playSong(nextCandidate, songQueueRef.current);
-    } else {
+    // If nextCandidate not found, immediately and synchronously pick next item or loop to first in queue
+    if (!nextCandidate && queue.length > 0) {
       const currentIndex = queue.findIndex(s => String(s.id) === String(current.id));
       if (currentIndex >= 0 && currentIndex < queue.length - 1) {
-        playSong(queue[currentIndex + 1], queue);
-      } else if (queue.length > 0) {
-        playSong(queue[0], queue);
+        nextCandidate = queue[currentIndex + 1];
+      } else {
+        nextCandidate = queue[0];
       }
     }
+
+    // Play next candidate IMMEDIATELY and SYNCHRONOUSLY without any async delay
+    if (nextCandidate) {
+      playSong(nextCandidate, songQueueRef.current);
+    }
+
+    // Asynchronously replenish queue in background without blocking audio thread
+    replenishQueueIfNeeded();
   };
 
   const prevSong = () => {
@@ -783,30 +881,52 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  // Realme Mini Capsule, Android Mobile Control Center, Bluetooth, & Lockscreen Notification (MediaSession API)
+  // Native MediaSession Updater for Default OS Dynamic Island & Notification Center
+  function updateNativeMediaSession(song: SongItem | null, isPlaying: boolean) {
+    if (typeof window === 'undefined' || !('mediaSession' in navigator)) return;
+    if (!song) {
+      navigator.mediaSession.playbackState = 'none';
+      return;
+    }
+    try {
+      const rawImage = song.image || '/StreamPlay.png';
+      const absoluteImage = rawImage.startsWith('http')
+        ? rawImage
+        : `${window.location.origin}${rawImage.startsWith('/') ? '' : '/'}${rawImage}`;
+
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: song.title,
+        artist: song.artist || 'StreamPlay Music',
+        album: song.album || 'StreamPlay Master',
+        artwork: [
+          { src: absoluteImage, sizes: '96x96' },
+          { src: absoluteImage, sizes: '128x128' },
+          { src: absoluteImage, sizes: '192x192' },
+          { src: absoluteImage, sizes: '256x256' },
+          { src: absoluteImage, sizes: '384x384' },
+          { src: absoluteImage, sizes: '512x512' }
+        ]
+      });
+      navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+    } catch (err) {
+      console.warn('[MediaSession Update]', err);
+    }
+  }
+
+  // Default OS Dynamic Island, Notification Center, Bluetooth & Lockscreen Controls
   useEffect(() => {
     if (typeof window === 'undefined' || !('mediaSession' in navigator)) return;
 
     if (currentSong) {
       try {
-        navigator.mediaSession.metadata = new MediaMetadata({
-          title: currentSong.title,
-          artist: currentSong.artist || 'StreamPlay Music',
-          album: currentSong.album || 'StreamPlay Master',
-          artwork: [
-            { src: currentSong.image || '/StreamPlay.png', sizes: '96x96', type: 'image/png' },
-            { src: currentSong.image || '/StreamPlay.png', sizes: '128x128', type: 'image/png' },
-            { src: currentSong.image || '/StreamPlay.png', sizes: '192x192', type: 'image/png' },
-            { src: currentSong.image || '/StreamPlay.png', sizes: '256x256', type: 'image/png' },
-            { src: currentSong.image || '/StreamPlay.png', sizes: '512x512', type: 'image/png' }
-          ]
-        });
-
-        navigator.mediaSession.playbackState = isPlayingSong ? 'playing' : 'paused';
+        updateNativeMediaSession(currentSong, isPlayingSong);
 
         navigator.mediaSession.setActionHandler('play', () => {
           if (audioRef.current) {
-            audioRef.current.play().then(() => setIsPlayingSong(true)).catch(console.warn);
+            audioRef.current.play().then(() => {
+              setIsPlayingSong(true);
+              if (navigator.mediaSession) navigator.mediaSession.playbackState = 'playing';
+            }).catch(console.warn);
           }
         });
 
@@ -814,6 +934,7 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           if (audioRef.current) {
             audioRef.current.pause();
             setIsPlayingSong(false);
+            if (navigator.mediaSession) navigator.mediaSession.playbackState = 'paused';
           }
         });
 
@@ -825,11 +946,31 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           nextSong();
         });
 
+        navigator.mediaSession.setActionHandler('seekbackward', (details) => {
+          const skip = details.seekOffset || 10;
+          if (audioRef.current) {
+            audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - skip);
+            setSongProgress(audioRef.current.currentTime);
+          }
+        });
+
+        navigator.mediaSession.setActionHandler('seekforward', (details) => {
+          const skip = details.seekOffset || 10;
+          if (audioRef.current) {
+            audioRef.current.currentTime = Math.min(songDuration || 9999, audioRef.current.currentTime + skip);
+            setSongProgress(audioRef.current.currentTime);
+          }
+        });
+
         navigator.mediaSession.setActionHandler('seekto', (details) => {
           if (details.seekTime !== undefined && audioRef.current) {
             audioRef.current.currentTime = details.seekTime;
             setSongProgress(details.seekTime);
           }
+        });
+
+        navigator.mediaSession.setActionHandler('stop', () => {
+          stopSong();
         });
 
         if ('setPositionState' in navigator.mediaSession && songDuration > 0) {

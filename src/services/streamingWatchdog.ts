@@ -20,15 +20,18 @@ export class AudioBufferWatchdog {
   private stallTimer: ReturnType<typeof setTimeout> | null = null;
   private isSwitching = false;
   private onFailoverCallback?: (newUrl: string, mirrorIndex: number) => void;
+  private onExhaustedCallback?: () => void;
 
   constructor(
     audio: HTMLAudioElement,
     mirrors: string[] = [],
-    onFailover?: (newUrl: string, mirrorIndex: number) => void
+    onFailover?: (newUrl: string, mirrorIndex: number) => void,
+    onExhausted?: () => void
   ) {
     this.audio = audio;
     this.mirrors = mirrors;
     this.onFailoverCallback = onFailover;
+    this.onExhaustedCallback = onExhausted;
     this.attach();
   }
 
@@ -64,7 +67,13 @@ export class AudioBufferWatchdog {
   };
 
   private handleImmediateError = () => {
-    if (this.isSwitching || this.mirrors.length <= 1) return;
+    if (this.isSwitching) return;
+    if (this.mirrors.length <= 1) {
+      if (this.onExhaustedCallback) {
+        this.onExhaustedCallback();
+      }
+      return;
+    }
     this.performAutoSwitch('Audio playback network error');
   };
 
@@ -79,6 +88,9 @@ export class AudioBufferWatchdog {
   private performAutoSwitch(reason: string) {
     if (this.currentMirrorIndex >= this.mirrors.length - 1) {
       console.warn('[StreamPlay Audio Watchdog] All audio mirrors exhausted');
+      if (this.onExhaustedCallback) {
+        this.onExhaustedCallback();
+      }
       return;
     }
 

@@ -114,7 +114,14 @@
   display: flex;
   flex-direction: column;
   gap: 1.6rem;
-  scrollbar-width: thin;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.sheet-scroll-body::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 .sheet-section-block {

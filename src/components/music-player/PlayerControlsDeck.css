@@ -126,19 +126,3 @@
   transform: scale(1.08);
   box-shadow: 0 0 35px rgba(255, 255, 255, 0.8), 0 0 60px rgba(200, 255, 0, 0.7);
 }
-
-.player-hidden-scrub-input {
-  width: 240px;
-  opacity: 0.25;
-  transition: opacity 0.2s;
-}
-
-.player-hidden-scrub-input:hover {
-  opacity: 0.85;
-}
-
-.modal-scrub-slider {
-  width: 100%;
-  accent-color: #c8ff00;
-  cursor: pointer;
-}
