@@ -739,6 +739,33 @@
   transform: translateY(-4px);
 }
 
+.artist-card-item.star-card-glow {
+  background: rgba(255, 64, 129, 0.05);
+  border-color: rgba(255, 64, 129, 0.22);
+}
+
+.artist-card-item.star-card-glow:hover {
+  background: rgba(255, 64, 129, 0.12);
+  border-color: rgba(255, 64, 129, 0.5);
+  box-shadow: 0 8px 24px rgba(255, 64, 129, 0.2);
+}
+
+.artist-card-item.composer-card-glow {
+  background: rgba(200, 255, 0, 0.04);
+  border-color: rgba(200, 255, 0, 0.2);
+}
+
+.artist-card-item.composer-card-glow:hover {
+  background: rgba(200, 255, 0, 0.1);
+  border-color: #c8ff00;
+  box-shadow: 0 8px 24px rgba(200, 255, 0, 0.2);
+}
+
+.artist-avatar-wrap {
+  position: relative;
+  display: inline-block;
+}
+
 .artist-card-avatar {
   width: 84px;
   height: 84px;
@@ -747,6 +774,16 @@
   border: 2px solid rgba(200, 255, 0, 0.3);
   margin-bottom: 0.6rem;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
+}
+
+.artist-card-avatar.avatar-star {
+  border: 2px solid rgba(255, 64, 129, 0.5);
+  box-shadow: 0 4px 16px rgba(255, 64, 129, 0.25);
+}
+
+.artist-card-avatar.avatar-composer {
+  border: 2px solid rgba(200, 255, 0, 0.5);
+  box-shadow: 0 4px 16px rgba(200, 255, 0, 0.25);
 }
 
 .artist-card-name {
@@ -763,6 +800,16 @@
   font-size: 0.68rem;
   color: rgba(255, 255, 255, 0.5);
   margin-top: 2px;
+}
+
+.artist-card-role.role-star {
+  color: #ff6699;
+  font-weight: 600;
+}
+
+.artist-card-role.role-composer {
+  color: #c8ff00;
+  font-weight: 600;
 }
 
 /* Playlists Grid & Cards */

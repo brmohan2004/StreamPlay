@@ -9,7 +9,14 @@ const isNative = Capacitor.isNativePlatform();
  * On native mobile (Capacitor Android/iOS), uses direct Saavn cluster with CapacitorHttp.
  * In any web browser (mobile Chrome, desktop, Vercel, IP access), uses the server proxy /api/saavn to bypass CORS.
  */
-function getSaavnBaseUrls(): string[] {
+export function getSaavnBaseUrls(): string[] {
+  if (typeof window === 'undefined') {
+    return [
+      'https://www.jiosaavn.com/api.php',
+      'http://localhost:1422/api/saavn',
+      'http://localhost:1420/api/saavn'
+    ];
+  }
   if (isNative) {
     return [
       'https://www.jiosaavn.com/api.php',
@@ -21,6 +28,16 @@ function getSaavnBaseUrls(): string[] {
     'https://www.jiosaavn.com/api.php'
   ];
 }
+
+const DEFAULT_HEADERS: Record<string, string> =
+  typeof window === 'undefined'
+    ? {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        Referer: 'https://www.jiosaavn.com/',
+        Accept: 'application/json, text/plain, */*'
+      }
+    : {};
 
 const DES_KEY = '38346591';
 
@@ -66,8 +83,11 @@ export function decodeHtmlEntities(html: string): string {
     .replace(/&quot;/g, '"')
     .replace(/&amp;/g, '&')
     .replace(/&#039;/g, "'")
+    .replace(/&apos;/g, "'")
     .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>');
+    .replace(/&gt;/g, '>')
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(Number(dec)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
 }
 
 /**
@@ -95,28 +115,24 @@ export function cleanSongTitle(title: string): string {
  * Computes a unique normalized signature key for a song to detect identical songs
  * across different compilation albums, different thumbnails, or duplicate providers.
  */
-export function getSongCoreKey(title: string, artist = '', streamUrl = ''): string {
+export function getSongCoreKey(title: string, artist = '', _streamUrl = ''): string {
   const cleaned = cleanSongTitle(title);
   const normTitle = cleaned.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
 
-  const firstArtist = decodeHtmlEntities(artist)
+  // Extract normalized and sorted artist tokens to handle differing artist order across compilations
+  const artistTokens = decodeHtmlEntities(artist)
     .toLowerCase()
-    .split(/[,&/|]/)[0]
-    ?.trim()
-    .replace(/[^a-z0-9]/g, '') || '';
+    .split(/[,&/|]/)
+    .map(a => a.trim().replace(/[^a-z0-9]/g, ''))
+    .filter(a => a.length >= 3)
+    .sort();
 
-  // Extract media hash if present to catch identical audio streams under different album titles
-  let mediaHash = '';
-  if (streamUrl && streamUrl.includes('/')) {
-    const parts = streamUrl.split('/');
-    mediaHash = parts[parts.length - 1]?.replace(/_[0-9]+\.mp4/i, '') || '';
+  const artistSig = artistTokens.slice(0, 2).join('_');
+
+  if (normTitle && artistSig) {
+    return `${normTitle}|${artistSig}`;
   }
-
-  if (mediaHash && mediaHash.length > 5) {
-    return `media_${mediaHash}`;
-  }
-
-  return normTitle.length >= 6 ? normTitle : `${normTitle}|${firstArtist}`;
+  return normTitle;
 }
 
 /**
@@ -215,6 +231,7 @@ export interface ArtistResultItem {
   name: string;
   role: string;
   image: string;
+  category?: 'actor' | 'actress' | 'composer' | 'singer' | 'artist';
 }
 
 export interface PlaylistResultItem {
@@ -249,7 +266,7 @@ async function performRawSaavnSearch(query: string, page = 1, limit = 25): Promi
 
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
-        const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+        const res = await fetch(url, { headers: DEFAULT_HEADERS, signal: AbortSignal.timeout(6000) });
         if (!res.ok) {
           if (attempt === 1) {
             await new Promise(r => setTimeout(r, 250));
@@ -273,6 +290,9 @@ async function performRawSaavnSearch(query: string, page = 1, limit = 25): Promi
               item.primary_artists || item.more_info?.artistMap?.primary_artists?.[0]?.name || 'Various Artists'
             );
             const album = decodeHtml(item.album || item.more_info?.album || 'Single');
+            const starring = decodeHtml(item.starring || item.more_info?.starring || '');
+            const music = decodeHtml(item.music || item.more_info?.music || '');
+            const singers = decodeHtml(item.singers || item.more_info?.singers || '');
             const backupStreamUrls = buildBackupMirrors(streamUrl, rawTitle, artist);
             const durationSec = parseInt(item.duration || item.more_info?.duration || '180', 10);
             const isShortClip = durationSec > 0 && durationSec < 90;
@@ -295,6 +315,9 @@ async function performRawSaavnSearch(query: string, page = 1, limit = 25): Promi
               )}`,
               accentColor: ACCENT_COLORS[Math.floor(Math.random() * ACCENT_COLORS.length)],
               quality: '320kbps Ultra-HD',
+              starring: starring || undefined,
+              composer: music || undefined,
+              singers: singers || undefined,
               source: 'JioSaavn'
             };
           })
@@ -534,152 +557,516 @@ export function generateRelatedSearchSeeds(query: string): string[] {
 }
 
 /**
- * Dynamic Infinite Search Loader.
- * Directly paginates through the user's exact query across all free providers (JioSaavn, Audius, Apple Music),
- * dynamically auto-picking fresh songs as the user scrolls.
- * Completely eliminates pre-built queries, prevents cut-offs (such as stopping at 47 tracks),
- * and strictly deduplicates compilation albums and identical audio streams with different thumbnails.
+ * Detects regional language intent from search query or user preferences.
+ */
+export function detectLanguageIntent(query: string): string {
+  const q = query.toLowerCase().trim();
+  if (/\b(tamil|kollywood|chennai|madras|kuthu|dappankuthu|gaana)\b/i.test(q)) return 'tamil';
+  if (/\b(telugu|tollywood|hyderabad|andhra)\b/i.test(q)) return 'telugu';
+  if (/\b(hindi|bollywood|bombay)\b/i.test(q)) return 'hindi';
+  if (/\b(malayalam|mollywood|kerala)\b/i.test(q)) return 'malayalam';
+  if (/\b(kannada|sandalwood|bengaluru|bangalore)\b/i.test(q)) return 'kannada';
+  if (/\b(punjabi|bhangra|pollywood)\b/i.test(q)) return 'punjabi';
+  if (/\b(english|hollywood|pop|billboard|global|synthwave|phonk|edm)\b/i.test(q)) return 'english';
+
+  // Fallback to active app language preference if explicitly set by user
+  try {
+    const pref = typeof localStorage !== 'undefined' ? localStorage.getItem('streamplay_primary_lang') : null;
+    if (pref) return pref.toLowerCase().trim();
+  } catch {}
+
+  return '';
+}
+
+/**
+ * Detects musical mood, genre, and cinematic intent dynamically from any search query.
+ */
+export function detectGenreAndMoodIntent(query: string): string {
+  const q = query.toLowerCase().trim();
+
+  if (/\b(item|kuthu|dance|party|club|dj|remix|fast beat|dappankuthu|mass dance|folk dance|tappu)\b/i.test(q)) {
+    return 'dance_item';
+  }
+  if (/\b(melody|love|romantic|romance|duet|soulful|feel good|unplugged|acoustic|lofi|lo-fi|chill)\b/i.test(q)) {
+    return 'melody_love';
+  }
+  if (/\b(mass|hero|elevation|intro|action|fight|swagger|attitude|villain|entry)\b/i.test(q)) {
+    return 'mass_hero';
+  }
+  if (/\b(sad|breakup|pain|heartbreak|pathos|emotional|crying|lonely|failure|tears)\b/i.test(q)) {
+    return 'sad_breakup';
+  }
+  if (/\b(bgm|theme|instrumental|ost|score|ringtone|tune|whistle)\b/i.test(q)) {
+    return 'bgm_instrumental';
+  }
+  if (/\b(90s|80s|70s|2000s|retro|vintage|classic|golden hits|evergreen|old)\b/i.test(q)) {
+    return 'vintage_retro';
+  }
+  if (/\b(devotional|bhakti|spiritual|god|temple|aarti|bhajan|suprabhatam|stotram|mantra)\b/i.test(q)) {
+    return 'devotional';
+  }
+  if (/\b(workout|gym|motivation|fitness|running|power|energy)\b/i.test(q)) {
+    return 'workout_energy';
+  }
+  if (/\b(folk|gramiya|traditional|village|gaana|oppari|thiruvizha)\b/i.test(q)) {
+    return 'folk_traditional';
+  }
+  if (/\b(rap|hip hop|hiphop|trap|drill|indie|cypher)\b/i.test(q)) {
+    return 'hiphop_rap';
+  }
+
+  return 'general';
+}
+
+/**
+ * Intelligently expands search queries with dynamic content pitching:
+ * semantic synonyms, regional dialect slang, cinematic themes, franchise variations,
+ * and related playlists to guarantee a massive content library for any search intent.
+ */
+export function expandSearchQuery(rawQuery: string): string[] {
+  const q = rawQuery.toLowerCase().trim();
+  if (!q) return [];
+
+  const pitchedQueries: string[] = [rawQuery.trim()];
+  const lang = detectLanguageIntent(rawQuery);
+  const intent = detectGenreAndMoodIntent(rawQuery);
+
+  // Dynamic thematic pitch based on intent - strictly preserving user's query tokens
+  switch (intent) {
+    case 'dance_item':
+      pitchedQueries.push(
+        `${rawQuery.trim()} hits`,
+        `${rawQuery.trim()} dance`,
+        `${rawQuery.trim()} party songs`,
+        `${rawQuery.trim()} fast beat`,
+        `${rawQuery.trim()} dj remix`
+      );
+      if (lang) {
+        pitchedQueries.push(`${lang} ${rawQuery.trim()}`);
+      }
+      break;
+
+    case 'melody_love':
+      pitchedQueries.push(
+        `${rawQuery.trim()} hits`,
+        `${rawQuery.trim()} melody`,
+        `${rawQuery.trim()} love songs`,
+        `${rawQuery.trim()} romantic songs`,
+        `${rawQuery.trim()} acoustic`
+      );
+      if (lang) {
+        pitchedQueries.push(`${lang} ${rawQuery.trim()}`);
+      }
+      break;
+
+    case 'mass_hero':
+      pitchedQueries.push(
+        `${rawQuery.trim()} mass hits`,
+        `${rawQuery.trim()} bgm theme`,
+        `${rawQuery.trim()} elevation`,
+        `${rawQuery.trim()} action score`
+      );
+      if (lang) {
+        pitchedQueries.push(`${lang} ${rawQuery.trim()}`);
+      }
+      break;
+
+    case 'sad_breakup':
+      pitchedQueries.push(
+        `${rawQuery.trim()} sad songs`,
+        `${rawQuery.trim()} breakup songs`,
+        `${rawQuery.trim()} heartbreak hits`,
+        `${rawQuery.trim()} emotional`
+      );
+      break;
+
+    case 'bgm_instrumental':
+      pitchedQueries.push(
+        `${rawQuery.trim()} theme music`,
+        `${rawQuery.trim()} instrumental`,
+        `${rawQuery.trim()} movie score`,
+        `${rawQuery.trim()} bgm`
+      );
+      break;
+
+    case 'vintage_retro':
+      pitchedQueries.push(
+        `${rawQuery.trim()} golden hits`,
+        `${rawQuery.trim()} evergreen songs`,
+        `${rawQuery.trim()} retro classics`,
+        `${rawQuery.trim()} 90s hits`
+      );
+      break;
+
+    case 'devotional':
+      pitchedQueries.push(
+        `${rawQuery.trim()} devotional`,
+        `${rawQuery.trim()} morning bhakti`,
+        `${rawQuery.trim()} spiritual songs`,
+        `${rawQuery.trim()} temple songs`
+      );
+      break;
+
+    case 'workout_energy':
+      pitchedQueries.push(
+        `${rawQuery.trim()} motivation`,
+        `${rawQuery.trim()} gym songs`,
+        `${rawQuery.trim()} high energy beats`,
+        `${rawQuery.trim()} workout mix`
+      );
+      break;
+
+    case 'folk_traditional':
+      pitchedQueries.push(
+        `${rawQuery.trim()} folk hits`,
+        `${rawQuery.trim()} traditional songs`,
+        `${rawQuery.trim()} village songs`,
+        `${rawQuery.trim()} cultural beats`
+      );
+      break;
+
+    case 'hiphop_rap':
+      pitchedQueries.push(
+        `${rawQuery.trim()} rap`,
+        `${rawQuery.trim()} hip hop`,
+        `${rawQuery.trim()} trap beat`,
+        `${rawQuery.trim()} cypher`
+      );
+      break;
+
+    default:
+      pitchedQueries.push(
+        `${rawQuery.trim()} songs`,
+        `${rawQuery.trim()} hits`,
+        `${rawQuery.trim()} best of`,
+        `${rawQuery.trim()} album`,
+        `${rawQuery.trim()} jukebox`
+      );
+      if (lang) {
+        pitchedQueries.push(`${lang} ${rawQuery.trim()}`);
+      }
+      break;
+  }
+
+  return Array.from(new Set(pitchedQueries));
+}
+
+/**
+ * Dynamically harvests and pitches real artists, actors, composers, and vocalists
+ * directly from song search response metadata.
+ */
+export function extractArtistsFromSongs(songs: SongItem[]): ArtistResultItem[] {
+  const extracted: ArtistResultItem[] = [];
+  const seen = new Set<string>();
+
+  for (const song of songs) {
+    if (!song) continue;
+
+    // 1. Dynamic extraction from Starring Actors / Actresses
+    if (song.starring) {
+      const names = song.starring.split(/[,&/|]/).map(s => s.trim()).filter(Boolean);
+      for (const name of names) {
+        const cleanName = decodeHtml(name);
+        const lower = cleanName.toLowerCase();
+        const key = lower.replace(/[^a-z0-9]/g, '');
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+
+        extracted.push({
+          id: `star_${key}`,
+          name: cleanName,
+          role: 'Starring Cast',
+          image: `https://c.saavncdn.com/artists/${cleanName.replace(/\s+/g, '_')}_500x500.jpg`,
+          category: 'actor'
+        });
+      }
+    }
+
+    // 2. Dynamic extraction from Music Directors / Composers
+    if (song.composer) {
+      const names = song.composer.split(/[,&/|]/).map(s => s.trim()).filter(Boolean);
+      for (const name of names) {
+        const cleanName = decodeHtml(name);
+        const lower = cleanName.toLowerCase();
+        const key = lower.replace(/[^a-z0-9]/g, '');
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+
+        extracted.push({
+          id: `comp_${key}`,
+          name: cleanName,
+          role: 'Music Director',
+          image: `https://c.saavncdn.com/artists/${cleanName.replace(/\s+/g, '_')}_500x500.jpg`,
+          category: 'composer'
+        });
+      }
+    }
+
+    // 3. Dynamic extraction from Playback Singers
+    if (song.singers) {
+      const names = song.singers.split(/[,&/|]/).map(s => s.trim()).filter(Boolean);
+      for (const name of names) {
+        const cleanName = decodeHtml(name);
+        const key = cleanName.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+
+        extracted.push({
+          id: `sing_${key}`,
+          name: cleanName,
+          role: 'Playback Singer',
+          image: `https://c.saavncdn.com/artists/${cleanName.replace(/\s+/g, '_')}_500x500.jpg`,
+          category: 'singer'
+        });
+      }
+    }
+  }
+
+  return extracted;
+}
+
+/**
+ * Deduplicates artists by normalized name, preserving rich category tagging.
+ */
+export function deduplicateArtists(artists: ArtistResultItem[]): ArtistResultItem[] {
+  const seen = new Map<string, ArtistResultItem>();
+
+  for (const a of artists) {
+    if (!a || !a.name) continue;
+    const key = a.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (!key) continue;
+
+    if (!seen.has(key)) {
+      seen.set(key, a);
+    } else {
+      // If previous entry was generic 'artist' but this one has specific 'actress'/'actor'/'composer'/'singer', upgrade it!
+      const existing = seen.get(key)!;
+      if (existing.category === 'artist' && a.category && a.category !== 'artist') {
+        seen.set(key, a);
+      }
+    }
+  }
+
+  return Array.from(seen.values());
+}
+
+/**
+ * Dynamic artist query helper without static presets.
+ */
+export function getCuratedArtistsForQuery(_rawQuery: string): ArtistResultItem[] {
+  return [];
+}
+
+/**
+ * Dynamic Infinite Search Loader with Semantic Expansion.
+ * Queries both exact terms and cinematic synonyms across JioSaavn, Audius, Apple Music,
+ * plus harvests tracks from top-charting playlists to guarantee a massive content library.
  */
 export async function fetchInfiniteSearchSongs(
   query: string,
   pageNumber: number,
   seenKeys: Set<string> = new Set(),
-  limit = 25
+  limit = 30
 ): Promise<{ songs: SongItem[]; hasMore: boolean; nextPage: number }> {
   const trimmed = query.trim();
   if (!trimmed) return { songs: [], hasMore: false, nextPage: 1 };
 
   const collected: SongItem[] = [];
-  let apiPage = pageNumber;
-  let hasMoreFromApi = true;
-  let attempts = 0;
+  const expandedQueries = expandSearchQuery(trimmed);
 
-  // Dynamically fetch from the search engine until we fill the requested limit of unique songs
-  // or until the API runs out of results.
-  while (collected.length < limit && attempts < 4 && hasMoreFromApi) {
-    attempts++;
-    let rawSongs: SongItem[] = [];
-
+  // On page 1: concurrently query expanded terms AND top matching playlists!
+  if (pageNumber === 1) {
     try {
-      if (apiPage === 1) {
-        // Multi-provider initial query: JioSaavn + Audius + Apple Music
-        rawSongs = await searchSongsPaged(trimmed, apiPage, limit);
-      } else {
-        // Direct dynamic multi-provider pagination across JioSaavn, Audius, and Apple Music
-        const [saavnRes, audiusRes, itunesRes] = await Promise.allSettled([
-          performRawSaavnSearch(trimmed, apiPage, limit),
-          searchAudiusSongs(trimmed, 6, (apiPage - 1) * 6),
-          searchItunesSongs(trimmed, 8, (apiPage - 1) * 8)
-        ]);
-        const saavn = saavnRes.status === 'fulfilled' ? saavnRes.value : [];
-        const audius = audiusRes.status === 'fulfilled' ? audiusRes.value : [];
-        const itunes = itunesRes.status === 'fulfilled' ? itunesRes.value : [];
-        rawSongs = deduplicateSongs([...saavn, ...audius, ...itunes]);
+      // 1. Concurrently query top expanded terms
+      const saavnPromises = expandedQueries.slice(0, 4).map(term =>
+        performRawSaavnSearch(term, 1, 30)
+      );
+
+      // 2. Also search top playlists for this intent to harvest verified hits (e.g. Top Kuthu, Semma Mass)
+      const playlistPromise = searchPlaylists(trimmed, 4).then(async (pls) => {
+        const topPls = pls.slice(0, 2);
+        const tracksPromises = topPls.map(p => fetchPlaylistTracks(p.id));
+        const plTracks = await Promise.all(tracksPromises);
+        return plTracks.flat();
+      }).catch(() => []);
+
+      const [saavnResults, playlistTracks, audiusSongs, itunesSongs] = await Promise.all([
+        Promise.all(saavnPromises),
+        playlistPromise,
+        searchAudiusSongs(trimmed, 6),
+        searchItunesSongs(trimmed, 6)
+      ]);
+
+      const allInitialSongs = deduplicateSongs([
+        ...saavnResults.flat(),
+        ...playlistTracks,
+        ...audiusSongs,
+        ...itunesSongs
+      ]);
+
+      for (const song of allInitialSongs) {
+        const key = getSongCoreKey(song.title, song.artist, song.streamUrl);
+        if (!seenKeys.has(key)) {
+          seenKeys.add(key);
+          collected.push(song);
+          if (collected.length >= limit * 3) break;
+        }
       }
     } catch (err) {
-      console.warn(`Dynamic search fetch failed for page ${apiPage}:`, err);
+      console.warn('Initial search fetch failed:', err);
     }
-
-    if (!rawSongs || rawSongs.length === 0) {
-      hasMoreFromApi = false;
-      break;
-    }
-
-    // Strict deduplication: filter out compilation album duplicates & different thumbnails for identical audio
-    for (const song of rawSongs) {
-      const key = getSongCoreKey(song.title, song.artist, song.streamUrl);
-      if (!seenKeys.has(key)) {
-        seenKeys.add(key);
-        collected.push(song);
-        if (collected.length >= limit) break;
-      }
-    }
-
-    apiPage++;
-  }
-
-  // If direct pages returned 0 items on page 1, dynamically try live autocomplete suggestions
-  if (collected.length === 0 && pageNumber === 1) {
+  } else {
+    // Pagination (Page 2, 3, 4, 5...):
+    // Concurrently fetch next pages of all expanded queries
     try {
-      const dynamicSuggestions = await fetchDynamicQuerySuggestions(trimmed);
-      for (const suggestion of dynamicSuggestions.slice(0, 2)) {
-        if (suggestion.toLowerCase() === trimmed.toLowerCase()) continue;
-        const suggestedSongs = await performRawSaavnSearch(suggestion, 1, limit);
-        for (const s of suggestedSongs) {
-          const key = getSongCoreKey(s.title, s.artist, s.streamUrl);
-          if (!seenKeys.has(key)) {
-            seenKeys.add(key);
-            collected.push(s);
-            if (collected.length >= limit) break;
-          }
+      const promises = expandedQueries.map(term =>
+        performRawSaavnSearch(term, pageNumber, 30)
+      );
+      const results = await Promise.all(promises);
+      const flat = deduplicateSongs(results.flat());
+
+      for (const song of flat) {
+        const key = getSongCoreKey(song.title, song.artist, song.streamUrl);
+        if (!seenKeys.has(key)) {
+          seenKeys.add(key);
+          collected.push(song);
+          if (collected.length >= limit) break;
         }
-        if (collected.length >= limit) break;
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      console.warn(`Dynamic search fetch failed for page ${pageNumber}:`, err);
     }
   }
+
+  // Next page and hasMore calculation:
+  // If we found songs or if pageNumber < 10, keep hasMore true!
+  const hasMore = collected.length > 0 || pageNumber < 8;
 
   return {
     songs: collected,
-    hasMore: hasMoreFromApi || collected.length > 0,
-    nextPage: apiPage
+    hasMore,
+    nextPage: pageNumber + 1
   };
 }
 
 /**
- * Search dedicated artists by query from JioSaavn.
+ * Search dedicated artists by query from JioSaavn + Curated category stars, composers & singers,
+ * plus live dynamic extraction from songs.
  */
-export async function searchArtists(query: string, limit = 10): Promise<ArtistResultItem[]> {
+export async function searchArtists(query: string, limit = 30, liveSongs: SongItem[] = []): Promise<ArtistResultItem[]> {
   const trimmed = query.trim();
   if (!trimmed) return [];
+
+  const harvested = liveSongs.length > 0 ? extractArtistsFromSongs(liveSongs) : [];
+
+  // Query live Saavn artists for the raw query
+  let liveArtists: ArtistResultItem[] = [];
   const baseUrls = getSaavnBaseUrls();
   for (const base of baseUrls) {
     try {
       const url = `${base}?__call=search.getArtistResults&_marker=0&q=${encodeURIComponent(trimmed)}&ctx=web6dot0&_format=json&n=${limit}&p=1`;
-      const res = await fetch(url, { signal: AbortSignal.timeout(4500) });
+      const res = await fetch(url, { headers: DEFAULT_HEADERS, signal: AbortSignal.timeout(8000) });
       if (!res.ok) continue;
       const data = await res.json();
       const list = data.results || [];
-      return list.map((a: any) => ({
-        id: String(a.id || a.artistid || a.name),
-        name: decodeHtml(a.name || 'Artist'),
-        role: a.role || 'Artist',
-        image: (a.image || '').replace('50x50', '500x500').replace('150x150', '500x500') || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500'
-      }));
+      liveArtists = list
+        .filter((a: any) => {
+          // Filter out spammy non-music matches (like "Gypsies + Future Garage Sale Item", "Box Item")
+          const n = (a.name || '').toLowerCase();
+          return !n.includes('garage sale') && !n.includes('spiritual items') && !n.includes('free items');
+        })
+        .map((a: any) => ({
+          id: String(a.id || a.artistid || a.name),
+          name: decodeHtml(a.name || 'Artist'),
+          role: a.role || 'Artist',
+          image: (a.image || '').replace('50x50', '500x500').replace('150x150', '500x500') || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500',
+          category: 'artist' as const
+        }));
+      if (liveArtists.length > 0) break;
     } catch {
       // try next base
     }
   }
-  return [];
+
+  // Pure dynamic combination: live searched artists + song-harvested stars/composers/singers
+  return deduplicateArtists([...liveArtists, ...harvested]);
 }
 
 /**
- * Search curated playlists/albums by query from JioSaavn.
+ * Search curated playlists/albums with multi-query semantic harvesting and relevance ranking.
  */
-export async function searchPlaylists(query: string, limit = 10): Promise<PlaylistResultItem[]> {
+export async function searchPlaylists(query: string, limit = 30): Promise<PlaylistResultItem[]> {
   const trimmed = query.trim();
   if (!trimmed) return [];
+
+  const expanded = expandSearchQuery(trimmed);
+  const searchTerms = [trimmed, ...expanded.slice(1, 4)];
+
+  const allPlaylists: PlaylistResultItem[] = [];
+  const seenIds = new Set<string>();
+  const seenTitles = new Set<string>();
   const baseUrls = getSaavnBaseUrls();
+
   for (const base of baseUrls) {
     try {
-      const url = `${base}?__call=search.getPlaylistResults&_marker=0&q=${encodeURIComponent(trimmed)}&ctx=web6dot0&_format=json&n=${limit}&p=1`;
-      const res = await fetch(url, { signal: AbortSignal.timeout(4500) });
-      if (!res.ok) continue;
-      const data = await res.json();
-      const list = data.results || [];
-      return list.map((p: any) => ({
-        id: String(p.listid || p.id),
-        title: decodeHtml(p.listname || p.title || 'Playlist'),
-        subtitle: p.artist_name || p.more_info?.firstname || '',
-        songCount: parseInt(p.count || p.numsongs || p.more_info?.song_count || '15', 10),
-        image: (p.image || '').replace('150x150', '500x500') || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500'
-      }));
+      const promises = searchTerms.map(term => {
+        const url = `${base}?__call=search.getPlaylistResults&_marker=0&q=${encodeURIComponent(term)}&ctx=web6dot0&_format=json&n=20&p=1`;
+        return fetch(url, { headers: DEFAULT_HEADERS, signal: AbortSignal.timeout(8000) }).then(r => r.json()).catch(() => ({ results: [] }));
+      });
+      const resultsArray = await Promise.all(promises);
+
+      for (const data of resultsArray) {
+        const list = data.results || [];
+        for (const p of list) {
+          const id = String(p.listid || p.id);
+          const title = decodeHtml(p.listname || p.title || 'Playlist').trim();
+          const titleKey = title.toLowerCase().replace(/[^a-z0-9]/g, '');
+          if (!seenIds.has(id) && (!titleKey || !seenTitles.has(titleKey))) {
+            seenIds.add(id);
+            if (titleKey) seenTitles.add(titleKey);
+            allPlaylists.push({
+              id,
+              title,
+              subtitle: p.artist_name || p.more_info?.firstname || '',
+              songCount: parseInt(p.count || p.numsongs || p.more_info?.song_count || '25', 10),
+              image: (p.image || '').replace('150x150', '500x500') || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500'
+            });
+          }
+        }
+      }
+      if (allPlaylists.length > 0) break;
     } catch {
       // try next base
     }
   }
-  return [];
+
+  // Rank and filter playlists by relevance to query intent
+  const qLower = trimmed.toLowerCase();
+  const isItemOrDance = qLower.includes('item') || qLower.includes('kuthu') || qLower.includes('dance') || qLower.includes('party');
+
+  const scored = allPlaylists.map(pl => {
+    const text = (pl.title + ' ' + (pl.subtitle || '')).toLowerCase();
+    let score = 5; // Base relevance from search result
+    if (isItemOrDance) {
+      const danceKeywords = ['kuthu', 'item', 'dance', 'party', 'mass', 'beat', 'hits', 'club', 'dj', 'folk', 'local', 'thara', 'masala', 'dappankuthu', 'gaana'];
+      danceKeywords.forEach(kw => {
+        if (text.includes(kw)) score += 10;
+      });
+      // Penalize sad, bgm, devotional if looking for dance/item
+      if (text.includes('sad') || text.includes('bgm') || text.includes('motivational') || text.includes('devotional')) {
+        score -= 20;
+      }
+    } else {
+      const words = qLower.split(/\s+/).filter(w => w.length > 2);
+      words.forEach(w => {
+        if (text.includes(w)) score += 10;
+      });
+    }
+    return { ...pl, score };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  return scored.filter(p => p.score >= 0).slice(0, limit);
 }
 
 /**
@@ -691,7 +1078,7 @@ export async function fetchPlaylistTracks(playlistId: string): Promise<SongItem[
   for (const base of baseUrls) {
     try {
       const url = `${base}?__call=playlist.getDetails&listid=${encodeURIComponent(playlistId)}&_marker=0&ctx=web6dot0&_format=json`;
-      const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+      const res = await fetch(url, { headers: DEFAULT_HEADERS, signal: AbortSignal.timeout(6000) });
       if (!res.ok) continue;
       const data = await res.json();
       const list = data.songs || data.list || [];
@@ -839,7 +1226,15 @@ export async function fetchMusicFilterUniverseSongs(
 }
 
 function decodeHtml(html: string): string {
-  const txt = document.createElement('textarea');
-  txt.innerHTML = html;
-  return txt.value;
+  if (!html) return '';
+  if (typeof document !== 'undefined') {
+    try {
+      const txt = document.createElement('textarea');
+      txt.innerHTML = html;
+      return txt.value;
+    } catch {
+      // fallback to regex decoding
+    }
+  }
+  return decodeHtmlEntities(html);
 }

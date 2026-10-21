@@ -17,7 +17,7 @@
   width: 100%;
   max-width: 900px;
   margin: 0 auto;
-  padding: 1rem 1.25rem 3rem 1.25rem;
+  padding: calc(max(env(safe-area-inset-top, 16px), 24px) + 64px) 1.25rem 3rem 1.25rem;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
@@ -53,6 +53,7 @@
     opacity: 0;
     transform: translate(-50%, -15px);
   }
+
   to {
     opacity: 1;
     transform: translate(-50%, 0);
@@ -90,12 +91,10 @@
 .hero-banner-gradient-mask {
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(8, 8, 10, 0.2) 0%,
-    rgba(8, 8, 10, 0.65) 60%,
-    #08080a 100%
-  );
+  background: linear-gradient(180deg,
+      rgba(8, 8, 10, 0.2) 0%,
+      rgba(8, 8, 10, 0.65) 60%,
+      #08080a 100%);
 }
 
 .hero-banner-content {
@@ -288,6 +287,7 @@
     opacity: 0;
     transform: translateY(8px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -642,11 +642,11 @@
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
 }
 
-input:checked + .slider-round {
+input:checked+.slider-round {
   background: linear-gradient(135deg, #ff416c, #ff4b2b);
 }
 
-input:checked + .slider-round:before {
+input:checked+.slider-round:before {
   transform: translateX(22px);
 }
 
@@ -687,6 +687,7 @@ input:checked + .slider-round:before {
 }
 
 @media (max-width: 600px) {
+
   .visual-quality-grid,
   .visual-bitrate-grid {
     grid-template-columns: repeat(2, 1fr);

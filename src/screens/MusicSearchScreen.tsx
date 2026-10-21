@@ -15,7 +15,9 @@ import {
   Clapperboard,
   User,
   ListMusic,
-  Zap
+  Zap,
+  Headphones,
+  Mic2
 } from 'lucide-react';
 import {
   searchSongsPaged,
@@ -23,6 +25,9 @@ import {
   searchArtists,
   searchPlaylists,
   fetchPlaylistTracks,
+  extractArtistsFromSongs,
+  deduplicateArtists,
+  deduplicateSongs,
   ArtistResultItem,
   PlaylistResultItem
 } from '../services/musicService';
@@ -154,12 +159,10 @@ export const MusicSearchScreen: React.FC = () => {
   }, []);
 
   // Compute final search query string based on active capsule
-  const getCapsuleQuery = (rawQuery: string, capsule: CapsuleType) => {
+  const getCapsuleQuery = (rawQuery: string, _capsule: CapsuleType) => {
     const trimmed = rawQuery.trim();
     if (!trimmed) return '';
-    if (capsule === 'Videos') return `${trimmed} video songs official`;
-    if (capsule === 'Playlists') return `${trimmed} playlist`;
-    if (capsule === 'Artists') return `${trimmed} artist songs`;
+    // Retain clean query to avoid corrupting backend search tokens
     return trimmed;
   };
 
@@ -197,15 +200,18 @@ export const MusicSearchScreen: React.FC = () => {
 
       // Run parallel queries across infinite songs, artists, and playlists
       const [songsOutcome, artistsOutcome, playlistsOutcome] = await Promise.allSettled([
-        fetchInfiniteSearchSongs(targetQuery, 1, seenSongKeysRef.current, 25),
-        searchArtists(trimmed, 10),
-        searchPlaylists(trimmed, 10)
+        fetchInfiniteSearchSongs(targetQuery, 1, seenSongKeysRef.current, 30),
+        searchArtists(trimmed, 30),
+        searchPlaylists(trimmed, 30)
       ]);
 
       const songsResult = songsOutcome.status === 'fulfilled' ? songsOutcome.value : { songs: [], hasMore: false, nextPage: 2 };
       const rawSongs = songsResult.songs || [];
       const rawArtists = artistsOutcome.status === 'fulfilled' ? artistsOutcome.value || [] : [];
       const rawPlaylists = playlistsOutcome.status === 'fulfilled' ? playlistsOutcome.value || [] : [];
+
+      const harvestedStars = extractArtistsFromSongs(rawSongs);
+      const combinedArtists = deduplicateArtists([...rawArtists, ...harvestedStars]);
 
       const processed = rawSongs.map(s => {
         if (capsule === 'Videos' || trimmed.toLowerCase().includes('video')) {
@@ -214,8 +220,8 @@ export const MusicSearchScreen: React.FC = () => {
         return s;
       });
 
-      setSongResults(processed);
-      setArtistResults(rawArtists);
+      setSongResults(deduplicateSongs(processed));
+      setArtistResults(combinedArtists);
       setPlaylistResults(rawPlaylists);
       setPage(songsResult.nextPage || 2);
       setHasMore(songsResult.hasMore);
@@ -253,7 +259,7 @@ export const MusicSearchScreen: React.FC = () => {
         targetQuery,
         page,
         seenSongKeysRef.current,
-        25
+        30
       );
 
       if (!moreSongs || moreSongs.length === 0) {
@@ -265,7 +271,11 @@ export const MusicSearchScreen: React.FC = () => {
           }
           return s;
         });
-        setSongResults(prev => [...prev, ...processed]);
+        setSongResults(prev => deduplicateSongs([...prev, ...processed]));
+        const moreHarvested = extractArtistsFromSongs(moreSongs);
+        if (moreHarvested.length > 0) {
+          setArtistResults(prev => deduplicateArtists([...prev, ...moreHarvested]));
+        }
         setPage(nextApiPage || (page + 1));
         setHasMore(moreAvailable);
       }
@@ -306,16 +316,16 @@ export const MusicSearchScreen: React.FC = () => {
     }
 
     const timer = setTimeout(() => {
-      triggerSearch(query, selectedCapsule);
+      triggerSearch(query);
     }, 280);
 
     return () => clearTimeout(timer);
-  }, [query, selectedCapsule]);
+  }, [query]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (query.trim()) {
-      triggerSearch(query, selectedCapsule);
+      triggerSearch(query);
     }
   };
 
@@ -454,10 +464,59 @@ export const MusicSearchScreen: React.FC = () => {
     localStorage.removeItem('streamplay_recent_music_searches');
   };
 
-  const handleSelectArtist = (artistName: string) => {
-    setQuery(artistName);
+  const handleSelectArtist = (artist: ArtistResultItem | string) => {
+    const artistName = typeof artist === 'string' ? artist : artist.name;
+    const category = typeof artist !== 'string' ? artist.category : undefined;
+
+    let targetQuery = artistName;
+    if (category === 'actress' || category === 'actor') {
+      targetQuery = `${artistName} dance songs`;
+    } else if (category === 'composer') {
+      targetQuery = `${artistName} kuthu hits`;
+    }
+
+    setQuery(targetQuery);
     setSelectedCapsule('Songs');
-    triggerSearch(artistName, 'Songs');
+    triggerSearch(targetQuery, 'Songs');
+  };
+
+  const renderArtistCard = (artist: ArtistResultItem, idx: number) => {
+    const isStar = artist.category === 'actress' || artist.category === 'actor';
+    const isComposer = artist.category === 'composer';
+
+    let roleTag = artist.role || 'Artist';
+    if (artist.category === 'actress') roleTag = '💃 Starring Actress';
+    else if (artist.category === 'actor') roleTag = '🕺 Starring Actor';
+    else if (artist.category === 'composer') roleTag = '🎧 Music Director';
+    else if (artist.category === 'singer') roleTag = '🎤 Playback Singer';
+
+    return (
+      <div
+        key={artist.id || idx}
+        className={`artist-card-item ${isStar ? 'star-card-glow' : ''} ${isComposer ? 'composer-card-glow' : ''}`}
+        onClick={() => handleSelectArtist(artist)}
+      >
+        <div className="artist-avatar-wrap">
+          <img
+            src={artist.image}
+            alt={artist.name}
+            className={`artist-card-avatar ${isStar ? 'avatar-star' : ''} ${isComposer ? 'avatar-composer' : ''}`}
+            loading="lazy"
+            onError={e => {
+              const bg = isStar ? '3b1828' : isComposer ? '1c2b18' : '152535';
+              const text = isStar ? 'ff4081' : isComposer ? 'c8ff00' : '00e5ff';
+              (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                artist.name
+              )}&background=${bg}&color=${text}&size=200&bold=true`;
+            }}
+          />
+        </div>
+        <span className="artist-card-name">{artist.name}</span>
+        <span className={`artist-card-role ${isStar ? 'role-star' : ''} ${isComposer ? 'role-composer' : ''}`}>
+          {roleTag}
+        </span>
+      </div>
+    );
   };
 
   const handleSelectPlaylist = async (playlist: PlaylistResultItem) => {
@@ -622,14 +681,17 @@ export const MusicSearchScreen: React.FC = () => {
   // Render dynamic main results body based on capsule
   const renderCapsuleContent = () => {
     if (selectedCapsule === 'All') {
+      const starArtists = artistResults.filter(a => a.category === 'actress' || a.category === 'actor');
+      const composerAndSingers = artistResults.filter(a => a.category !== 'actress' && a.category !== 'actor');
+
       return (
         <div className="all-in-one-results">
-          {/* Artists Section (if present) */}
-          {artistResults.length > 0 && (
+          {/* Starring Actresses & Actors Section (if present) */}
+          {starArtists.length > 0 && (
             <div className="search-category-section">
               <div className="category-section-title-row">
-                <span className="category-section-title">
-                  <User size={15} color="#c8ff00" /> Artists & Creators ({artistResults.length})
+                <span className="category-section-title" style={{ color: '#ff4081' }}>
+                  <Sparkles size={15} color="#ff4081" /> ✨ Starring Actresses & Actors ({starArtists.length})
                 </span>
                 <button
                   type="button"
@@ -640,22 +702,28 @@ export const MusicSearchScreen: React.FC = () => {
                 </button>
               </div>
               <div className="horizontal-scroll-row">
-                {artistResults.map((artist, idx) => (
-                  <div
-                    key={artist.id || idx}
-                    className="artist-card-item"
-                    onClick={() => handleSelectArtist(artist.name)}
-                  >
-                    <img
-                      src={artist.image}
-                      alt={artist.name}
-                      className="artist-card-avatar"
-                      loading="lazy"
-                    />
-                    <span className="artist-card-name">{artist.name}</span>
-                    <span className="artist-card-role">{artist.role}</span>
-                  </div>
-                ))}
+                {starArtists.map((artist, idx) => renderArtistCard(artist, idx))}
+              </div>
+            </div>
+          )}
+
+          {/* Music Directors & Creators Section (if present) */}
+          {composerAndSingers.length > 0 && (
+            <div className="search-category-section">
+              <div className="category-section-title-row">
+                <span className="category-section-title">
+                  <User size={15} color="#c8ff00" /> Composers & Artists ({composerAndSingers.length})
+                </span>
+                <button
+                  type="button"
+                  className="view-all-capsule-link"
+                  onClick={() => setSelectedCapsule('Artists')}
+                >
+                  View All
+                </button>
+              </div>
+              <div className="horizontal-scroll-row">
+                {composerAndSingers.map((artist, idx) => renderArtistCard(artist, idx))}
               </div>
             </div>
           )}
@@ -767,37 +835,85 @@ export const MusicSearchScreen: React.FC = () => {
     }
 
     if (selectedCapsule === 'Videos') {
-      const vQueue = videoSongs.length > 0 ? videoSongs : songResults;
+      const vQueue = videoSongs.length > 0 ? videoSongs : songResults.map(s => ({ ...s, isVideo: true }));
       return (
         <div className="music-results-list">
-          {vQueue.map((song, i) => renderVideoCard(song, vQueue, i))}
+          {vQueue.length > 0 ? (
+            vQueue.map((song, i) => renderVideoCard(song, vQueue, i))
+          ) : (
+            <div className="empty-category-msg">No video songs found for "{query}".</div>
+          )}
         </div>
       );
     }
 
     if (selectedCapsule === 'Artists') {
+      const starArtists = artistResults.filter(a => a.category === 'actress' || a.category === 'actor');
+      const composerArtists = artistResults.filter(a => a.category === 'composer');
+      const vocalists = artistResults.filter(a => a.category === 'singer' || (!a.category && a.role?.toLowerCase().includes('singer')));
+      const otherArtists = artistResults.filter(a =>
+        a.category !== 'actress' &&
+        a.category !== 'actor' &&
+        a.category !== 'composer' &&
+        a.category !== 'singer' &&
+        (!a.role || !a.role.toLowerCase().includes('singer'))
+      );
+
       return (
-        <div>
-          {artistResults.length > 0 ? (
-            <div className="search-artists-grid">
-              {artistResults.map((artist, idx) => (
-                <div
-                  key={artist.id || idx}
-                  className="artist-card-item"
-                  onClick={() => handleSelectArtist(artist.name)}
-                >
-                  <img
-                    src={artist.image}
-                    alt={artist.name}
-                    className="artist-card-avatar"
-                    loading="lazy"
-                  />
-                  <span className="artist-card-name">{artist.name}</span>
-                  <span className="artist-card-role">{artist.role}</span>
-                </div>
-              ))}
+        <div className="artists-capsule-content">
+          {starArtists.length > 0 && (
+            <div className="search-category-section" style={{ marginBottom: '1.25rem' }}>
+              <div className="category-section-title-row">
+                <span className="category-section-title" style={{ color: '#ff4081' }}>
+                  <Sparkles size={16} color="#ff4081" /> ✨ Starring Actresses & Actors ({starArtists.length})
+                </span>
+              </div>
+              <div className="search-artists-grid">
+                {starArtists.map((artist, idx) => renderArtistCard(artist, idx))}
+              </div>
             </div>
-          ) : (
+          )}
+
+          {composerArtists.length > 0 && (
+            <div className="search-category-section" style={{ marginBottom: '1.25rem' }}>
+              <div className="category-section-title-row">
+                <span className="category-section-title" style={{ color: '#c8ff00' }}>
+                  <Headphones size={16} color="#c8ff00" /> 🎧 Music Directors & Composers ({composerArtists.length})
+                </span>
+              </div>
+              <div className="search-artists-grid">
+                {composerArtists.map((artist, idx) => renderArtistCard(artist, idx))}
+              </div>
+            </div>
+          )}
+
+          {vocalists.length > 0 && (
+            <div className="search-category-section" style={{ marginBottom: '1.25rem' }}>
+              <div className="category-section-title-row">
+                <span className="category-section-title" style={{ color: '#00e5ff' }}>
+                  <Mic2 size={16} color="#00e5ff" /> 🎤 Playback Singers & Vocalists ({vocalists.length})
+                </span>
+              </div>
+              <div className="search-artists-grid">
+                {vocalists.map((artist, idx) => renderArtistCard(artist, idx))}
+              </div>
+            </div>
+          )}
+
+          {otherArtists.length > 0 && (
+            <div className="search-category-section" style={{ marginBottom: '1.25rem' }}>
+              <div className="category-section-title-row">
+                <span className="category-section-title">
+                  <User size={16} color="#ffffff" /> Featured Artists ({otherArtists.length})
+                </span>
+              </div>
+              <div className="search-artists-grid">
+                {otherArtists.map((artist, idx) => renderArtistCard(artist, idx))}
+              </div>
+            </div>
+          )}
+
+          {artistResults.length === 0 && (
             <div className="empty-category-msg">No artists found for "{query}".</div>
           )}
         </div>
@@ -960,9 +1076,6 @@ export const MusicSearchScreen: React.FC = () => {
                 className={`floating-capsule ${selectedCapsule === cap.id ? 'active' : ''}`}
                 onClick={() => {
                   setSelectedCapsule(cap.id);
-                  if (query.trim()) {
-                    triggerSearch(query, cap.id);
-                  }
                 }}
               >
                 <span>{cap.label}</span>

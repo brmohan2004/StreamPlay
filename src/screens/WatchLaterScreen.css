@@ -1,4 +1,14 @@
 /* 11. Watch Later Screen */
+.watchlater-screen-container {
+  padding-top: calc(max(env(safe-area-inset-top, 16px), 24px) + 64px);
+  padding-left: 1rem;
+  padding-right: 1rem;
+  padding-bottom: 5rem;
+  min-height: 100vh;
+  color: #ffffff;
+  position: relative;
+}
+
 .watchlater-hero-summary {
   margin-bottom: 0.75rem;
 }

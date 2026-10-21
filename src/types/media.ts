@@ -46,9 +46,12 @@ export interface SongItem {
   videoUrl?: string; // YouTube / MP4 video stream URL for video song mode
   isVideo?: boolean;
   language?: string;
-  accentColor?: string; // e.g. orange, cyan, lime for card accent bar
+  accentColor?: string;
   quality?: string;
   isShortClip?: boolean; // True for songs/teasers/hooks under 90 seconds
+  starring?: string;
+  singers?: string;
+  composer?: string;
   source?: 'JioSaavn' | 'Audius' | 'Apple' | 'YouTube' | string; // Free music provider
 }
 
