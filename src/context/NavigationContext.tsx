@@ -31,6 +31,10 @@ const NavigationContext = createContext<NavigationContextType | undefined>(undef
 export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [appMode, setAppModeState] = useState<AppMode>(() => {
     try {
+      const defaultLaunch = localStorage.getItem('streamplay_default_launch_mode');
+      if (defaultLaunch === 'movies' || defaultLaunch === 'music') {
+        return defaultLaunch;
+      }
       const saved = localStorage.getItem('streamplay_app_mode');
       if (saved === 'movies' || saved === 'music') {
         return saved;

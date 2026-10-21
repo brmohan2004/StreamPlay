@@ -66,7 +66,7 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
     selectedLanguage,
     selectedChannel
   } = useNavigation();
-  const { continueWatching, primaryLanguage, secondaryLanguage } = useMedia();
+  const { continueWatching, primaryLanguage, secondaryLanguage, userLocation } = useMedia();
   const { forYouMovies, becauseYouWatched, explorationMovies } = useRecommendations();
 
   // Language Curated Movies State initialized with persistent local storage cache
@@ -893,6 +893,18 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
               </MovieSectionRow>
             ))}
 
+            {/* Regional Location Cinema Hub Spotlight */}
+            {userLocation && (
+              <MovieSectionRow title={`${userLocation.name} • ${userLocation.cinemaHub} Spotlight`}>
+                {(deduplicatedPrimaryLang.length > 0 ? deduplicatedPrimaryLang : deduplicatedTopMovies)
+                  .filter(m => m.type !== 'series')
+                  .slice(0, 10)
+                  .map(movie => (
+                    <MovieSpotlightCard key={`loc-spot-${movie.id}`} item={movie} />
+                  ))}
+              </MovieSectionRow>
+            )}
+
             {/* New Movie Releases */}
             {deduplicatedNewReleases.filter(m => m.type !== 'series').length > 0 && (
               <MovieSectionRow title="New Movie Releases">
@@ -921,23 +933,23 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
 
             {/* OTT Movie Premieres */}
             <div className="ott-branded-sections">
-              {netflixHits.filter(m => m.type !== 'series').length > 0 && (
-                <MediaRow title="Netflix Movies" items={netflixHits.filter(m => m.type !== 'series')} />
+              {deduplicatedNetflix.filter(m => m.type !== 'series').length > 0 && (
+                <MediaRow title="Netflix Movies" items={deduplicatedNetflix.filter(m => m.type !== 'series')} />
               )}
-              {primeHits.filter(m => m.type !== 'series').length > 0 && (
-                <MediaRow title="Prime Video Movies" items={primeHits.filter(m => m.type !== 'series')} />
+              {deduplicatedPrime.filter(m => m.type !== 'series').length > 0 && (
+                <MediaRow title="Prime Video Movies" items={deduplicatedPrime.filter(m => m.type !== 'series')} />
               )}
-              {hotstarHits.filter(m => m.type !== 'series').length > 0 && (
-                <MediaRow title="JioHotstar Movies" items={hotstarHits.filter(m => m.type !== 'series')} />
+              {deduplicatedHotstar.filter(m => m.type !== 'series').length > 0 && (
+                <MediaRow title="JioHotstar Movies" items={deduplicatedHotstar.filter(m => m.type !== 'series')} />
               )}
-              {appleHits.filter(m => m.type !== 'series').length > 0 && (
-                <MediaRow title="Apple TV+ Films" items={appleHits.filter(m => m.type !== 'series')} />
+              {deduplicatedApple.filter(m => m.type !== 'series').length > 0 && (
+                <MediaRow title="Apple TV+ Films" items={deduplicatedApple.filter(m => m.type !== 'series')} />
               )}
-              {sonyHits.filter(m => m.type !== 'series').length > 0 && (
-                <MediaRow title="Sony LIV Movies" items={sonyHits.filter(m => m.type !== 'series')} />
+              {deduplicatedSony.filter(m => m.type !== 'series').length > 0 && (
+                <MediaRow title="Sony LIV Movies" items={deduplicatedSony.filter(m => m.type !== 'series')} />
               )}
-              {zeeHits.filter(m => m.type !== 'series').length > 0 && (
-                <MediaRow title="Zee5 Movies" items={zeeHits.filter(m => m.type !== 'series')} />
+              {deduplicatedZee.filter(m => m.type !== 'series').length > 0 && (
+                <MediaRow title="Zee5 Movies" items={deduplicatedZee.filter(m => m.type !== 'series')} />
               )}
             </div>
 

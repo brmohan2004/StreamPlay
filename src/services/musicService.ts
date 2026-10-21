@@ -565,14 +565,16 @@ export async function fetchInfiniteSearchSongs(
         // Multi-provider initial query: JioSaavn + Audius + Apple Music
         rawSongs = await searchSongsPaged(trimmed, apiPage, limit);
       } else {
-        // Direct dynamic pagination on JioSaavn and Audius with offset
-        const [saavnRes, audiusRes] = await Promise.allSettled([
+        // Direct dynamic multi-provider pagination across JioSaavn, Audius, and Apple Music
+        const [saavnRes, audiusRes, itunesRes] = await Promise.allSettled([
           performRawSaavnSearch(trimmed, apiPage, limit),
-          searchAudiusSongs(trimmed, 6, (apiPage - 1) * 6)
+          searchAudiusSongs(trimmed, 6, (apiPage - 1) * 6),
+          searchItunesSongs(trimmed, 8, (apiPage - 1) * 8)
         ]);
         const saavn = saavnRes.status === 'fulfilled' ? saavnRes.value : [];
         const audius = audiusRes.status === 'fulfilled' ? audiusRes.value : [];
-        rawSongs = deduplicateSongs([...saavn, ...audius]);
+        const itunes = itunesRes.status === 'fulfilled' ? itunesRes.value : [];
+        rawSongs = deduplicateSongs([...saavn, ...audius, ...itunes]);
       }
     } catch (err) {
       console.warn(`Dynamic search fetch failed for page ${apiPage}:`, err);

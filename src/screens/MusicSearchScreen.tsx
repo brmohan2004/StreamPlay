@@ -51,11 +51,23 @@ export const MusicSearchScreen: React.FC = () => {
   const {
     setActiveScreen
   } = useNavigation();
-  const { playSong, openVideoSong, currentSong, isPlayingSong, toggleSongPlay, toggleLikeSong, isLikedSong } = useMedia();
+  const {
+    playSong,
+    openVideoSong,
+    currentSong,
+    isPlayingSong,
+    toggleSongPlay,
+    toggleLikeSong,
+    isLikedSong,
+    primaryLanguage
+  } = useMedia();
 
   const [query, setQuery] = useState('');
   const [selectedCapsule, setSelectedCapsule] = useState<CapsuleType>('All');
   const [isListening, setIsListening] = useState(false);
+  const [voiceHint, setVoiceHint] = useState<string | null>(null);
+  const recognitionRef = useRef<any>(null);
+
   const [songResults, setSongResults] = useState<SongItem[]>([]);
   const [artistResults, setArtistResults] = useState<ArtistResultItem[]>([]);
   const [playlistResults, setPlaylistResults] = useState<PlaylistResultItem[]>([]);
@@ -68,6 +80,17 @@ export const MusicSearchScreen: React.FC = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const bottomObserverRef = useRef<HTMLDivElement>(null);
   const seenSongKeysRef = useRef<Set<string>>(new Set());
+
+  // Clean up SpeechRecognition on unmount
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.abort();
+        } catch {}
+      }
+    };
+  }, []);
 
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
     try {
@@ -296,39 +319,125 @@ export const MusicSearchScreen: React.FC = () => {
     }
   };
 
-  // Voice Search via Web Speech API with explicit permission prompt
+  // Speech recognition language mapper
+  const getSpeechLang = (lang?: string) => {
+    switch (lang?.toLowerCase()) {
+      case 'tamil':
+        return 'ta-IN';
+      case 'hindi':
+        return 'hi-IN';
+      case 'telugu':
+        return 'te-IN';
+      case 'malayalam':
+        return 'ml-IN';
+      case 'kannada':
+        return 'kn-IN';
+      case 'punjabi':
+        return 'pa-IN';
+      case 'bengali':
+        return 'bn-IN';
+      default:
+        return 'en-IN';
+    }
+  };
+
+  // Robust Voice Search with Web Speech API and live transcription
   const handleVoiceSearch = async () => {
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-      try {
-        await navigator.mediaDevices.getUserMedia({ audio: true });
-      } catch (err) {
-        console.warn('Microphone permission request:', err);
+    // 1. Toggle off if already listening
+    if (isListening) {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch {}
       }
+      setIsListening(false);
+      setVoiceHint(null);
+      return;
     }
 
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      alert('Voice search is not supported in this browser. Please type your query.');
+    // 2. Check browser SpeechRecognition support
+    const SpeechRecognition =
+      (window as any).SpeechRecognition ||
+      (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      alert('Voice search is not supported in this browser. Please use Google Chrome, Edge, or Safari.');
       return;
     }
 
     try {
-      // @ts-ignore
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      const recognition = new SpeechRecognition();
-      recognition.lang = 'en-US';
-      recognition.interimResults = false;
+      // 3. Request microphone access and immediately release stream so SpeechRecognition can access device hardware
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          stream.getTracks().forEach(track => track.stop());
+        } catch (permErr: any) {
+          console.warn('Microphone permission query:', permErr);
+          if (permErr.name === 'NotAllowedError' || permErr.name === 'PermissionDeniedError') {
+            alert('Microphone permission was denied. Please allow microphone permissions in your browser or device settings.');
+            return;
+          }
+        }
+      }
 
-      recognition.onstart = () => setIsListening(true);
-      recognition.onend = () => setIsListening(false);
-      recognition.onerror = () => setIsListening(false);
-      recognition.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        setQuery(transcript);
-        triggerSearch(transcript, selectedCapsule);
+      const recognition = new SpeechRecognition();
+      recognitionRef.current = recognition;
+
+      recognition.lang = getSpeechLang(primaryLanguage);
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = () => {
+        setIsListening(true);
+        setVoiceHint(`Listening in ${primaryLanguage || 'English'}... Speak a song or artist name`);
       };
+
+      recognition.onresult = (event: any) => {
+        let finalTranscript = '';
+        let interimTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript;
+          } else {
+            interimTranscript += event.results[i][0].transcript;
+          }
+        }
+
+        const recognizedText = (finalTranscript || interimTranscript).trim();
+        if (recognizedText) {
+          setQuery(recognizedText);
+          if (finalTranscript) {
+            setVoiceHint(`Searching: "${finalTranscript}"`);
+            triggerSearch(finalTranscript, selectedCapsule);
+          }
+        }
+      };
+
+      recognition.onerror = (event: any) => {
+        console.warn('SpeechRecognition error:', event.error);
+        setIsListening(false);
+        if (event.error === 'not-allowed') {
+          alert('Microphone access was denied. Please allow microphone permissions in your browser or device settings.');
+        } else if (event.error === 'no-speech') {
+          setVoiceHint('No speech detected. Tap microphone and try again.');
+          setTimeout(() => setVoiceHint(null), 3000);
+        } else {
+          setVoiceHint(null);
+        }
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+        setTimeout(() => setVoiceHint(null), 2500);
+      };
+
       recognition.start();
-    } catch {
+    } catch (err) {
+      console.error('Failed to start speech recognition:', err);
       setIsListening(false);
+      setVoiceHint(null);
     }
   };
 
@@ -551,24 +660,15 @@ export const MusicSearchScreen: React.FC = () => {
             </div>
           )}
 
-          {/* Full Songs Section */}
+          {/* Songs & Tracks Infinite List */}
           <div className="search-category-section">
             <div className="category-section-title-row">
               <span className="category-section-title">
-                <Music size={15} color="#c8ff00" /> Full Songs ({fullSongs.length})
+                <Music size={15} color="#c8ff00" /> Songs & Tracks ({songResults.length})
               </span>
-              {fullSongs.length > 5 && (
-                <button
-                  type="button"
-                  className="view-all-capsule-link"
-                  onClick={() => setSelectedCapsule('FullSongs')}
-                >
-                  View All ({fullSongs.length})
-                </button>
-              )}
             </div>
             <div className="music-results-list">
-              {(fullSongs.length > 0 ? fullSongs.slice(0, 8) : songResults.slice(0, 8)).map((song, i) =>
+              {(fullSongs.length > 0 ? fullSongs : songResults).map((song, i) =>
                 renderTrackRow(song, fullSongs.length > 0 ? fullSongs : songResults, i)
               )}
             </div>
@@ -834,13 +934,21 @@ export const MusicSearchScreen: React.FC = () => {
               type="button"
               className={`search-mic-icon-btn music-mic ${isListening ? 'listening-pulse' : ''}`}
               onClick={handleVoiceSearch}
-              title={isListening ? 'Listening...' : 'Voice Search'}
+              title={isListening ? 'Listening... Tap to stop' : 'Voice Search'}
               aria-label="Voice Search"
             >
               {isListening ? <MicOff size={16} /> : <Mic size={16} />}
             </button>
           </form>
         </div>
+
+        {/* Live Voice Search Transcription Status Pill */}
+        {isListening && (
+          <div className="voice-listening-pill">
+            <span className="voice-wave-dot" />
+            <span>{voiceHint || 'Listening... Speak song or artist name'}</span>
+          </div>
+        )}
 
         {/* Floating Category Capsules Bar */}
         {query.trim() && (
@@ -850,7 +958,12 @@ export const MusicSearchScreen: React.FC = () => {
                 key={cap.id}
                 type="button"
                 className={`floating-capsule ${selectedCapsule === cap.id ? 'active' : ''}`}
-                onClick={() => setSelectedCapsule(cap.id)}
+                onClick={() => {
+                  setSelectedCapsule(cap.id);
+                  if (query.trim()) {
+                    triggerSearch(query, cap.id);
+                  }
+                }}
               >
                 <span>{cap.label}</span>
                 <span className="capsule-badge-count">{cap.count}</span>
@@ -948,8 +1061,8 @@ export const MusicSearchScreen: React.FC = () => {
               <>
                 {renderCapsuleContent()}
 
-                {/* 25-by-25 Infinite Scroll Loader (shown for full songs or songs capsules) */}
-                {(selectedCapsule === 'All' || selectedCapsule === 'Songs' || selectedCapsule === 'FullSongs') && hasMore && (
+                {/* Infinite Scroll Loader */}
+                {selectedCapsule !== 'Artists' && selectedCapsule !== 'Playlists' && hasMore && (
                   <div className="music-search-load-bar">
                     <button
                       type="button"
@@ -959,21 +1072,28 @@ export const MusicSearchScreen: React.FC = () => {
                     >
                       {isLoadingMore ? (
                         <>
-                          <Loader2 size={16} className="music-spin-icon" />
-                          <span>Loading next 25 tracks...</span>
+                          <Loader2 size={16} className="music-spin-icon text-neon" />
+                          <span>Loading more tracks...</span>
                         </>
                       ) : (
                         <>
-                          <Sparkles size={16} />
-                          <span>Load next 25 tracks</span>
+                          <Sparkles size={16} color="#c8ff00" />
+                          <span>Load more tracks</span>
                         </>
                       )}
                     </button>
                   </div>
                 )}
 
-                {/* Observer Anchor */}
-                <div ref={bottomObserverRef} style={{ height: 1 }} />
+                {/* All available contents reached indicator */}
+                {!hasMore && songResults.length > 0 && selectedCapsule !== 'Artists' && selectedCapsule !== 'Playlists' && (
+                  <div className="all-contents-loaded-pill">
+                    <span>✓ All available tracks loaded ({songResults.length} tracks)</span>
+                  </div>
+                )}
+
+                {/* Continuous Infinite Scroll Intersection Observer Anchor */}
+                <div ref={bottomObserverRef} className="infinite-scroll-anchor" style={{ height: 28, width: '100%' }} />
               </>
             ) : (
               <div className="search-no-results">

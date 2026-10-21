@@ -8,13 +8,14 @@ import { ChevronLeft, ChevronRight, Mic2, Play, Pause } from 'lucide-react';
 import { DailyMixFannedDeck } from '../components/DailyMixFannedDeck';
 import {
   fetchVideoSongs,
-  fetchGenreSongs,
   fetchInfiniteLanguageSongs,
   fetchArtistSongsPaged,
   fetchMusicFilterUniverseSongs,
   getCachedInitialMusic,
-  saveCachedInitialMusic
+  saveCachedInitialMusic,
+  getSongCoreKey
 } from '../services/musicService';
+import { fetchDynamicMusicShelf } from '../services/catalogEngine';
 import { useRecommendations } from '../context/RecommendationContext';
 import { SkeletonMusicHome, SkeletonMusicRow } from '../components/SkeletonLoader';
 import {
@@ -39,7 +40,7 @@ export const MusicHomeScreen: React.FC<MusicHomeScreenProps> = ({
   trendingSongs,
   recentSongs
 }) => {
-  const { playSong, openMusicPlayer, openVideoSong, primaryLanguage, secondaryLanguage, currentSong, isPlayingSong, toggleSongPlay } = useMedia();
+  const { playSong, openMusicPlayer, openVideoSong, primaryLanguage, secondaryLanguage, userLocation, currentSong, isPlayingSong, toggleSongPlay } = useMedia();
   const { setActiveScreen, activeCategory, setActiveCategory } = useNavigation();
   const { dailyMix, forYouSongs, becauseYouListened, discoverWeekly } = useRecommendations();
 
@@ -270,16 +271,7 @@ export const MusicHomeScreen: React.FC<MusicHomeScreenProps> = ({
   const [isLoadingMoreMusic, setIsLoadingMoreMusic] = useState(false);
   const bottomObserverRef = useRef<HTMLDivElement>(null);
 
-  const MUSIC_GENRE_BATCHES = [
-    'Acoustic & Unplugged',
-    'Chill Lo-Fi Cafe',
-    'EDM & Dance Club',
-    'Hip-Hop & Trap Heavy',
-    'Romantic Melodies',
-    'Devotional & Peace',
-    '90s Golden Nostalgia',
-    'Indie Pop & Alternative'
-  ];
+
 
   // Load Language Specific Songs & Video Songs on mount / language change
   useEffect(() => {
@@ -317,40 +309,24 @@ export const MusicHomeScreen: React.FC<MusicHomeScreenProps> = ({
     };
   }, [primaryLanguage, secondaryLanguage]);
 
-  // Load next infinite scroll batch
+  // Load next infinite scroll batch: 100% Dynamic music data
   const loadNextMusicBatch = async () => {
     if (isLoadingMoreMusic || isFilterUniverse) return;
     setIsLoadingMoreMusic(true);
 
     try {
-      if (infiniteBatchIndex < MUSIC_GENRE_BATCHES.length) {
-        const genre = MUSIC_GENRE_BATCHES[infiniteBatchIndex];
-        const items = await fetchGenreSongs(genre, 15);
-        if (items.length > 0) {
-          setInfiniteMusicRows(prev => [...prev, { title: genre, songs: items }]);
-        }
-      } else {
-        const langBatch = infiniteBatchIndex - MUSIC_GENRE_BATCHES.length + 1;
-        const items = await fetchInfiniteLanguageSongs(primaryLanguage, langBatch, 20);
-        if (items.length > 0) {
-          const titles = [
-            `${primaryLanguage} Retro Hits`,
-            `${primaryLanguage} Indie Spotlight`,
-            `${primaryLanguage} Acoustic Melodies`,
-            `${primaryLanguage} Golden Era Classics`,
-            `${primaryLanguage} Dance Anthems`
-          ];
-          const rowTitle = titles[(langBatch - 1) % titles.length];
-          setInfiniteMusicRows(prev => [...prev, { title: `${rowTitle} Vol. ${langBatch}`, songs: items }]);
-        }
+      const shelf = await fetchDynamicMusicShelf(infiniteBatchIndex);
+      if (shelf.songs.length > 0) {
+        setInfiniteMusicRows(prev => [...prev, { title: shelf.title, songs: shelf.songs }]);
       }
       setInfiniteBatchIndex(prev => prev + 1);
     } catch (err) {
-      console.error('Failed to load next music batch:', err);
+      console.error('Failed to load next dynamic music batch:', err);
     } finally {
       setIsLoadingMoreMusic(false);
     }
   };
+
 
   // IntersectionObserver for Infinite Scroll (both Standard Home and Filter Universe)
   useEffect(() => {
@@ -434,13 +410,17 @@ export const MusicHomeScreen: React.FC<MusicHomeScreenProps> = ({
   // =========================================================================
   // DEDUPLICATION ENGINE (Avoid repetitive content across different sections)
   // =========================================================================
-  const globalSeenSongIds = new Set<string>();
+  const globalSeenSongKeys = new Set<string>();
 
   const deduplicate = (items: SongItem[]): SongItem[] => {
     const unique: SongItem[] = [];
     for (const item of items) {
-      if (item && item.id && !globalSeenSongIds.has(item.id)) {
-        globalSeenSongIds.add(item.id);
+      if (!item || !item.title) continue;
+      const idKey = String(item.id || '');
+      const coreKey = getSongCoreKey(item.title, item.artist, item.streamUrl);
+      if (!globalSeenSongKeys.has(idKey) && !globalSeenSongKeys.has(coreKey)) {
+        globalSeenSongKeys.add(idKey);
+        globalSeenSongKeys.add(coreKey);
         unique.push(item);
       }
     }
@@ -725,6 +705,33 @@ export const MusicHomeScreen: React.FC<MusicHomeScreenProps> = ({
                 </div>
               </div>
             ))}
+
+            {/* ========================================================
+                SECTION 3.5: REGIONAL LOCATION SOUND & HITS
+                ======================================================== */}
+            {userLocation && dedupPopularSongs.length > 0 && (
+              <div className="music-section-block section-aura">
+                <div className="music-section-head">
+                  <div className="section-title-wrap">
+                    <h2 className="music-section-title">
+                      {userLocation.name} Sound & {userLocation.cinemaHub} Anthems
+                    </h2>
+                    <span className="section-caption">Curated for your location • {userLocation.region}</span>
+                  </div>
+                </div>
+
+                <div className="music-scroll-row style-aura-row">
+                  {dedupPopularSongs.slice(0, 10).map((song, idx) => (
+                    <AuraMusicCard
+                      key={`loc-music-${song.id}-${idx}`}
+                      song={song}
+                      queue={dedupPopularSongs}
+                      onPlay={handlePlaySong}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* ========================================================
                 SECTION 4: POPULAR 20 SONGS

@@ -1,6 +1,6 @@
 import './TopAppHeader.css';
 import React from 'react';
-import { ArrowLeft, Bookmark, ListMusic, User, Users, Film, Headphones } from 'lucide-react';
+import { ArrowLeft, Bookmark, ListMusic, User, Users, Film, Music } from 'lucide-react';
 import { useNavigation } from '../context/NavigationContext';
 import { useMedia } from '../context/MediaContext';
 import { useParty } from '../context/PartyContext';
@@ -67,12 +67,12 @@ export const TopAppHeader: React.FC<TopAppHeaderProps> = ({
               {appMode === 'movies' ? (
                 <>
                   <Film size={11} className="mode-badge-icon cyan-icon" />
-                  <span className="mode-badge-name">CINEMA MAX</span>
+                  <span className="mode-badge-name">MOVIES</span>
                 </>
               ) : (
                 <>
-                  <Headphones size={11} className="mode-badge-icon lime-icon" />
-                  <span className="mode-badge-name">SOUND WAVE</span>
+                  <Music size={11} className="mode-badge-icon lime-icon" />
+                  <span className="mode-badge-name">MUSIC</span>
                 </>
               )}
             </div>

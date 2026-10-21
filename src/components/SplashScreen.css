@@ -1,128 +1,378 @@
-.splash-screen-overlay {
+/* ==========================================================================
+   StreamPlay — Premium 2-Second Animated Splash Screen
+   Synchronized Ease-Out Splash Transition (JioHotstar / OTT Benchmark)
+   ========================================================================== */
+
+:root {
+  --splash-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Fullscreen Pure Black Stage */
+.streamplay-splash-screen {
   position: fixed;
   inset: 0;
   z-index: 999999;
-  background: #000000;
+  background-color: #000000;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   user-select: none;
   overflow: hidden;
-  transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.5s ease;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+              visibility 0.28s ease;
+  will-change: opacity;
 }
 
-.splash-screen-overlay.fading-out {
+.streamplay-splash-screen.fading-out {
   opacity: 0;
-  transform: scale(1.03);
-  pointer-events: none;
   visibility: hidden;
-}
-
-/* Subtle Ambient Radial Glow */
-.splash-ambient-glow {
-  position: absolute;
-  width: 500px;
-  height: 500px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(0, 210, 255, 0.16) 0%, rgba(200, 255, 0, 0.08) 35%, transparent 70%);
-  filter: blur(80px);
-  animation: splashAura 3.5s ease-in-out infinite alternate;
   pointer-events: none;
 }
 
-@keyframes splashAura {
-  0% {
-    transform: scale(0.9);
-    opacity: 0.5;
-  }
-  100% {
-    transform: scale(1.1);
-    opacity: 0.9;
-  }
+/* --------------------------------------------------------------------------
+   Dynamic Theming: Movie (#00B4FF), Music (#C0F000), Dual (Launch)
+   -------------------------------------------------------------------------- */
+
+/* Dual Mode (Default / Initial Launch) */
+.streamplay-splash-screen.mode-dual {
+  --splash-accent-stream: #00B4FF;
+  --splash-accent-play: #C0F000;
+  --splash-ripple-bg: radial-gradient(
+    circle at 45% 45%,
+    rgba(0, 180, 255, 0.42) 0%,
+    rgba(192, 240, 0, 0.28) 48%,
+    rgba(0, 180, 255, 0.06) 72%,
+    transparent 100%
+  );
+  --splash-ripple-border: rgba(0, 180, 255, 0.32);
+  --splash-ripple-glow: rgba(0, 180, 255, 0.28);
+  --splash-ambient-glow: radial-gradient(
+    circle,
+    rgba(0, 180, 255, 0.22) 0%,
+    rgba(192, 240, 0, 0.12) 45%,
+    transparent 70%
+  );
+  --splash-logo-filter: drop-shadow(-8px 8px 24px rgba(0, 180, 255, 0.55))
+                       drop-shadow(8px -8px 24px rgba(192, 240, 0, 0.4));
 }
 
-/* Minimalist Core Brand Container */
-.splash-minimal-brand {
+/* Movie Mode Accent (Cyan Blue #00B4FF) */
+.streamplay-splash-screen.mode-movies {
+  --splash-accent: #00B4FF;
+  --splash-ripple-bg: radial-gradient(
+    circle,
+    rgba(0, 180, 255, 0.44) 0%,
+    rgba(0, 180, 255, 0.2) 45%,
+    rgba(0, 180, 255, 0.05) 70%,
+    transparent 100%
+  );
+  --splash-ripple-border: rgba(0, 180, 255, 0.4);
+  --splash-ripple-glow: rgba(0, 180, 255, 0.35);
+  --splash-ambient-glow: radial-gradient(
+    circle,
+    rgba(0, 180, 255, 0.26) 0%,
+    rgba(0, 180, 255, 0.08) 50%,
+    transparent 70%
+  );
+  --splash-logo-filter: drop-shadow(0 0 28px rgba(0, 180, 255, 0.65))
+                       drop-shadow(0 0 50px rgba(0, 180, 255, 0.3));
+}
+
+/* Music Mode Accent (Lime Green #C0F000) */
+.streamplay-splash-screen.mode-music {
+  --splash-accent: #C0F000;
+  --splash-ripple-bg: radial-gradient(
+    circle,
+    rgba(192, 240, 0, 0.44) 0%,
+    rgba(192, 240, 0, 0.2) 45%,
+    rgba(192, 240, 0, 0.05) 70%,
+    transparent 100%
+  );
+  --splash-ripple-border: rgba(192, 240, 0, 0.4);
+  --splash-ripple-glow: rgba(192, 240, 0, 0.35);
+  --splash-ambient-glow: radial-gradient(
+    circle,
+    rgba(192, 240, 0, 0.26) 0%,
+    rgba(192, 240, 0, 0.08) 50%,
+    transparent 70%
+  );
+  --splash-logo-filter: drop-shadow(0 0 28px rgba(192, 240, 0, 0.65))
+                       drop-shadow(0 0 50px rgba(192, 240, 0, 0.3));
+}
+
+/* --------------------------------------------------------------------------
+   Stage & Center Composition
+   -------------------------------------------------------------------------- */
+
+.splash-stage {
   position: relative;
+  width: 100%;
+  height: 100%;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  z-index: 2;
-  animation: splashFadeInUp 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  pointer-events: none;
 }
 
-@keyframes splashFadeInUp {
+/* Subtle Centered Ambient Backlight */
+.splash-ambient-aura {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 320px;
+  height: 320px;
+  margin-top: -160px;
+  margin-left: -160px;
+  border-radius: 50%;
+  background: var(--splash-ambient-glow);
+  filter: blur(55px);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 1;
+  animation: splashAuraAnim var(--splash-duration, 2000ms) linear forwards;
+}
+
+@keyframes splashAuraAnim {
   0% {
     opacity: 0;
-    transform: translateY(18px) scale(0.92);
   }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
+  10% { /* 200ms */
+    opacity: 0;
+  }
+  20% { /* 400ms */
+    opacity: 0.65;
+  }
+  70% { /* 1400ms */
+    opacity: 0.4;
+  }
+  100% { /* 2000ms */
+    opacity: 0.4;
   }
 }
 
-/* Logo Reveal & Smooth Breathing Animation */
-.splash-logo-container {
-  position: relative;
-  width: 120px;
-  height: 120px;
+/* --------------------------------------------------------------------------
+   Circular Radial Ripple / Shockwave Disc
+   0ms - 200ms: Invisible
+   200ms - 300ms: Fades in to 0.25 opacity at 0.5x scale
+   300ms - 600ms: Holds at 0.5x scale
+   600ms - 1400ms: Expands from 0.5x to 2.2x scale, fades opacity from 0.25 to 0.0
+   1400ms - 2000ms: Stays at 0 opacity
+   -------------------------------------------------------------------------- */
+
+.splash-ripple {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 330px;
+  height: 330px;
+  margin-top: -165px;
+  margin-left: -165px;
+  border-radius: 50%;
+  background: var(--splash-ripple-bg);
+  border: 1.5px solid var(--splash-ripple-border);
+  box-shadow: 0 0 35px var(--splash-ripple-glow),
+              inset 0 0 25px var(--splash-ripple-glow);
+  pointer-events: none;
+  z-index: 2;
+  transform-origin: center center;
+  animation: splashRippleAnim var(--splash-duration, 2000ms) linear forwards;
+  will-change: transform, opacity;
+}
+
+@keyframes splashRippleAnim {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+    animation-timing-function: linear;
+  }
+  10% { /* 200ms */
+    opacity: 0;
+    transform: scale(0.5);
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  15% { /* 300ms */
+    opacity: 0.25;
+    transform: scale(0.5);
+    animation-timing-function: linear;
+  }
+  30% { /* 600ms */
+    opacity: 0.25;
+    transform: scale(0.5);
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  70% { /* 1400ms */
+    opacity: 0;
+    transform: scale(2.2);
+    animation-timing-function: linear;
+  }
+  100% { /* 2000ms */
+    opacity: 0;
+    transform: scale(2.2);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   StreamPlay Logo Container
+   0ms - 200ms: Black screen (opacity 0)
+   200ms - 300ms: Centered at 1.8x scale (opacity 0 -> 1)
+   300ms - 600ms: Holds centered at 1.8x scale
+   600ms - 1400ms: Scales down 1.8x -> 1.0x, translates Y 0 -> -28px (cubic-bezier(0.22, 1, 0.36, 1))
+   1400ms - 2000ms: Holds lockup (scale 1.0x, translateY -28px) for 600ms
+   -------------------------------------------------------------------------- */
+
+.splash-logo-box {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 130px;
+  height: 130px;
+  margin-top: -65px;
+  margin-left: -65px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 1.25rem;
+  z-index: 3;
+  transform-origin: center center;
+  animation: splashLogoAnim var(--splash-duration, 2000ms) linear forwards;
+  will-change: transform, opacity;
 }
 
 .splash-logo-img {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  filter: drop-shadow(0 0 25px rgba(0, 210, 255, 0.55)) drop-shadow(0 0 50px rgba(200, 255, 0, 0.3));
-  animation: splashBreath 3s ease-in-out infinite alternate;
+  filter: var(--splash-logo-filter);
+  transform: translateZ(0);
 }
 
-@keyframes splashBreath {
+@keyframes splashLogoAnim {
   0% {
-    transform: scale(0.97);
-    filter: drop-shadow(0 0 20px rgba(0, 210, 255, 0.45)) drop-shadow(0 0 35px rgba(200, 255, 0, 0.25));
+    opacity: 0;
+    transform: translateY(0px) scale(1.8);
+    animation-timing-function: linear;
   }
-  100% {
-    transform: scale(1.04);
-    filter: drop-shadow(0 0 32px rgba(0, 210, 255, 0.75)) drop-shadow(0 0 60px rgba(200, 255, 0, 0.45));
+  10% { /* 200ms - Initial State: black screen */
+    opacity: 0;
+    transform: translateY(0px) scale(1.8);
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
   }
-}
-
-/* Sleek Minimalist Typography */
-.splash-brand-title {
-  font-size: 2.1rem;
-  font-weight: 900;
-  letter-spacing: 5px;
-  margin: 0;
-  background: linear-gradient(135deg, #00d2ff 0%, #c8ff00 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  text-transform: uppercase;
-  animation: splashLetterTrack 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-@keyframes splashLetterTrack {
-  0% {
-    letter-spacing: 2px;
-    opacity: 0.7;
-  }
-  100% {
-    letter-spacing: 5px;
+  15% { /* 300ms - Revealed centered at 1.8x scale */
     opacity: 1;
+    transform: translateY(0px) scale(1.8);
+    animation-timing-function: linear;
+  }
+  30% { /* 600ms - Scale & Shift begins */
+    opacity: 1;
+    transform: translateY(0px) scale(1.8);
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  70% { /* 1400ms - Settles at 1.0x scale and -28px Y */
+    opacity: 1;
+    transform: translateY(-28px) scale(1.0);
+    animation-timing-function: linear;
+  }
+  100% { /* 2000ms - Holds lockup for 600ms */
+    opacity: 1;
+    transform: translateY(-28px) scale(1.0);
   }
 }
 
-.splash-brand-sub {
-  font-size: 0.76rem;
-  color: rgba(255, 255, 255, 0.55);
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  margin-top: 0.5rem;
-  font-weight: 500;
+/* --------------------------------------------------------------------------
+   StreamPlay Title Typography
+   Positioned directly below the logo
+   0ms - 700ms: Invisible (opacity 0, translateY +16px)
+   700ms - 1400ms: Fades in 0 -> 1, translates +16px -> 0px (cubic-bezier(0.22, 1, 0.36, 1))
+   1400ms - 2000ms: Holds lockup at opacity 1, translateY 0px for 600ms
+   -------------------------------------------------------------------------- */
+
+.splash-title-box {
+  position: absolute;
+  top: calc(50% + 46px);
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+  text-align: center;
+  pointer-events: none;
+  animation: splashTextAnim var(--splash-duration, 2000ms) linear forwards;
+  will-change: transform, opacity;
+}
+
+.splash-title-text {
+  font-family: 'Outfit', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  font-size: 2.35rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Split-colored variant: Stream in #00B4FF, Play in #C0F000 */
+.splash-title-stream {
+  color: #00B4FF;
+  text-shadow: 0 0 24px rgba(0, 180, 255, 0.45);
+}
+
+.splash-title-play {
+  color: #C0F000;
+  text-shadow: 0 0 24px rgba(192, 240, 0, 0.45);
+}
+
+/* Pure white variant: StreamPlay in #FFFFFF */
+.splash-title-white {
+  color: #FFFFFF;
+  text-shadow: 0 0 24px rgba(255, 255, 255, 0.35);
+}
+
+@keyframes splashTextAnim {
+  0% {
+    opacity: 0;
+    transform: translateY(16px);
+    animation-timing-function: linear;
+  }
+  35% { /* 700ms - Text reveal trigger */
+    opacity: 0;
+    transform: translateY(16px);
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  70% { /* 1400ms - Settles fully into lockup */
+    opacity: 1;
+    transform: translateY(0px);
+    animation-timing-function: linear;
+  }
+  100% { /* 2000ms - Holds for 600ms */
+    opacity: 1;
+    transform: translateY(0px);
+  }
+}
+
+/* Responsive Scaling for Smaller Mobile Viewports */
+@media (max-width: 480px) {
+  .splash-logo-box {
+    width: 114px;
+    height: 114px;
+    margin-top: -57px;
+    margin-left: -57px;
+  }
+
+  .splash-title-box {
+    top: calc(50% + 40px);
+  }
+
+  .splash-title-text {
+    font-size: 2.15rem;
+  }
+
+  .splash-ripple {
+    width: 290px;
+    height: 290px;
+    margin-top: -145px;
+    margin-left: -145px;
+  }
 }

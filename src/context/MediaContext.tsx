@@ -9,6 +9,7 @@ import {
   stopNativeBackgroundAudio,
   enableAudioPipelineKeepAlive
 } from '../services/nativeBackgroundAudio';
+import { getUserLocation, setUserLocation, UserLocation } from '../services/locationService';
 
 // Helper: fire a custom event so RecommendationContext knows to refresh
 function notifyRecUpdate() {
@@ -75,6 +76,18 @@ interface MediaContextType {
   setPrimaryLanguage: (lang: string) => void;
   secondaryLanguage: string;
   setSecondaryLanguage: (lang: string) => void;
+
+  // User Location & Regional Personalization
+  userLocation: UserLocation;
+  changeUserLocation: (locationId: string) => void;
+
+  // Video Streaming Quality
+  videoQuality: string;
+  setVideoQuality: (q: string) => void;
+
+  // Default Launch Mode
+  defaultLaunchMode: 'movies' | 'music';
+  setDefaultLaunchMode: (mode: 'movies' | 'music') => void;
 
   // Watch Later & History
   watchLater: MovieItem[];
@@ -167,6 +180,33 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const setSecondaryLanguage = (lang: string) => {
     setSecondaryLanguageState(lang);
     localStorage.setItem('streamplay_secondary_lang', lang);
+  };
+
+  // User Location & Regional Personalization
+  const [userLocation, setUserLocationState] = useState<UserLocation>(() => getUserLocation());
+  const changeUserLocation = (locationId: string) => {
+    const updated = setUserLocation(locationId);
+    setUserLocationState(updated);
+    notifyRecUpdate();
+  };
+
+  // Video Streaming Quality
+  const [videoQuality, setVideoQualityState] = useState<string>(() => {
+    return localStorage.getItem('streamplay_setting_video_quality') || 'auto';
+  });
+  const setVideoQuality = (q: string) => {
+    setVideoQualityState(q);
+    localStorage.setItem('streamplay_setting_video_quality', q);
+  };
+
+  // Default Launch Mode
+  const [defaultLaunchMode, setDefaultLaunchModeState] = useState<'movies' | 'music'>(() => {
+    const saved = localStorage.getItem('streamplay_default_launch_mode');
+    return (saved === 'movies' || saved === 'music') ? saved : 'movies';
+  });
+  const setDefaultLaunchMode = (mode: 'movies' | 'music') => {
+    setDefaultLaunchModeState(mode);
+    localStorage.setItem('streamplay_default_launch_mode', mode);
   };
 
   const openMusicPlayer = () => setIsMusicPlayerOpen(true);
@@ -1048,7 +1088,13 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         editPlaylist,
         deletePlaylist,
         removeSongFromPlaylist,
-        addSongToPlaylist
+        addSongToPlaylist,
+        userLocation,
+        changeUserLocation,
+        videoQuality,
+        setVideoQuality,
+        defaultLaunchMode,
+        setDefaultLaunchMode
       }}
     >
       {children}

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigation, NavigationProvider } from './context/NavigationContext';
-import { MediaProvider } from './context/MediaContext';
+import { useNavigation, NavigationProvider, AppMode } from './context/NavigationContext';
+import { MediaProvider, useMedia } from './context/MediaContext';
 import { RecommendationProvider } from './context/RecommendationContext';
 import { FloatingNavBar } from './components/FloatingNavBar';
 import { FloatingFilterPill } from './components/FloatingFilterPill';
@@ -21,12 +21,14 @@ import { PartyProvider } from './context/PartyContext';
 import { PartyRoomModal } from './components/PartyRoomModal';
 import { FloatingReactionLayer } from './components/FloatingReactionLayer';
 import { SplashScreen } from './components/SplashScreen';
+import { OnboardingModal } from './components/OnboardingModal';
 import { NetworkOfflineModal } from './components/NetworkOfflineModal';
+import { UserLocation } from './services/locationService';
+import { fetchDynamicMovieShelf } from './services/catalogEngine';
 import {
   fetchTopMovies,
   fetchTopSeries,
   fetchByOTT,
-  fetchGenreMovies,
   getCachedInitialMovies
 } from './services/movieService';
 import { searchSongs, getCachedInitialMusic, saveCachedInitialMusic } from './services/musicService';
@@ -36,7 +38,15 @@ import { Capacitor } from '@capacitor/core';
 import './App.css';
 
 export function AppContent() {
-  const { appMode, activeScreen } = useNavigation();
+  const { appMode, setAppMode, activeScreen } = useNavigation();
+  const {
+    primaryLanguage,
+    secondaryLanguage,
+    userLocation,
+    changeUserLocation,
+    setPrimaryLanguage,
+    setSecondaryLanguage
+  } = useMedia();
 
   // Synchronize device status bar and meta theme-color with active mode
   // Movie mode: light blue modern gradient matching Image 3 (#0077b6 / #0099ff)
@@ -61,7 +71,51 @@ export function AppContent() {
     }
   }, [appMode]);
 
-  const [showSplash, setShowSplash] = useState(true);
+  // Check if user has previously completed onboarding
+  const isFirstTimeUser = useMemo<boolean>(() => {
+    try {
+      return !localStorage.getItem('streamplay_onboarding_completed');
+    } catch {
+      return false;
+    }
+  }, []);
+
+  // For a NEW user: Onboarding shows first, splash screen loads AFTER onboarding!
+  // For an OLD user: Splash screen loads immediately with saved default / last opened mode!
+  const [showOnboarding, setShowOnboarding] = useState<boolean>(isFirstTimeUser);
+  const [showSplash, setShowSplash] = useState<boolean>(!isFirstTimeUser);
+  const [splashMode, setSplashMode] = useState<AppMode>(appMode);
+
+  useEffect(() => {
+    (window as any).replaySplash = (m?: AppMode) => {
+      if (m) setSplashMode(m);
+      setShowSplash(true);
+    };
+  }, []);
+
+  const handleOnboardingComplete = (prefs: {
+    mode: AppMode;
+    location: UserLocation;
+    primaryLang: string;
+    secondaryLang: string;
+  }) => {
+    try {
+      localStorage.setItem('streamplay_onboarding_completed', 'true');
+    } catch {
+      // ignore
+    }
+    // 1. Hide onboarding
+    setShowOnboarding(false);
+    // 2. Set user's chosen mode & preferences
+    setAppMode(prefs.mode);
+    setSplashMode(prefs.mode);
+    changeUserLocation(prefs.location.id);
+    setPrimaryLanguage(prefs.primaryLang);
+    setSecondaryLanguage(prefs.secondaryLang);
+    refreshLiveCatalogs();
+    // 3. Load the splash screen AFTER onboarding with user's selected mode
+    setShowSplash(true);
+  };
 
   // 0ms Cold-Start Instant Cache: Initialize movies and songs from local persistent cache
   const [topMovies, setTopMovies] = useState<MovieItem[]>(() => getCachedInitialMovies('top_movies'));
@@ -83,19 +137,9 @@ export function AppContent() {
   const [genreIndex, setGenreIndex] = useState(0);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  const GENRE_LIST = [
-    { name: 'Action', desc: 'Explosive action and superhero sagas' },
-    { name: 'Sci-Fi', desc: 'Futuristic universes and mind-bending thrillers' },
-    { name: 'Thriller', desc: 'Edge-of-your-seat suspense and mystery' },
-    { name: 'Animation', desc: 'Critically acclaimed animated adventures' },
-    { name: 'Comedy', desc: 'Laugh-out-loud favorites and comedies' },
-    { name: 'Crime', desc: 'Heists, detectives, and underworld drama' },
-    { name: 'Horror', desc: 'Chilling tales and supernatural mysteries' },
-    { name: 'Romance', desc: 'Heartwarming love stories and romance' },
-    { name: 'Adventure', desc: 'Epic journeys across uncharted worlds' }
-  ];
 
-  // Dynamic Content Fetcher: Seamlessly updates in background (Stale-While-Revalidate)
+
+  // Dynamic Content Fetcher: Tailored to user's primary/secondary language and location
   const refreshLiveCatalogs = useCallback(() => {
     let isMounted = true;
 
@@ -108,22 +152,37 @@ export function AppContent() {
       if (isMounted && series.length > 0) setTopSeries(series);
     });
 
-    // 2. Concurrently load Music rows with local persistence
-    searchSongs('Top Bollywood Hits 2026', 15).then(trending => {
+    // 2. Concurrently load Music rows tailored to user preferences and location
+    const primaryQuery = `${primaryLanguage || 'Tamil'} Top Hits 2026`;
+    const secondaryQuery = `${secondaryLanguage || 'English'} Chartbusters`;
+
+    const locationArtistMap: Record<string, string> = {
+      chennai: 'Anirudh Ravichander',
+      mumbai: 'Arijit Singh',
+      hyderabad: 'Thaman S',
+      bengaluru: 'Sid Sriram',
+      kochi: 'Sushin Shyam',
+      delhi: 'Arijit Singh',
+      kolkata: 'Arijit Singh',
+      global: 'The Weeknd'
+    };
+    const regionalArtist = (userLocation && locationArtistMap[userLocation.id]) || 'Anirudh Ravichander';
+
+    searchSongs(primaryQuery, 16).then(trending => {
       if (isMounted && trending.length > 0) {
         setTrendingSongs(trending);
         saveCachedInitialMusic('trending', trending);
       }
     });
 
-    searchSongs('Global Pop Hits', 12).then(fresh => {
+    searchSongs(secondaryQuery, 14).then(fresh => {
       if (isMounted && fresh.length > 0) {
         setNewSongs(fresh);
         saveCachedInitialMusic('new', fresh);
       }
     });
 
-    searchSongs('Arijit Singh', 8).then(recents => {
+    searchSongs(regionalArtist, 10).then(recents => {
       if (isMounted && recents.length > 0) {
         setRecentSongs(recents);
         saveCachedInitialMusic('recents', recents);
@@ -141,7 +200,7 @@ export function AppContent() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [primaryLanguage, secondaryLanguage, userLocation?.id]);
 
   useEffect(() => {
     const cleanup = refreshLiveCatalogs();
@@ -150,26 +209,27 @@ export function AppContent() {
     };
   }, [refreshLiveCatalogs]);
 
-  // Infinite Scroll Handler
+  // Infinite Scroll Handler: 100% Dynamic data generation
   const loadNextGenres = async () => {
-    if (isLoadingMore || genreIndex >= GENRE_LIST.length) return;
+    if (isLoadingMore) return;
     setIsLoadingMore(true);
 
-    const nextBatch = GENRE_LIST.slice(genreIndex, genreIndex + 2);
-    const newRows = await Promise.all(
-      nextBatch.map(async g => {
-        const items = await fetchGenreMovies(g.name);
-        return {
-          title: `${g.name} Blockbusters`,
-          subtitle: g.desc,
-          items
-        };
-      })
-    );
+    try {
+      const nextBatch = await Promise.all([
+        fetchDynamicMovieShelf(genreIndex),
+        fetchDynamicMovieShelf(genreIndex + 1)
+      ]);
 
-    setLoadedGenreRows(prev => [...prev, ...newRows]);
-    setGenreIndex(prev => prev + nextBatch.length);
-    setIsLoadingMore(false);
+      const validRows = nextBatch.filter(r => r.items.length > 0);
+      if (validRows.length > 0) {
+        setLoadedGenreRows(prev => [...prev, ...validRows]);
+        setGenreIndex(prev => prev + 2);
+      }
+    } catch (err) {
+      console.warn('Failed to load dynamic movie shelf:', err);
+    } finally {
+      setIsLoadingMore(false);
+    }
   };
 
   useEffect(() => {
@@ -183,8 +243,7 @@ export function AppContent() {
     const handleScroll = () => {
       if (
         window.innerHeight + window.scrollY >= document.body.offsetHeight - 500 &&
-        !isLoadingMore &&
-        genreIndex < GENRE_LIST.length
+        !isLoadingMore
       ) {
         loadNextGenres();
       }
@@ -192,7 +251,7 @@ export function AppContent() {
 
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [isLoadingMore, genreIndex, loadedGenreRows]);
+  }, [isLoadingMore, genreIndex]);
 
   // Aggregate loaded content catalogs for the Recommendation Engine
   const combinedMovieCatalog = useMemo(() => {
@@ -228,7 +287,23 @@ export function AppContent() {
   return (
     <RecommendationProvider movieCatalog={combinedMovieCatalog} songCatalog={combinedSongCatalog}>
       <div className={`streamplay-app pure-black-theme mode-${appMode}`}>
-        {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} durationMs={3500} />}
+        {showSplash && (
+          <SplashScreen
+            onFinish={() => setShowSplash(false)}
+            durationMs={2000}
+            mode={splashMode || appMode}
+            variant="split"
+          />
+        )}
+
+        {/* First-Time User Onboarding Modal */}
+        {showOnboarding && (
+          <OnboardingModal
+            isOpen={showOnboarding}
+            onComplete={handleOnboardingComplete}
+          />
+        )}
+
         <main className="app-main-content">
           {/* Screen Routing */}
           {activeScreen === 'movie-search' || (activeScreen === 'search' && appMode === 'movies') ? (
@@ -236,7 +311,7 @@ export function AppContent() {
           ) : activeScreen === 'music-search' || (activeScreen === 'search' && appMode === 'music') ? (
             <MusicSearchScreen />
           ) : activeScreen === 'profile' ? (
-            <ProfileScreen />
+            <ProfileScreen onOpenOnboarding={() => setShowOnboarding(true)} />
           ) : activeScreen === 'playlist' ? (
             <PlaylistScreen />
           ) : activeScreen === 'watchlater' ? (
@@ -259,7 +334,7 @@ export function AppContent() {
                   loadedGenreRows={loadedGenreRows}
                   isLoadingMore={isLoadingMore}
                   onLoadMoreGenres={loadNextGenres}
-                  hasMoreGenres={genreIndex < GENRE_LIST.length}
+                  hasMoreGenres={true}
                 />
               </div>
               <div style={{ display: activeScreen === 'home' && appMode === 'music' ? 'contents' : 'none' }}>
