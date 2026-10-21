@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Film, Music, Check, Sparkles, ArrowLeft, ArrowRight } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Film, Music, Check, Sparkles, ArrowLeft } from 'lucide-react';
 import { SUPPORTED_LOCATIONS, UserLocation, setUserLocation, prefetchLocationImage } from '../services/locationService';
 import { AppMode } from '../context/NavigationContext';
 import './OnboardingModal.css';
@@ -62,6 +62,10 @@ const FLOATING_POSTERS_COL4 = [
   '/onboarding/poster_10.jpg'
 ];
 
+// Split 8 locations into 2 stacked columns (Kollywood, Tollywood, Mollywood, Bangla vs Bollywood, Sandalwood, North, World)
+const COLUMN_1_LOCATIONS = SUPPORTED_LOCATIONS.filter((_, idx) => idx % 2 === 0);
+const COLUMN_2_LOCATIONS = SUPPORTED_LOCATIONS.filter((_, idx) => idx % 2 === 1);
+
 export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onComplete }) => {
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
@@ -71,20 +75,50 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onComp
   const [primaryLang, setPrimaryLang] = useState<string | null>(null);
   const [secondaryLang, setSecondaryLang] = useState<string>('English');
 
+  const autoAdvanceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (autoAdvanceTimeoutRef.current) {
+        clearTimeout(autoAdvanceTimeoutRef.current);
+      }
+    };
+  }, []);
+
   if (!isOpen) return null;
 
+  // Step 1: Mode chosen -> highlight & auto-advance to step 2 after brief delay
+  const handleSelectMode = (mode: AppMode) => {
+    setSelectedMode(mode);
+    if (autoAdvanceTimeoutRef.current) clearTimeout(autoAdvanceTimeoutRef.current);
+    autoAdvanceTimeoutRef.current = setTimeout(() => {
+      setStep(2);
+    }, 360);
+  };
+
+  // Step 2: Location chosen -> trigger upward card reveal animation & auto-advance to step 3
   const handleSelectLocation = (loc: UserLocation) => {
     setSelectedLocationState(loc);
     prefetchLocationImage(loc.image);
     if (loc.defaultLang && !primaryLang) {
       setPrimaryLang(loc.defaultLang);
     }
+    if (autoAdvanceTimeoutRef.current) clearTimeout(autoAdvanceTimeoutRef.current);
+    autoAdvanceTimeoutRef.current = setTimeout(() => {
+      setStep(3);
+    }, 650);
   };
 
-  const isNextDisabled =
-    (step === 1 && selectedMode === null) ||
-    (step === 2 && selectedLocation === null) ||
-    (step === 3 && primaryLang === null);
+  // Back button (available from Step 2 onwards)
+  const handleBack = () => {
+    if (autoAdvanceTimeoutRef.current) clearTimeout(autoAdvanceTimeoutRef.current);
+    if (step > 1) {
+      setStep((step - 1) as 1 | 2);
+    }
+  };
+
+  // Save settings and launch app
+  const isStartStreamingDisabled = step === 3 && primaryLang === null;
 
   const saveAndExit = () => {
     if (!selectedMode || !selectedLocation || !primaryLang) return;
@@ -108,20 +142,60 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onComp
     });
   };
 
-  const handleNext = () => {
-    if (isNextDisabled) return;
-
-    if (step < 3) {
-      setStep((step + 1) as 2 | 3);
-    } else {
-      saveAndExit();
+  // Dynamic style calculation for stacked card animation in Step 2:
+  // When a card is selected, it elevates with high z-index and moves UPWARD to reveal its full content!
+  const getCardStyle = (loc: UserLocation, colIdx: number, rowIdx: number): React.CSSProperties => {
+    const isSelected = selectedLocation?.id === loc.id;
+    if (!selectedLocation) {
+      return {
+        zIndex: rowIdx + 1,
+        transform: 'translateY(0)',
+        opacity: 1
+      };
     }
-  };
 
-  const handleBack = () => {
-    if (step > 1) {
-      setStep((step - 1) as 1 | 2);
+    // This card is selected: elevate, scale and move upward
+    if (isSelected) {
+      const upwardDistances = [-24, -30, -36, -28];
+      const upDist = upwardDistances[rowIdx] ?? -28;
+      return {
+        zIndex: 50,
+        transform: `translateY(${upDist}px) scale(1.04)`,
+        opacity: 1
+      };
     }
+
+    // Check if the selected card is in the SAME column
+    const isCol1Selected = COLUMN_1_LOCATIONS.some(l => l.id === selectedLocation.id);
+    const isThisColSelected = (colIdx === 0 && isCol1Selected) || (colIdx === 1 && !isCol1Selected);
+
+    if (isThisColSelected) {
+      const list = colIdx === 0 ? COLUMN_1_LOCATIONS : COLUMN_2_LOCATIONS;
+      const selectedRow = list.findIndex(l => l.id === selectedLocation.id);
+
+      if (rowIdx < selectedRow) {
+        // Cards above the selected card move slightly up and dim
+        return {
+          zIndex: rowIdx + 1,
+          transform: 'translateY(-10px)',
+          opacity: 0.55
+        };
+      } else {
+        // Cards below the selected card slide down to reveal the selected card's full content!
+        return {
+          zIndex: rowIdx + 1,
+          transform: 'translateY(24px)',
+          opacity: 0.55
+        };
+      }
+    }
+
+    // Cards in the opposite column subtly dim to emphasize the user's choice
+    return {
+      zIndex: rowIdx + 1,
+      transform: 'translateY(0)',
+      opacity: 0.45
+    };
   };
 
   return (
@@ -177,7 +251,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onComp
           2. STEP CONTENT & CONTROLS (Floating directly above posters)
       ───────────────────────────────────────────────────────────── */}
       <div className="onboarding-content-container">
-        {/* STEP 1: Launch Mode Selection */}
+        {/* STEP 1: Launch Mode Selection (No Next button; auto-advances on select) */}
         {step === 1 && (
           <div className="onboarding-step-body animate-step-in">
             <h1 className="onboarding-hero-title">
@@ -187,12 +261,12 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onComp
               Enjoy a huge library of movies, series, and exclusive content—all in one convenient place.
             </p>
 
-            {/* Visual Mode Choices (No default selection initially) */}
+            {/* Visual Mode Choices */}
             <div className="onboarding-visual-mode-row">
               <button
                 type="button"
                 className={`visual-mode-pill movies-pill ${selectedMode === 'movies' ? 'active' : ''}`}
-                onClick={() => setSelectedMode('movies')}
+                onClick={() => handleSelectMode('movies')}
               >
                 <Film size={18} />
                 <span>Movies & Series</span>
@@ -202,7 +276,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onComp
               <button
                 type="button"
                 className={`visual-mode-pill music-pill ${selectedMode === 'music' ? 'active' : ''}`}
-                onClick={() => setSelectedMode('music')}
+                onClick={() => handleSelectMode('music')}
               >
                 <Music size={18} />
                 <span>Music & Audio</span>
@@ -212,7 +286,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onComp
           </div>
         )}
 
-        {/* STEP 2: Regional Hub Selection */}
+        {/* STEP 2: Regional Hub Selection (2-Column Stacked Deck; Selected Card Moves Upward) */}
         {step === 2 && (
           <div className="onboarding-step-body animate-step-in">
             <h1 className="onboarding-hero-title">
@@ -222,26 +296,83 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onComp
               Theatrical releases, box office buzz and regional chartbusters for your region.
             </p>
 
-            {/* Visual Location Cards Grid */}
+            {/* 2-Column Vertically Cascading Stacked Deck */}
             <div className="onboarding-location-visual-deck">
-              {SUPPORTED_LOCATIONS.map(loc => {
-                const isSelected = selectedLocation?.id === loc.id;
-                return (
-                  <div
-                    key={loc.id}
-                    className={`visual-loc-card ${isSelected ? 'selected' : ''}`}
-                    onClick={() => handleSelectLocation(loc)}
-                  >
-                    <img src={loc.image} alt={loc.name} loading="lazy" />
-                    <div className="loc-card-overlay" />
-                    <span className="loc-hub-tag">{loc.cinemaHub}</span>
-                    <div className="loc-name-badge">
-                      <span>{loc.name}</span>
-                      {isSelected && <Check size={13} className="loc-check-icon" />}
+              {/* Left Column */}
+              <div className="location-stack-column">
+                {COLUMN_1_LOCATIONS.map((loc, rowIdx) => {
+                  const isSelected = selectedLocation?.id === loc.id;
+                  return (
+                    <div
+                      key={loc.id}
+                      className={`visual-loc-card ${isSelected ? 'selected' : ''}`}
+                      style={getCardStyle(loc, 0, rowIdx)}
+                      onClick={() => handleSelectLocation(loc)}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      <img src={loc.image} alt={loc.name} loading="lazy" />
+                      <div className="loc-card-overlay" />
+                      
+                      {/* Top Bar: Hub tag & glowing check badge */}
+                      <div className="loc-card-header">
+                        <span className="loc-hub-tag">{loc.cinemaHub}</span>
+                        {isSelected && (
+                          <div className="loc-check-badge">
+                            <Check size={12} strokeWidth={3} />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Bottom Bar: City name and region */}
+                      <div className="loc-name-badge">
+                        <div className="loc-name-group">
+                          <span className="loc-city-title">{loc.name}</span>
+                          <span className="loc-region-sub">{loc.region}</span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+
+              {/* Right Column */}
+              <div className="location-stack-column">
+                {COLUMN_2_LOCATIONS.map((loc, rowIdx) => {
+                  const isSelected = selectedLocation?.id === loc.id;
+                  return (
+                    <div
+                      key={loc.id}
+                      className={`visual-loc-card ${isSelected ? 'selected' : ''}`}
+                      style={getCardStyle(loc, 1, rowIdx)}
+                      onClick={() => handleSelectLocation(loc)}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      <img src={loc.image} alt={loc.name} loading="lazy" />
+                      <div className="loc-card-overlay" />
+                      
+                      {/* Top Bar: Hub tag & glowing check badge */}
+                      <div className="loc-card-header">
+                        <span className="loc-hub-tag">{loc.cinemaHub}</span>
+                        {isSelected && (
+                          <div className="loc-check-badge">
+                            <Check size={12} strokeWidth={3} />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Bottom Bar: City name and region */}
+                      <div className="loc-name-badge">
+                        <div className="loc-name-group">
+                          <span className="loc-city-title">{loc.name}</span>
+                          <span className="loc-region-sub">{loc.region}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         )}
@@ -316,26 +447,44 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onComp
         </div>
 
         {/* ─────────────────────────────────────────────────────────────
-            4. BOTTOM ACTION BUTTONS (Active only after selection)
+            4. BOTTOM ACTION BUTTONS:
+            - Step 1: No next button (auto-advances on select)
+            - Step 2: Back button only (auto-advances on card select)
+            - Step 3: Back button + "Start Streaming" button
         ───────────────────────────────────────────────────────────── */}
-        <div className="onboarding-bottom-actions">
-          {step > 1 && (
+        {step === 1 && (
+          <div className="onboarding-bottom-actions single-action">
+            <p className="onboarding-step-hint">Select a streaming mode to continue</p>
+          </div>
+        )}
+
+        {step === 2 && (
+          <div className="onboarding-bottom-actions single-action">
             <button type="button" className="onboarding-back-btn" onClick={handleBack}>
               <ArrowLeft size={16} />
               <span>Back</span>
             </button>
-          )}
+          </div>
+        )}
 
-          <button
-            type="button"
-            className={`onboarding-primary-btn ${step === 1 ? 'full-width' : ''} ${isNextDisabled ? 'btn-disabled' : 'btn-active'}`}
-            onClick={handleNext}
-            disabled={isNextDisabled}
-          >
-            <span>{step === 3 ? 'Start Streaming' : 'Next'}</span>
-            {step === 3 ? <Sparkles size={16} /> : <ArrowRight size={16} />}
-          </button>
-        </div>
+        {step === 3 && (
+          <div className="onboarding-bottom-actions">
+            <button type="button" className="onboarding-back-btn" onClick={handleBack}>
+              <ArrowLeft size={16} />
+              <span>Back</span>
+            </button>
+
+            <button
+              type="button"
+              className={`onboarding-primary-btn ${isStartStreamingDisabled ? 'btn-disabled' : 'btn-active'}`}
+              onClick={saveAndExit}
+              disabled={isStartStreamingDisabled}
+            >
+              <span>Start Streaming</span>
+              <Sparkles size={16} />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
