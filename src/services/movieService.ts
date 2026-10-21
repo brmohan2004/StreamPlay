@@ -365,29 +365,45 @@ export async function fetchCuratedTrendingDeck(
 }
 
 /**
- * Dynamic Channel Content Catalog (StarPlus, Colors, Star Vijay, Zee TV, Sony SET, Asianet)
+ * Fully Dynamic Channel Content Catalog.
+ * Queries television networks, serials, and broadcasts dynamically with zero hardcoded show names.
  */
 export async function fetchChannelContent(channelIdOrName: string): Promise<MovieItem[]> {
-  const channelMap: Record<string, string[]> = {
-    'star-plus': ['StarPlus serials', 'StarPlus Hindi drama', 'Anupamaa', 'Yeh Rishta Kya Kehlata Hai'],
-    'StarPlus': ['StarPlus serials', 'StarPlus Hindi drama', 'Anupamaa', 'Yeh Rishta Kya Kehlata Hai'],
-    'colors-tv': ['Colors TV serials', 'Colors TV drama', 'Naagin', 'Bigg Boss Hindi'],
-    'colors': ['Colors TV serials', 'Colors TV drama', 'Naagin', 'Bigg Boss Hindi'],
-    'star-vijay': ['Star Vijay Tamil serials', 'Star Vijay shows', 'Cooku with Comali', 'Bigg Boss Tamil', 'Baakiyalakshmi'],
-    'Star Vijay': ['Star Vijay Tamil serials', 'Star Vijay shows', 'Cooku with Comali', 'Bigg Boss Tamil', 'Baakiyalakshmi'],
-    'zee-tv': ['Zee TV serials', 'Zee TV drama', 'Kundali Bhagya', 'Kumkum Bhagya'],
-    'Zee TV': ['Zee TV serials', 'Zee TV drama', 'Kundali Bhagya', 'Kumkum Bhagya'],
-    'sony-set': ['Sony Entertainment Television', 'Sony SET shows', 'CID', 'Crime Patrol', 'The Kapil Sharma Show'],
-    'Sony SET': ['Sony Entertainment Television', 'Sony SET shows', 'CID', 'Crime Patrol', 'The Kapil Sharma Show'],
-    'asianet': ['Asianet Malayalam serials', 'Asianet shows', 'Santhwanam', 'Kudumbavilakku'],
-    'Asianet': ['Asianet Malayalam serials', 'Asianet shows', 'Santhwanam', 'Kudumbavilakku'],
-    'sun-tv': ['Sun TV Tamil serials', 'Sun TV shows', 'Ethirneechal', 'Kayal', 'Singapennae'],
-    'Sun TV': ['Sun TV Tamil serials', 'Sun TV shows', 'Ethirneechal', 'Kayal', 'Singapennae']
-  };
+  const raw = (channelIdOrName || '').trim();
+  if (!raw || raw.toLowerCase() === 'all') return [];
 
-  const queries = channelMap[channelIdOrName] || [`${channelIdOrName} serials`, `${channelIdOrName} shows`];
+  // Dynamically resolve clean channel brand name
+  let cleanBrand = raw
+    .replace(/[-_]/g, ' ')
+    .replace(/\b(channel|network)\b/gi, '')
+    .trim();
+
+  // Normalize common channel abbreviations dynamically
+  const lower = cleanBrand.toLowerCase();
+  if (lower.includes('star plus') || lower.includes('starplus')) cleanBrand = 'Star Plus';
+  else if (lower.includes('star vijay') || lower.includes('vijay')) cleanBrand = 'Vijay TV';
+  else if (lower.includes('colors')) cleanBrand = 'Colors TV';
+  else if (lower.includes('zee')) cleanBrand = 'Zee TV';
+  else if (lower.includes('sony set') || lower.includes('sony')) cleanBrand = 'Sony TV';
+  else if (lower.includes('asianet')) cleanBrand = 'Asianet';
+  else if (lower.includes('sun')) cleanBrand = 'Sun TV';
+
+  // Dynamic search terms derived strictly from the channel name itself with current years
+  const currentYear = new Date().getFullYear();
+  const dynamicQueries = [
+    `${cleanBrand}`,
+    cleanBrand.endsWith('TV') ? cleanBrand : `${cleanBrand} TV`,
+    `${cleanBrand} Serials`,
+    `${cleanBrand} Shows`,
+    `${cleanBrand} Drama`,
+    `${cleanBrand} ${currentYear}`
+  ];
+
   try {
-    const results = await Promise.all(queries.map(q => searchMoviesAndShows(q)));
+    const results = await Promise.all(
+      dynamicQueries.map(q => searchMoviesAndShows(q))
+    );
+
     const seen = new Set<string>();
     const flat: MovieItem[] = [];
 
@@ -402,6 +418,14 @@ export async function fetchChannelContent(channelIdOrName: string): Promise<Movi
         }
       }
     }
+
+    // Sort dynamically from newest release year to older
+    flat.sort((a, b) => {
+      const yearA = parseInt(a.releaseInfo || '0') || 0;
+      const yearB = parseInt(b.releaseInfo || '0') || 0;
+      return yearB - yearA;
+    });
+
     return flat;
   } catch (err) {
     console.error(`Failed to fetch channel content for ${channelIdOrName}:`, err);
@@ -508,28 +532,54 @@ export async function fetchGenreSeries(genre: string, skip = 0): Promise<MovieIt
   }
 }
 
-// === Dynamic Regional Cinema Search Terms (No hardcoded film names) ===
-export const DYNAMIC_LANGUAGE_QUERIES: Record<string, string[]> = {
-  Tamil: ['Tamil 2026', 'Tamil 2025', 'Tamil 2024', 'Tamil Cinema', 'Kollywood'],
-  Telugu: ['Telugu 2026', 'Telugu 2025', 'Telugu 2024', 'Telugu Cinema', 'Tollywood'],
-  Hindi: ['Hindi 2026', 'Hindi 2025', 'Hindi 2024', 'Bollywood', 'Hindi Cinema'],
-  Malayalam: ['Malayalam 2026', 'Malayalam 2025', 'Malayalam 2024', 'Mollywood'],
-  Kannada: ['Kannada 2026', 'Kannada 2025', 'Kannada 2024', 'Sandalwood'],
-  English: ['2026', '2025', 'Hollywood', 'English Action', 'English Sci-Fi'],
-  Korean: ['Korean 2026', 'Korean 2025', 'K-Drama', 'Korean Cinema']
-};
+/**
+ * Dynamically computes regional cinema search queries for ANY language.
+ * Dynamically derives current and past years from Date with zero hardcoded dictionary lists.
+ */
+export function getDynamicLanguageQueries(language: string): string[] {
+  const lang = (language || 'All').trim();
+  const currentYear = new Date().getFullYear();
+  const years = [currentYear, currentYear - 1, currentYear - 2];
+
+  if (lang.toLowerCase() === 'all') {
+    return [
+      ...years.map(y => `${y}`),
+      'Top Movies',
+      'Top Series',
+      'Popular Cinema'
+    ];
+  }
+
+  return [
+    `${lang} ${years[0]}`,
+    `${lang} ${years[1]}`,
+    `${lang} ${years[2]}`,
+    `${lang} Cinema`,
+    `${lang} Movie`,
+    `${lang} Hits`,
+    `${lang} Series`
+  ];
+}
+
+// Export dynamic proxy to preserve backward compatibility without any static dictionary
+export const DYNAMIC_LANGUAGE_QUERIES: Record<string, string[]> = new Proxy({}, {
+  get: (_target, prop: string) => {
+    return getDynamicLanguageQueries(prop);
+  }
+});
 
 /**
  * Dynamically fetches language movies with multi-query pagination and
- * STRICT sorting from recently released (2026, 2025, 2024) to older classics.
+ * STRICT sorting from recently released (newest year) to older classics.
  */
 export async function fetchInfiniteLanguageMovies(
   language: string,
   batchIndex = 0,
   limit = 40
 ): Promise<MovieItem[]> {
-  const terms = DYNAMIC_LANGUAGE_QUERIES[language] || [`${language} 2026`, `${language} 2025`, `${language} Cinema`];
-  const queryIndex = batchIndex % terms.length;
+  const lang = (language || 'All').trim();
+  const terms = getDynamicLanguageQueries(lang);
+  const queryIndex = (batchIndex * 2) % terms.length;
   const currentTerms = [terms[queryIndex], terms[(queryIndex + 1) % terms.length]];
 
   const queryResults = await Promise.all(
@@ -548,7 +598,7 @@ export async function fetchInfiniteLanguageMovies(
         seenIds.add(movie.id);
         flatList.push({
           ...movie,
-          language
+          language: lang
         });
       }
     }

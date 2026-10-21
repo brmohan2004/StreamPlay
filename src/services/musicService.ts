@@ -226,30 +226,11 @@ export interface PlaylistResultItem {
 }
 
 /**
- * Checks if search query refers to trending / viral / latest hits.
+ * Detects if a search query dynamically relates to trending or viral music.
  */
 export function isTrendingQuery(query: string): boolean {
   const q = query.toLowerCase().trim();
-  return (
-    q === 'trending' ||
-    q === 'trending songs' ||
-    q === 'trending song' ||
-    q === 'trending hits' ||
-    q === 'trend songs' ||
-    q === 'trend' ||
-    q === 'viral' ||
-    q === 'viral songs' ||
-    q === 'viral hits' ||
-    q === 'latest songs' ||
-    q === 'top hits' ||
-    q === 'new songs' ||
-    q === 'top songs' ||
-    q === 'popular songs' ||
-    q === 'tamil trending' ||
-    q === 'hindi trending' ||
-    q.includes('trending') ||
-    q.includes('viral hits')
-  );
+  return /\b(trending|viral|trend)\b/i.test(q);
 }
 
 /**
@@ -338,7 +319,7 @@ async function performRawSaavnSearch(query: string, page = 1, limit = 25): Promi
  * Free Decentralized Audius Music Provider.
  * Searches 100% free creator music, remixes, EDM, and independent global tracks.
  */
-export async function searchAudiusSongs(query: string, limit = 12): Promise<SongItem[]> {
+export async function searchAudiusSongs(query: string, limit = 12, offset = 0): Promise<SongItem[]> {
   const trimmed = query.trim();
   if (!trimmed) return [];
 
@@ -350,7 +331,7 @@ export async function searchAudiusSongs(query: string, limit = 12): Promise<Song
 
   for (const host of audiusHosts) {
     try {
-      const url = `${host}/v1/tracks/search?query=${encodeURIComponent(trimmed)}&app_name=StreamPlay`;
+      const url = `${host}/v1/tracks/search?query=${encodeURIComponent(trimmed)}&limit=${limit}&offset=${offset}&app_name=StreamPlay`;
       const res = await fetch(url, { signal: AbortSignal.timeout(4500) });
       if (!res.ok) continue;
 
@@ -397,12 +378,12 @@ export async function searchAudiusSongs(query: string, limit = 12): Promise<Song
  * Free Apple Music / iTunes Public Music Provider.
  * Searches high-quality global hits, official tracks, and previews without subscription.
  */
-export async function searchItunesSongs(query: string, limit = 12): Promise<SongItem[]> {
+export async function searchItunesSongs(query: string, limit = 12, offset = 0): Promise<SongItem[]> {
   const trimmed = query.trim();
   if (!trimmed) return [];
 
   try {
-    const url = `https://itunes.apple.com/search?term=${encodeURIComponent(trimmed)}&entity=song&limit=${limit}`;
+    const url = `https://itunes.apple.com/search?term=${encodeURIComponent(trimmed)}&entity=song&limit=${limit}&offset=${offset}`;
     const res = await fetch(url, { signal: AbortSignal.timeout(4500) });
     if (!res.ok) return [];
 
@@ -443,17 +424,10 @@ export async function searchItunesSongs(query: string, limit = 12): Promise<Song
  */
 export async function fetchRealTrendingSongs(page = 1, limit = 25, langPref?: string): Promise<SongItem[]> {
   const lang = langPref || (typeof localStorage !== 'undefined' && localStorage.getItem('streamplay_primary_lang')) || 'Tamil';
-  const trendingSeeds = [
-    `${lang} Top Hits 2026`,
-    `${lang} Viral Hits 2026`,
-    'Latest Bollywood Hits 2026',
-    'Global Pop Hits 2026',
-    'Billboard Hot 100 2026'
-  ];
-  const targetSeed = trendingSeeds[(page - 1) % trendingSeeds.length];
-  const songs = await performRawSaavnSearch(targetSeed, page, limit);
+  const query = `${lang} trending hits`;
+  const songs = await performRawSaavnSearch(query, page, limit);
 
-  // Strictly filter out old retro songs (< 2024) so genuine 2025/2026 hits appear
+  // Strictly filter out old retro songs (< 2024) so genuine fresh hits appear
   const fresh = songs.filter(s => {
     const y = parseInt(s.year || '0', 10);
     return isNaN(y) || y >= 2024;
@@ -470,18 +444,13 @@ export async function searchSongsPaged(query: string, page = 1, limit = 25): Pro
   const trimmed = query.trim();
   if (!trimmed) return [];
 
-  // Intercept trending searches to prevent JioSaavn returning old 1980s albums titled "Trending Nostalgia"
-  if (isTrendingQuery(trimmed)) {
-    return fetchRealTrendingSongs(page, limit);
-  }
-
   const cacheKey = `${trimmed.toLowerCase()}_p${page}_n${limit}`;
   const cached = searchCache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS && cached.data.length > 0) {
     return cached.data;
   }
 
-  // Concurrent query to all free alternative providers (JioSaavn + Audius + Apple iTunes)
+  // Concurrent dynamic query to all free alternative providers (JioSaavn + Audius + Apple iTunes)
   const [saavnRes, audiusRes, itunesRes] = await Promise.allSettled([
     performRawSaavnSearch(trimmed, page, limit),
     page === 1 ? searchAudiusSongs(trimmed, 8) : Promise.resolve([]),
@@ -494,6 +463,15 @@ export async function searchSongsPaged(query: string, page = 1, limit = 25): Pro
 
   // Combine all free alternatives: JioSaavn + Audius Creator Tracks + Apple Music
   const merged = deduplicateSongs([...saavnSongs, ...audiusSongs, ...itunesSongs]);
+
+  // If query asks for trending / viral, dynamically prioritize newest releases
+  if (isTrendingQuery(trimmed)) {
+    merged.sort((a, b) => {
+      const ya = parseInt(a.year || '0', 10) || 0;
+      const yb = parseInt(b.year || '0', 10) || 0;
+      return yb - ya;
+    });
+  }
 
   if (merged.length > 0) {
     searchCache.set(cacheKey, { timestamp: Date.now(), data: merged });
@@ -510,176 +488,140 @@ export async function fetchTrendingSongs(): Promise<SongItem[]> {
 }
 
 /**
- * Generates intelligent contextual expansion seeds derived strictly from the user's search query.
- * Keeps the music strictly relevant to the user's intended language, artist, mood, and genre.
+ * Fetches 100% live dynamic query suggestions directly from the search engine
+ * with ZERO pre-built dictionaries or hardcoded artist lists.
+ */
+export async function fetchDynamicQuerySuggestions(query: string): Promise<string[]> {
+  const trimmed = query.trim();
+  if (!trimmed) return [];
+  const baseUrls = getSaavnBaseUrls();
+  for (const base of baseUrls) {
+    try {
+      const url = `${base}?__call=autocomplete.get&_marker=0&query=${encodeURIComponent(trimmed)}&ctx=web6dot0&_format=json`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(3500) });
+      if (!res.ok) continue;
+      const data = await res.json();
+      const suggestions: string[] = [];
+      if (Array.isArray(data.albums?.data)) {
+        for (const a of data.albums.data) {
+          if (a.title) suggestions.push(decodeHtml(a.title));
+        }
+      }
+      if (Array.isArray(data.songs?.data)) {
+        for (const s of data.songs.data) {
+          if (s.title) suggestions.push(decodeHtml(s.title));
+        }
+      }
+      if (Array.isArray(data.artists?.data)) {
+        for (const ar of data.artists.data) {
+          if (ar.title) suggestions.push(`${decodeHtml(ar.title)} songs`);
+        }
+      }
+      return Array.from(new Set(suggestions)).slice(0, 10);
+    } catch {
+      // try next base
+    }
+  }
+  return [];
+}
+
+/**
+ * Returns dynamic search seeds. Zero pre-built queries or hardcoded dictionaries.
  */
 export function generateRelatedSearchSeeds(query: string): string[] {
-  const q = query.toLowerCase().trim();
-  const seeds: string[] = [query];
-
-  // Language Detection
-  let lang = '';
-  if (q.includes('tamil')) lang = 'Tamil';
-  else if (q.includes('hindi') || q.includes('bollywood')) lang = 'Hindi';
-  else if (q.includes('telugu')) lang = 'Telugu';
-  else if (q.includes('malayalam') || q.includes('mollywood')) lang = 'Malayalam';
-  else if (q.includes('kannada') || q.includes('sandalwood')) lang = 'Kannada';
-  else if (q.includes('punjabi')) lang = 'Punjabi';
-  else if (q.includes('english') || q.includes('hollywood') || q.includes('billboard')) lang = 'English';
-  else if (q.includes('korean') || q.includes('kpop')) lang = 'Korean';
-
-  // Mood / Genre Detection
-  const isMelody = q.includes('melody') || q.includes('romantic') || q.includes('love') || q.includes('slow') || q.includes('chill');
-  const isParty = q.includes('party') || q.includes('dance') || q.includes('mass') || q.includes('kuthu') || q.includes('beat') || q.includes('club');
-  const isOld = q.includes('old') || q.includes('retro') || q.includes('classic') || q.includes('80s') || q.includes('90s');
-
-  // Detect Popular Artists
-  const ARTIST_MAP: Record<string, string> = {
-    'anirudh': 'Anirudh Ravichander',
-    'rahman': 'A.R. Rahman',
-    'ar rahman': 'A.R. Rahman',
-    'ilayaraja': 'Ilaiyaraaja',
-    'ilaiyaraaja': 'Ilaiyaraaja',
-    'harris': 'Harris Jayaraj',
-    'yuvan': 'Yuvan Shankar Raja',
-    'u1': 'Yuvan Shankar Raja',
-    'sid sriram': 'Sid Sriram',
-    'arijit': 'Arijit Singh',
-    'shreya': 'Shreya Ghoshal',
-    'pritam': 'Pritam',
-    'diljit': 'Diljit Dosanjh',
-    'taylor swift': 'Taylor Swift',
-    'coldplay': 'Coldplay',
-    'the weeknd': 'The Weeknd',
-    'weeknd': 'The Weeknd',
-    'sai abhyankkar': 'Sai Abhyankkar',
-    'sushin': 'Sushin Shyam'
-  };
-
-  let matchedArtist = '';
-  for (const [key, name] of Object.entries(ARTIST_MAP)) {
-    if (q.includes(key)) {
-      matchedArtist = name;
-      break;
-    }
-  }
-
-  if (matchedArtist) {
-    seeds.push(
-      `${matchedArtist} hits`,
-      `${matchedArtist} top songs`,
-      `${matchedArtist} melodies`,
-      `${matchedArtist} chartbusters`,
-      `Best of ${matchedArtist}`
-    );
-  } else if (lang) {
-    if (isMelody) {
-      seeds.push(
-        `${lang} Melody Super Hits`,
-        `${lang} Romantic Melodies 2026`,
-        `${lang} Soulful Hits`,
-        `${lang} Love Songs 2026`,
-        `${lang} Acoustic Melodies`
-      );
-    } else if (isParty) {
-      seeds.push(
-        `${lang} Dance Hits 2026`,
-        `${lang} Mass Super Hits`,
-        `${lang} Party Bangers 2026`,
-        `${lang} Electrifying Hits`
-      );
-    } else if (isOld) {
-      seeds.push(
-        `${lang} Golden Classics`,
-        `${lang} Retro Hits`,
-        `${lang} 90s Evergreen Hits`,
-        `${lang} All Time Classics`
-      );
-    } else {
-      seeds.push(
-        `${lang} Top Hits 2026`,
-        `${lang} Cinema Super Hits`,
-        `${lang} Chartbuster Songs 2026`,
-        `${lang} Viral Songs 2026`,
-        `${lang} Superhit Songs`,
-        `${lang} All Time Hits`
-      );
-    }
-  } else {
-    seeds.push(
-      `${query} songs`,
-      `${query} hits`,
-      `${query} top tracks`,
-      `${query} album`,
-      `${query} soundtrack`
-    );
-  }
-
-  return Array.from(new Set(seeds));
+  const trimmed = query.trim();
+  return trimmed ? [trimmed] : [];
 }
 
 /**
  * Dynamic Infinite Search Loader.
- * Automatically picks fresh, highly relevant songs as the user scrolls down,
- * preventing pagination cut-offs (such as stopping at 47 tracks) and strictly filtering
- * out duplicates across compilation albums and thumbnails.
+ * Directly paginates through the user's exact query across all free providers (JioSaavn, Audius, Apple Music),
+ * dynamically auto-picking fresh songs as the user scrolls.
+ * Completely eliminates pre-built queries, prevents cut-offs (such as stopping at 47 tracks),
+ * and strictly deduplicates compilation albums and identical audio streams with different thumbnails.
  */
 export async function fetchInfiniteSearchSongs(
   query: string,
-  batchNumber: number,
+  pageNumber: number,
   seenKeys: Set<string> = new Set(),
   limit = 25
-): Promise<{ songs: SongItem[]; hasMore: boolean }> {
+): Promise<{ songs: SongItem[]; hasMore: boolean; nextPage: number }> {
   const trimmed = query.trim();
-  if (!trimmed) return { songs: [], hasMore: false };
+  if (!trimmed) return { songs: [], hasMore: false, nextPage: 1 };
 
-  const seeds = generateRelatedSearchSeeds(trimmed);
   const collected: SongItem[] = [];
-
-  let currentSeedIndex = Math.floor((batchNumber - 1) / 3) % seeds.length;
-  let pageInSeed = ((batchNumber - 1) % 3) + 1;
-
+  let apiPage = pageNumber;
+  let hasMoreFromApi = true;
   let attempts = 0;
-  while (collected.length < limit && attempts < 5 && currentSeedIndex < seeds.length) {
+
+  // Dynamically fetch from the search engine until we fill the requested limit of unique songs
+  // or until the API runs out of results.
+  while (collected.length < limit && attempts < 4 && hasMoreFromApi) {
     attempts++;
-    const currentSeed = seeds[currentSeedIndex];
     let rawSongs: SongItem[] = [];
 
     try {
-      if (currentSeedIndex === 0 && batchNumber === 1) {
-        // Multi-provider query on first batch (JioSaavn + Audius + Apple)
-        rawSongs = await searchSongsPaged(currentSeed, pageInSeed, limit);
+      if (apiPage === 1) {
+        // Multi-provider initial query: JioSaavn + Audius + Apple Music
+        rawSongs = await searchSongsPaged(trimmed, apiPage, limit);
       } else {
-        rawSongs = await performRawSaavnSearch(currentSeed, pageInSeed, limit);
+        // Direct dynamic pagination on JioSaavn and Audius with offset
+        const [saavnRes, audiusRes] = await Promise.allSettled([
+          performRawSaavnSearch(trimmed, apiPage, limit),
+          searchAudiusSongs(trimmed, 6, (apiPage - 1) * 6)
+        ]);
+        const saavn = saavnRes.status === 'fulfilled' ? saavnRes.value : [];
+        const audius = audiusRes.status === 'fulfilled' ? audiusRes.value : [];
+        rawSongs = deduplicateSongs([...saavn, ...audius]);
       }
     } catch (err) {
-      console.warn(`Seed search failed for "${currentSeed}":`, err);
+      console.warn(`Dynamic search fetch failed for page ${apiPage}:`, err);
     }
 
-    if (rawSongs.length > 0) {
-      for (const song of rawSongs) {
-        const key = getSongCoreKey(song.title, song.artist, song.streamUrl);
-        if (!seenKeys.has(key)) {
-          seenKeys.add(key);
-          collected.push(song);
-          if (collected.length >= limit) break;
+    if (!rawSongs || rawSongs.length === 0) {
+      hasMoreFromApi = false;
+      break;
+    }
+
+    // Strict deduplication: filter out compilation album duplicates & different thumbnails for identical audio
+    for (const song of rawSongs) {
+      const key = getSongCoreKey(song.title, song.artist, song.streamUrl);
+      if (!seenKeys.has(key)) {
+        seenKeys.add(key);
+        collected.push(song);
+        if (collected.length >= limit) break;
+      }
+    }
+
+    apiPage++;
+  }
+
+  // If direct pages returned 0 items on page 1, dynamically try live autocomplete suggestions
+  if (collected.length === 0 && pageNumber === 1) {
+    try {
+      const dynamicSuggestions = await fetchDynamicQuerySuggestions(trimmed);
+      for (const suggestion of dynamicSuggestions.slice(0, 2)) {
+        if (suggestion.toLowerCase() === trimmed.toLowerCase()) continue;
+        const suggestedSongs = await performRawSaavnSearch(suggestion, 1, limit);
+        for (const s of suggestedSongs) {
+          const key = getSongCoreKey(s.title, s.artist, s.streamUrl);
+          if (!seenKeys.has(key)) {
+            seenKeys.add(key);
+            collected.push(s);
+            if (collected.length >= limit) break;
+          }
         }
+        if (collected.length >= limit) break;
       }
-    }
-
-    // If this page did not fulfill the requested batch of fresh unique songs, advance
-    if (collected.length < limit) {
-      pageInSeed++;
-      if (pageInSeed > 3) {
-        pageInSeed = 1;
-        currentSeedIndex = (currentSeedIndex + 1) % seeds.length;
-      }
+    } catch {
+      // ignore
     }
   }
 
   return {
     songs: collected,
-    hasMore: true // Keeps infinite scroll going dynamically!
+    hasMore: hasMoreFromApi || collected.length > 0,
+    nextPage: apiPage
   };
 }
 
@@ -785,106 +727,20 @@ export async function fetchPlaylistTracks(playlistId: string): Promise<SongItem[
   return [];
 }
 
-// === Rich Curated Language Seed Banks for Infinite Scrolling ===
-export const LANGUAGE_SEEDS: Record<string, string[]> = {
-  Tamil: [
-    'Tamil Top Hits 2026',
-    'Anirudh Ravichander Hits',
-    'A.R. Rahman Tamil Melodies',
-    'Yuvan Shankar Raja Hits',
-    'Harris Jayaraj Hits',
-    'Santhosh Narayanan',
-    'Tamil 90s Golden Melodies',
-    'Kollywood Dance Anthems',
-    'Sid Sriram Tamil',
-    'D. Imman Tamil Melodies',
-    'Ilayaraja Tamil Classics',
-    'Tamil Acoustic Melodies',
-    'G.V. Prakash Tamil Hits',
-    'Tamil Love Songs'
-  ],
-  Hindi: [
-    'Bollywood Top 50 2026',
-    'Arijit Singh Melodies',
-    'Pritam Hits',
-    'Shreya Ghoshal Hits',
-    'Atif Aslam Classics',
-    'Bollywood Dance Party',
-    '90s Golden Bollywood Nostalgia',
-    'Vishal Mishra Hits',
-    'KK Evergreen Hits',
-    'Neha Kakkar Hits'
-  ],
-  Telugu: [
-    'Tollywood Top Hits 2026',
-    'Thaman S Hits',
-    'Devi Sri Prasad Hits',
-    'Sid Sriram Telugu',
-    'Anirudh Telugu Blockbusters',
-    'Telugu Melody Hits',
-    'M.M. Keeravani Classics',
-    'Ram Miriyala Hits'
-  ],
-  Malayalam: [
-    'Mollywood Top Hits 2026',
-    'Sushin Shyam Hits',
-    'Jakes Bejoy Hits',
-    'Hesham Abdul Wahab',
-    'Shaan Rahman Melodies',
-    'Malayalam Chill Melodies'
-  ],
-  Kannada: [
-    'Sandalwood Top Hits 2026',
-    'Ravi Basrur Hits',
-    'Arjun Janya Hits',
-    'Charan Raj Hits',
-    'Kannada Melody Hits'
-  ],
-  Punjabi: [
-    'Punjabi Top Hits 2026',
-    'Diljit Dosanjh',
-    'Karan Aujla Hits',
-    'AP Dhillon Hits',
-    'Sidhu Moose Wala Classics',
-    'Shubh Hits'
-  ],
-  English: [
-    'Global Pop Hits 2026',
-    'Billboard Hot 100',
-    'The Weeknd Hits',
-    'Taylor Swift Hits',
-    'Dua Lipa Hits',
-    'Drake Hits',
-    'Ed Sheeran Melodies',
-    'Coldplay Classics',
-    'Post Malone Hits',
-    'Imagine Dragons Hits'
-  ],
-  Korean: [
-    'K-Pop Top Hits 2026',
-    'BTS Hits',
-    'BLACKPINK Hits',
-    'NewJeans Hits',
-    'Stray Kids Hits',
-    'K-Drama OST Classics'
-  ]
-};
-
 /**
- * Dynamically fetches infinite songs for a given language without repetition.
- * Cycles through rich artist/era seeds and paginates seamlessly.
+ * Dynamically fetches infinite songs for any language without pre-built queries.
+ * Queries the language directly and dynamically paginates through live results.
  */
 export async function fetchInfiniteLanguageSongs(
   language: string,
   batchIndex = 0,
   limit = 20
 ): Promise<SongItem[]> {
-  const seeds = LANGUAGE_SEEDS[language] || [`${language} Top Hits 2026`, `${language} Cinema Hits`];
-  const seed = seeds[batchIndex % seeds.length];
-  const page = Math.floor(batchIndex / seeds.length) + 1;
-
-  const results = await searchSongsPaged(seed, page, limit);
-  return results.map(s => ({ ...s, language }));
+  const page = batchIndex + 1;
+  const langClean = (language || 'All').trim();
+  const dynamicQuery = langClean.toLowerCase() === 'all' ? 'top songs' : `${langClean} songs`;
+  const results = await performRawSaavnSearch(dynamicQuery, page, limit);
+  return results.map(s => ({ ...s, language: langClean }));
 }
 
 export async function fetchLanguageSongs(language: string, limit = 15): Promise<SongItem[]> {

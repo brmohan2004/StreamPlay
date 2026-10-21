@@ -179,7 +179,7 @@ export const MusicSearchScreen: React.FC = () => {
         searchPlaylists(trimmed, 10)
       ]);
 
-      const songsResult = songsOutcome.status === 'fulfilled' ? songsOutcome.value : { songs: [], hasMore: false };
+      const songsResult = songsOutcome.status === 'fulfilled' ? songsOutcome.value : { songs: [], hasMore: false, nextPage: 2 };
       const rawSongs = songsResult.songs || [];
       const rawArtists = artistsOutcome.status === 'fulfilled' ? artistsOutcome.value || [] : [];
       const rawPlaylists = playlistsOutcome.status === 'fulfilled' ? playlistsOutcome.value || [] : [];
@@ -194,6 +194,7 @@ export const MusicSearchScreen: React.FC = () => {
       setSongResults(processed);
       setArtistResults(rawArtists);
       setPlaylistResults(rawPlaylists);
+      setPage(songsResult.nextPage || 2);
       setHasMore(songsResult.hasMore);
 
       // Track: music search intent signal
@@ -224,11 +225,10 @@ export const MusicSearchScreen: React.FC = () => {
     setIsLoadingMore(true);
 
     try {
-      const nextPage = page + 1;
       const targetQuery = getCapsuleQuery(query, selectedCapsule);
-      const { songs: moreSongs, hasMore: moreAvailable } = await fetchInfiniteSearchSongs(
+      const { songs: moreSongs, hasMore: moreAvailable, nextPage: nextApiPage } = await fetchInfiniteSearchSongs(
         targetQuery,
-        nextPage,
+        page,
         seenSongKeysRef.current,
         25
       );
@@ -243,7 +243,7 @@ export const MusicSearchScreen: React.FC = () => {
           return s;
         });
         setSongResults(prev => [...prev, ...processed]);
-        setPage(nextPage);
+        setPage(nextApiPage || (page + 1));
         setHasMore(moreAvailable);
       }
     } catch (err) {
