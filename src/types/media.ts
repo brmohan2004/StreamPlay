@@ -48,6 +48,8 @@ export interface SongItem {
   language?: string;
   accentColor?: string; // e.g. orange, cyan, lime for card accent bar
   quality?: string;
+  isShortClip?: boolean; // True for songs/teasers/hooks under 90 seconds
+  source?: 'JioSaavn' | 'Audius' | 'Apple' | 'YouTube' | string; // Free music provider
 }
 
 export type OTTBrand =

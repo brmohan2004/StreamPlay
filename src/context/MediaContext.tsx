@@ -366,6 +366,48 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const isShuffleRef = useRef(false);
   const isRepeatRef = useRef(false);
   const nextSongRef = useRef<() => void>(() => {});
+  const preloadAudioRef = useRef<HTMLAudioElement | null>(null);
+  const preloadedUrlRef = useRef<string | null>(null);
+  const isPrefetchingBatchRef = useRef(false);
+
+  // Helper to find the next candidate song for proactive preloading and seamless transition
+  const getNextCandidateSong = (): SongItem | null => {
+    const queue = songQueueRef.current.length > 0 ? songQueueRef.current : songQueue;
+    const current = currentSongRef.current || currentSong;
+    if (!current || queue.length === 0) return null;
+
+    const currentIndex = queue.findIndex(s => String(s.id) === String(current.id));
+    let candidate: SongItem | null = null;
+
+    if (isShuffleRef.current) {
+      const unplayed = queue.filter(s =>
+        String(s.id) !== String(current.id) &&
+        !sessionPlayedSongIds.current.has(String(s.id)) &&
+        !sessionPlayedSongIds.current.has(`${s.title.toLowerCase().trim()} - ${s.artist.toLowerCase().trim()}`) &&
+        !s.isShortClip
+      );
+      if (unplayed.length > 0) {
+        candidate = unplayed[Math.floor(Math.random() * unplayed.length)];
+      }
+    } else {
+      for (let i = currentIndex + 1; i < queue.length; i++) {
+        const s = queue[i];
+        if (
+          !sessionPlayedSongIds.current.has(String(s.id)) &&
+          !sessionPlayedSongIds.current.has(`${s.title.toLowerCase().trim()} - ${s.artist.toLowerCase().trim()}`) &&
+          !s.isShortClip
+        ) {
+          candidate = s;
+          break;
+        }
+      }
+    }
+
+    if (!candidate && currentIndex >= 0 && currentIndex < queue.length - 1) {
+      candidate = queue[currentIndex + 1];
+    }
+    return candidate;
+  };
 
   // Session-wide played song tracking to avoid repeating played songs (infinite songs playing)
   const sessionPlayedSongIds = useRef<Set<string>>(new Set());
@@ -410,6 +452,12 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const audio = new Audio();
     audioRef.current = audio;
 
+    // Invisible secondary audio preloader to pre-warm the next song's buffer in the background
+    const preloadAudio = new Audio();
+    preloadAudio.preload = 'auto';
+    preloadAudio.volume = 0;
+    preloadAudioRef.current = preloadAudio;
+
     const watchdog = new AudioBufferWatchdog(audio, [], (newUrl: string) => {
       setCurrentSong(prev => prev ? { ...prev, streamUrl: newUrl } : null);
     });
@@ -421,6 +469,47 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setSongProgress(audio.currentTime);
       if (audio.duration && !isNaN(audio.duration)) {
         setSongDuration(audio.duration);
+
+        // Gapless background audio preloader:
+        // When current track has <= 25 seconds remaining or is >= 70% played,
+        // proactively preload the next track into the browser audio cache
+        const remaining = audio.duration - audio.currentTime;
+        if (remaining <= 25 || (audio.currentTime / audio.duration) >= 0.7) {
+          const candidate = getNextCandidateSong();
+          if (candidate && candidate.streamUrl && preloadAudioRef.current) {
+            if (preloadedUrlRef.current !== candidate.streamUrl) {
+              preloadedUrlRef.current = candidate.streamUrl;
+              preloadAudioRef.current.src = candidate.streamUrl;
+              preloadAudioRef.current.load();
+            }
+          }
+
+          // Proactive background queue replenishment before it reaches the end
+          const queue = songQueueRef.current;
+          const current = currentSongRef.current;
+          const currentIndex = queue.findIndex(s => String(s.id) === String(current?.id));
+          if ((queue.length - currentIndex <= 4) && !isPrefetchingBatchRef.current) {
+            isPrefetchingBatchRef.current = true;
+            const nextBatch = autoNextBatchIndexRef.current + 1;
+            autoNextBatchIndexRef.current = nextBatch;
+            const primLang = localStorage.getItem('streamplay_primary_lang') || 'Tamil';
+            fetchInfiniteLanguageSongs(primLang, nextBatch, 25).then(moreSongs => {
+              const existingIds = new Set(queue.map(s => String(s.id)));
+              const freshSongs = moreSongs.filter(s =>
+                !existingIds.has(String(s.id)) &&
+                !s.isShortClip &&
+                !sessionPlayedSongIds.current.has(String(s.id))
+              );
+              if (freshSongs.length > 0) {
+                const updatedQueue = [...queue, ...freshSongs];
+                setSongQueue(updatedQueue);
+                songQueueRef.current = updatedQueue;
+              }
+            }).catch(console.warn).finally(() => {
+              isPrefetchingBatchRef.current = false;
+            });
+          }
+        }
       }
     };
 
@@ -441,6 +530,9 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return () => {
       watchdog.detach();
       audio.pause();
+      if (preloadAudioRef.current) {
+        preloadAudioRef.current.src = '';
+      }
       audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('play', handlePlay);
@@ -610,35 +702,10 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return;
     }
 
-    const currentIndex = queue.findIndex(s => String(s.id) === String(current.id));
+    let nextCandidate = getNextCandidateSong();
 
-    // Find next unplayed song in current queue to prevent repeating
-    let nextCandidate: SongItem | null = null;
-    if (isShuffleRef.current) {
-      const unplayed = queue.filter(s => 
-        String(s.id) !== String(current.id) &&
-        !sessionPlayedSongIds.current.has(String(s.id)) &&
-        !sessionPlayedSongIds.current.has(`${s.title.toLowerCase().trim()} - ${s.artist.toLowerCase().trim()}`)
-      );
-      if (unplayed.length > 0) {
-        nextCandidate = unplayed[Math.floor(Math.random() * unplayed.length)];
-      }
-    } else {
-      // Linear scan forward for next unplayed song
-      for (let i = currentIndex + 1; i < queue.length; i++) {
-        const s = queue[i];
-        if (
-          !sessionPlayedSongIds.current.has(String(s.id)) &&
-          !sessionPlayedSongIds.current.has(`${s.title.toLowerCase().trim()} - ${s.artist.toLowerCase().trim()}`)
-        ) {
-          nextCandidate = s;
-          break;
-        }
-      }
-    }
-
-    // Auto-fetch next batch if remaining unplayed songs in queue is low (<= 2) or no candidate found
-    if (!nextCandidate || queue.length - currentIndex <= 3) {
+    // If queue is exhausted or candidate not found, fetch more in background
+    if (!nextCandidate) {
       try {
         const nextBatch = autoNextBatchIndexRef.current + 1;
         autoNextBatchIndexRef.current = nextBatch;
@@ -648,6 +715,7 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const existingIds = new Set(queue.map(s => String(s.id)));
         const freshSongs = moreSongs.filter(s => 
           !existingIds.has(String(s.id)) &&
+          !s.isShortClip &&
           !sessionPlayedSongIds.current.has(String(s.id)) &&
           !sessionPlayedSongIds.current.has(`${s.title.toLowerCase().trim()} - ${s.artist.toLowerCase().trim()}`)
         );
@@ -656,9 +724,7 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           const updatedQueue = [...queue, ...freshSongs];
           setSongQueue(updatedQueue);
           songQueueRef.current = updatedQueue;
-          if (!nextCandidate) {
-            nextCandidate = freshSongs[0];
-          }
+          nextCandidate = freshSongs[0];
         }
       } catch (e) {
         console.warn('Infinite auto-fetch next songs failed:', e);
@@ -667,8 +733,13 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     if (nextCandidate) {
       playSong(nextCandidate, songQueueRef.current);
-    } else if (currentIndex >= 0 && currentIndex < queue.length - 1) {
-      playSong(queue[currentIndex + 1], queue);
+    } else {
+      const currentIndex = queue.findIndex(s => String(s.id) === String(current.id));
+      if (currentIndex >= 0 && currentIndex < queue.length - 1) {
+        playSong(queue[currentIndex + 1], queue);
+      } else if (queue.length > 0) {
+        playSong(queue[0], queue);
+      }
     }
   };
 
