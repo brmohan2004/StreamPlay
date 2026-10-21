@@ -55,13 +55,21 @@ export const CustomVideoPlayer: React.FC = () => {
   const [hasPlayerCrashed, setHasPlayerCrashed] = useState(false);
 
   // Popup Guard: Prevent external embed ads from opening new Chrome tabs/windows
+  // Returns a mock Window proxy so embedded players pass anti-sandbox/popup capability checks without opening external tabs
   useEffect(() => {
     if (!isVideoModalOpen) return;
     const prevOpen = window.open;
     try {
       window.open = function (...args: any[]) {
-        console.warn('[StreamPlay Guard] Blocked popup ad tab breakout:', args[0]);
-        return null;
+        console.warn('[StreamPlay Guard] Handled popup ad request without breakout:', args[0]);
+        return {
+          closed: false,
+          focus: () => {},
+          blur: () => {},
+          close: () => {},
+          postMessage: () => {},
+          location: { href: args[0] || '' }
+        } as any;
       };
     } catch {
       // ignore
@@ -407,9 +415,9 @@ export const CustomVideoPlayer: React.FC = () => {
             src={currentEmbedUrl}
             className="custom-stream-iframe"
             title={activeMovie.name}
-            referrerPolicy="origin"
+            referrerPolicy="no-referrer"
             allowFullScreen
-            allow="autoplay; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+            allow="autoplay; encrypted-media; gyroscope; picture-in-picture; fullscreen; clipboard-write; screen-wake-lock; web-share"
             onLoad={() => {
               setIsLoading(false);
             }}

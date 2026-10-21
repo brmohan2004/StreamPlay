@@ -1,6 +1,6 @@
 import './TopAppHeader.css';
 import React from 'react';
-import { ArrowLeft, Bookmark, ListMusic, User, Users } from 'lucide-react';
+import { ArrowLeft, Bookmark, ListMusic, User, Users, Film, Headphones } from 'lucide-react';
 import { useNavigation } from '../context/NavigationContext';
 import { useMedia } from '../context/MediaContext';
 import { useParty } from '../context/PartyContext';
@@ -12,6 +12,11 @@ interface TopAppHeaderProps {
   hideRightActions?: boolean;
 }
 
+/**
+ * TopAppHeader
+ * Replaces the old rectangular header bar with modern Floating Glass Buttons.
+ * Screen background ambient theme gradients flow completely behind without any solid header barrier.
+ */
 export const TopAppHeader: React.FC<TopAppHeaderProps> = ({
   title,
   showBack,
@@ -22,27 +27,8 @@ export const TopAppHeader: React.FC<TopAppHeaderProps> = ({
   const { watchLater, playlists } = useMedia();
   const { isInParty, memberCount, openPartyModal } = useParty();
 
-  const [showHeader, setShowHeader] = React.useState(true);
-  const prevScrollY = React.useRef(0);
-
-  React.useEffect(() => {
-    const handleScroll = () => {
-      const scrollY = window.scrollY || document.documentElement.scrollTop;
-      if (scrollY <= 20) {
-        setShowHeader(true);
-      } else if (scrollY > prevScrollY.current + 6) {
-        // Scrolling downward -> hide header
-        setShowHeader(false);
-      } else if (scrollY < prevScrollY.current - 6) {
-        // Scrolling upward -> show header
-        setShowHeader(true);
-      }
-      prevScrollY.current = Math.max(0, scrollY);
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  // Mode home page check: Only home page without a custom subpage title
+  const isModeHomePage = activeScreen === 'home' && !title;
 
   const handleBack = () => {
     if (onBack) {
@@ -53,100 +39,135 @@ export const TopAppHeader: React.FC<TopAppHeaderProps> = ({
   };
 
   return (
-    <>
-      <header
-        className={`mobile-top-header ${appMode === 'music' ? 'music-mode-header' : 'movies-mode-header'} ${
-          showHeader ? 'header-scrolled-visible' : 'header-scrolled-hidden'
-        }`}
-      >
-        <div className="header-left">
-          {showBack ? (
-            <button className="header-icon-btn back-btn" onClick={handleBack} aria-label="Go Back">
-              <ArrowLeft size={22} />
-            </button>
-          ) : (
-            <div className="header-brand" onClick={() => setActiveScreen('home')} title="StreamPlay Home">
-              <img src="/StreamPlay.png" alt="StreamPlay Logo" className="header-brand-logo-img" />
-            </div>
-          )}
-
-          {title && <h2 className="header-custom-title">{title}</h2>}
-        </div>
-
-
-      {!hideRightActions && (
-        <div className="header-right">
-          {/* Friends Mode (Watch & Listen with Friends) */}
+    <div className="mobile-floating-top-bar" role="navigation" aria-label="Top Navigation">
+      {/* Left Floating Section */}
+      <div className="floating-bar-left">
+        {showBack ? (
           <button
-            className={`header-action-btn party-header-btn ${isInParty ? 'active in-party' : ''}`}
+            type="button"
+            className="floating-circle-btn back-btn"
+            onClick={handleBack}
+            aria-label="Go Back"
+            title="Go Back"
+          >
+            <ArrowLeft size={20} />
+          </button>
+        ) : isModeHomePage ? (
+          /* Mode Home: Floating Glass Brand Capsule with Mode Badge */
+          <div
+            className="floating-brand-pill"
+            onClick={() => setActiveScreen('home')}
+            title="StreamPlay Home"
+            role="button"
+            tabIndex={0}
+          >
+            <img src="/StreamPlay.png" alt="StreamPlay Logo" className="floating-brand-logo" />
+            <div className={`header-mode-badge mode-${appMode}`}>
+              <span className="mode-badge-glow" />
+              {appMode === 'movies' ? (
+                <>
+                  <Film size={11} className="mode-badge-icon cyan-icon" />
+                  <span className="mode-badge-name">CINEMA MAX</span>
+                </>
+              ) : (
+                <>
+                  <Headphones size={11} className="mode-badge-icon lime-icon" />
+                  <span className="mode-badge-name">SOUND WAVE</span>
+                </>
+              )}
+            </div>
+          </div>
+        ) : (
+          /* Subpage without explicit back button: Floating Circular Back Button */
+          <button
+            type="button"
+            className="floating-circle-btn back-btn"
+            onClick={handleBack}
+            aria-label="Go Back"
+            title="Go Back"
+          >
+            <ArrowLeft size={20} />
+          </button>
+        )}
+
+        {/* Floating Glass Title Pill on Subpages */}
+        {title && <span className="floating-title-pill">{title}</span>}
+      </div>
+
+      {/* Right Floating Section */}
+      {!hideRightActions && (
+        <div className="floating-bar-right">
+          {/* Friends Mode Floating Circle Button */}
+          <button
+            type="button"
+            className={`floating-circle-btn party-btn ${isInParty ? 'active in-party' : ''}`}
             onClick={openPartyModal}
             aria-label="Friends Mode"
             title={isInParty ? `Party Room Active (${memberCount} connected)` : 'Friends Mode (Watch & Listen Together)'}
           >
-            <Users size={18} />
+            <Users size={19} />
             {isInParty && (
-              <span className="header-badge lime-badge">{memberCount}</span>
+              <span className="floating-badge lime-badge">{memberCount}</span>
             )}
-            <span className="desktop-btn-label">Friends</span>
           </button>
 
           {appMode === 'movies' ? (
-            /* Movie Mode: Watch Later + Profile at header right side */
+            /* Movie Mode: Watch Later + Profile Floating Buttons */
             <>
               <button
-                className={`header-action-btn ${activeScreen === 'watchlater' ? 'active' : ''}`}
+                type="button"
+                className={`floating-circle-btn ${activeScreen === 'watchlater' ? 'active' : ''}`}
                 onClick={() => setActiveScreen('watchlater')}
                 aria-label="Watch Later"
                 title="Watch Later"
               >
                 <Bookmark size={19} />
                 {watchLater.length > 0 && (
-                  <span className="header-badge cyan-badge">{watchLater.length}</span>
+                  <span className="floating-badge cyan-badge">{watchLater.length}</span>
                 )}
-                <span className="desktop-btn-label">Watch Later</span>
               </button>
 
               <button
-                className={`header-action-btn ${activeScreen === 'profile' ? 'active' : ''}`}
+                type="button"
+                className={`floating-circle-btn ${activeScreen === 'profile' ? 'active' : ''}`}
                 onClick={() => setActiveScreen('profile')}
                 aria-label="Profile"
-                title="Profile"
+                title="Profile & Preferences"
               >
                 <User size={19} />
-                <span className="desktop-btn-label">Profile</span>
               </button>
             </>
           ) : (
-            /* Music Mode: Playlist + Profile at header right side */
+            /* Music Mode: Playlists + Profile Floating Buttons */
             <>
               <button
-                className={`header-action-btn ${activeScreen === 'playlist' ? 'active' : ''}`}
+                type="button"
+                className={`floating-circle-btn ${activeScreen === 'playlist' ? 'active' : ''}`}
                 onClick={() => setActiveScreen('playlist')}
                 aria-label="Playlists"
-                title="Playlists"
+                title="Your Playlists"
               >
                 <ListMusic size={19} />
                 {playlists.length > 0 && (
-                  <span className="header-badge lime-badge">{playlists.length}</span>
+                  <span className="floating-badge lime-badge">{playlists.length}</span>
                 )}
-                <span className="desktop-btn-label">Playlists</span>
               </button>
 
               <button
-                className={`header-action-btn ${activeScreen === 'profile' ? 'active' : ''}`}
+                type="button"
+                className={`floating-circle-btn ${activeScreen === 'profile' ? 'active' : ''}`}
                 onClick={() => setActiveScreen('profile')}
                 aria-label="Profile"
-                title="Profile"
+                title="Profile & Preferences"
               >
                 <User size={19} />
-                <span className="desktop-btn-label">Profile</span>
               </button>
             </>
           )}
         </div>
       )}
-    </header>
-  </>
-);
+    </div>
+  );
 };
 
+export default TopAppHeader;

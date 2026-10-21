@@ -8,7 +8,10 @@
 }
 
 .music-home-scrollable {
-  padding: 0.5rem 1rem 8.5rem;
+  padding-top: max(env(safe-area-inset-top, 14px), 64px);
+  padding-left: 1rem;
+  padding-right: 1rem;
+  padding-bottom: 8.5rem;
   display: flex;
   flex-direction: column;
   gap: 2rem;

@@ -3,9 +3,11 @@ import React, { useState } from 'react';
 import { Plus, Play, Music2, Edit3, Trash2, X, ArrowLeft } from 'lucide-react';
 import { TopAppHeader } from '../components/TopAppHeader';
 import { useMedia } from '../context/MediaContext';
+import { useNavigation } from '../context/NavigationContext';
 import { SongItem } from '../types/media';
 
 export const PlaylistScreen: React.FC = () => {
+  const { setActiveScreen } = useNavigation();
   const {
     playlists,
     createPlaylist,
@@ -57,10 +59,16 @@ export const PlaylistScreen: React.FC = () => {
 
   return (
     <div className="playlist-screen-container">
-      {/* Header: No back button on all playlists screen; back button only when viewing inside a specific playlist */}
+      {/* Header: Clean title with back button, strictly without gradient or mode badge */}
       <TopAppHeader
-        showBack={!!selectedPlaylist}
-        onBack={() => setSelectedPlaylistId(null)}
+        showBack={true}
+        onBack={() => {
+          if (selectedPlaylist) {
+            setSelectedPlaylistId(null);
+          } else {
+            setActiveScreen('home');
+          }
+        }}
         title={selectedPlaylist ? selectedPlaylist.name : 'Playlists'}
       />
 

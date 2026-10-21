@@ -1,0 +1,252 @@
+/* === Universal Dynamic Mini Capsule / iOS Dynamic Island & Android Mini Capsule === */
+
+.dynamic-mini-capsule-wrapper {
+  position: fixed;
+  top: max(env(safe-area-inset-top, 6px), 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  width: auto;
+  max-width: 92vw;
+}
+
+.dynamic-capsule-pill {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(8, 10, 16, 0.94);
+  backdrop-filter: blur(28px) saturate(210%);
+  -webkit-backdrop-filter: blur(28px) saturate(210%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+  padding: 5px 10px 5px 6px;
+  box-shadow: 
+    0 10px 30px -4px rgba(0, 0, 0, 0.85),
+    0 0 16px rgba(200, 255, 0, 0.18),
+    inset 0 1px 1px rgba(255, 255, 255, 0.15);
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+.dynamic-capsule-pill:hover {
+  border-color: rgba(200, 255, 0, 0.35);
+  box-shadow: 
+    0 14px 34px -4px rgba(0, 0, 0, 0.9),
+    0 0 24px rgba(200, 255, 0, 0.3),
+    inset 0 1px 1px rgba(255, 255, 255, 0.25);
+  transform: scale(1.02);
+}
+
+.dynamic-capsule-pill:active {
+  transform: scale(0.97);
+}
+
+/* Left Artwork */
+.dynamic-capsule-left-artwork {
+  position: relative;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.dynamic-capsule-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.dynamic-capsule-thumb.spin-record {
+  animation: dynamicCapsuleSpin 8s linear infinite;
+}
+
+@keyframes dynamicCapsuleSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.dynamic-capsule-active-dot {
+  position: absolute;
+  bottom: 1px;
+  right: 1px;
+  width: 6px;
+  height: 6px;
+  background: #c8ff00;
+  border: 1px solid #000000;
+  border-radius: 50%;
+  box-shadow: 0 0 6px #c8ff00;
+}
+
+/* Center Content */
+.dynamic-capsule-middle-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  max-width: 155px;
+  overflow: hidden;
+  min-width: 80px;
+}
+
+.dynamic-capsule-text-line {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.72rem;
+  line-height: 1.1;
+}
+
+.dynamic-capsule-track-title {
+  color: #ffffff;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dynamic-capsule-separator {
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 0.6rem;
+}
+
+.dynamic-capsule-artist {
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 400;
+  font-size: 0.68rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* iOS Dynamic Island & Android Equalizer Bars */
+.dynamic-capsule-waveform {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 9px;
+  margin-top: 2px;
+}
+
+.dynamic-capsule-waveform .wave-bar {
+  width: 2.5px;
+  border-radius: 2px;
+  background: rgba(200, 255, 0, 0.45);
+  transition: height 0.2s ease;
+  height: 2px;
+}
+
+.dynamic-capsule-waveform .wave-bar.wave-active {
+  background: #c8ff00;
+  animation: dynamicWave 0.9s ease-in-out infinite alternate;
+}
+
+.dynamic-capsule-waveform .bar-1 { height: 3px; animation-delay: 0.05s !important; }
+.dynamic-capsule-waveform .bar-2 { height: 7px; animation-delay: 0.25s !important; }
+.dynamic-capsule-waveform .bar-3 { height: 5px; animation-delay: 0.15s !important; }
+.dynamic-capsule-waveform .bar-4 { height: 8px; animation-delay: 0.35s !important; }
+
+@keyframes dynamicWave {
+  0% {
+    height: 2px;
+    opacity: 0.6;
+  }
+  50% {
+    height: 9px;
+    opacity: 1;
+  }
+  100% {
+    height: 4px;
+    opacity: 0.8;
+  }
+}
+
+/* Right Controls */
+.dynamic-capsule-right-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 2px;
+}
+
+.dynamic-capsule-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 0;
+}
+
+.dynamic-capsule-btn:hover {
+  background: rgba(200, 255, 0, 0.18);
+  border-color: rgba(200, 255, 0, 0.4);
+  transform: scale(1.08);
+}
+
+.dynamic-capsule-btn:active {
+  transform: scale(0.92);
+}
+
+.dynamic-capsule-btn.play-btn {
+  background: rgba(200, 255, 0, 0.14);
+  border-color: rgba(200, 255, 0, 0.3);
+}
+
+/* Micro-Progress Bar */
+.dynamic-capsule-progress-track {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.dynamic-capsule-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #c8ff00, #00e5ff);
+  border-radius: 0 1px 1px 0;
+  transition: width 0.3s linear;
+}
+
+/* Mobile Screens Adaptation */
+@media (max-width: 480px) {
+  .dynamic-mini-capsule-wrapper {
+    top: max(env(safe-area-inset-top, 6px), 8px);
+    max-width: 90vw;
+  }
+
+  .dynamic-capsule-pill {
+    padding: 4px 8px 4px 5px;
+    gap: 8px;
+  }
+
+  .dynamic-capsule-middle-content {
+    max-width: 125px;
+  }
+
+  .dynamic-capsule-track-title {
+    font-size: 0.68rem;
+  }
+
+  .dynamic-capsule-artist {
+    font-size: 0.62rem;
+  }
+}

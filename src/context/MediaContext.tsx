@@ -712,6 +712,70 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  // Realme Mini Capsule, Android Mobile Control Center, Bluetooth, & Lockscreen Notification (MediaSession API)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('mediaSession' in navigator)) return;
+
+    if (currentSong) {
+      try {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: currentSong.title,
+          artist: currentSong.artist || 'StreamPlay Music',
+          album: currentSong.album || 'StreamPlay Master',
+          artwork: [
+            { src: currentSong.image || '/StreamPlay.png', sizes: '96x96', type: 'image/png' },
+            { src: currentSong.image || '/StreamPlay.png', sizes: '128x128', type: 'image/png' },
+            { src: currentSong.image || '/StreamPlay.png', sizes: '192x192', type: 'image/png' },
+            { src: currentSong.image || '/StreamPlay.png', sizes: '256x256', type: 'image/png' },
+            { src: currentSong.image || '/StreamPlay.png', sizes: '512x512', type: 'image/png' }
+          ]
+        });
+
+        navigator.mediaSession.playbackState = isPlayingSong ? 'playing' : 'paused';
+
+        navigator.mediaSession.setActionHandler('play', () => {
+          if (audioRef.current) {
+            audioRef.current.play().then(() => setIsPlayingSong(true)).catch(console.warn);
+          }
+        });
+
+        navigator.mediaSession.setActionHandler('pause', () => {
+          if (audioRef.current) {
+            audioRef.current.pause();
+            setIsPlayingSong(false);
+          }
+        });
+
+        navigator.mediaSession.setActionHandler('previoustrack', () => {
+          prevSong();
+        });
+
+        navigator.mediaSession.setActionHandler('nexttrack', () => {
+          nextSong();
+        });
+
+        navigator.mediaSession.setActionHandler('seekto', (details) => {
+          if (details.seekTime !== undefined && audioRef.current) {
+            audioRef.current.currentTime = details.seekTime;
+            setSongProgress(details.seekTime);
+          }
+        });
+
+        if ('setPositionState' in navigator.mediaSession && songDuration > 0) {
+          navigator.mediaSession.setPositionState({
+            duration: Math.max(songDuration, 1),
+            playbackRate: 1,
+            position: Math.min(songProgress, songDuration)
+          });
+        }
+      } catch (err) {
+        console.warn('[MediaSession Setup]', err);
+      }
+    } else {
+      navigator.mediaSession.playbackState = 'none';
+    }
+  }, [currentSong, isPlayingSong, songDuration]);
+
   return (
     <MediaContext.Provider
       value={{

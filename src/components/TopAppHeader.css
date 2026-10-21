@@ -1,230 +1,271 @@
-/* 1. Mobile Top Header */
-.mobile-top-header {
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  background: rgba(0, 0, 0, 0.92);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+/* ========================================================================= */
+/* Mobile Floating Top Navigation (No Solid Header Bar)                      */
+/* Clean floating glass buttons overlay with seamless screen background flow */
+/* ========================================================================= */
+
+.mobile-floating-top-bar {
+  position: fixed;
+  top: max(env(safe-area-inset-top, 8px), 12px);
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 90;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.85rem 1.25rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease, background 0.3s ease;
-  will-change: transform, opacity;
+  padding: 0 1rem;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  pointer-events: none; /* Allows underlying content to be tapped/scrolled through transparent areas */
+  box-sizing: border-box;
 }
 
-/* Header is hidden while scrolled upward / at top */
-.mobile-top-header.header-scrolled-hidden {
-  transform: translateY(-100%);
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* Header smoothly slides in when user starts scrolling */
-.mobile-top-header.header-scrolled-visible {
-  transform: translateY(0);
-  opacity: 1;
+/* Floating Sections */
+.floating-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
   pointer-events: auto;
 }
 
-/* Floating circle back button on screens with back navigation when at top */
-.floating-top-back-btn {
-  position: fixed;
-  top: 14px;
-  left: 14px;
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  background: rgba(12, 16, 24, 0.85);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  color: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 60;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.7);
-  transition: all 0.2s ease;
-}
-
-.floating-top-back-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-  transform: scale(1.06);
-}
-
-/* In music mode, header color exactly matches the music mode content area (#101c0b) */
-.mobile-top-header.music-mode-header,
-.mode-music .mobile-top-header,
-.music-home-screen .mobile-top-header {
-  background: #101c0b;
-  border-bottom: 1px solid rgba(212, 255, 0, 0.08);
-  backdrop-filter: blur(20px);
-}
-
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.header-brand {
+.floating-bar-right {
   display: flex;
   align-items: center;
   gap: 0.65rem;
-  cursor: pointer;
-  user-select: none;
+  pointer-events: auto;
 }
 
-.header-brand-logo-img {
-  width: 34px;
-  height: 34px;
+/* 1. Floating Glass Brand Capsule */
+.floating-brand-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 4px 11px 4px 6px;
+  border-radius: 9999px;
+  background: rgba(10, 14, 24, 0.72);
+  backdrop-filter: blur(28px) saturate(200%);
+  -webkit-backdrop-filter: blur(28px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 
+    0 8px 24px rgba(0, 0, 0, 0.6),
+    inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.floating-brand-pill:hover {
+  transform: scale(1.05);
+  background: rgba(15, 22, 36, 0.85);
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: 
+    0 12px 30px rgba(0, 0, 0, 0.7),
+    inset 0 1px 1px rgba(255, 255, 255, 0.3);
+}
+
+.floating-brand-pill:active {
+  transform: scale(0.96);
+}
+
+.floating-brand-logo {
+  width: 28px;
+  height: 28px;
   object-fit: contain;
-  filter: drop-shadow(0 0 10px rgba(0, 210, 255, 0.45));
+  filter: drop-shadow(0 0 8px rgba(0, 210, 255, 0.5));
   transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-.header-brand:hover .header-brand-logo-img {
-  transform: scale(1.1) rotate(5deg);
+.floating-brand-pill:hover .floating-brand-logo {
+  transform: scale(1.1) rotate(6deg);
 }
 
-.brand-title-text {
-  font-family: var(--font-display, 'Outfit', sans-serif);
-  font-size: 1.35rem;
-  font-weight: 800;
-  letter-spacing: -0.5px;
-  background: linear-gradient(135deg, #ffffff 0%, #d4d4d8 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.music-mode-header .brand-title-text {
-  background: linear-gradient(135deg, #ffffff 0%, #d4ff00 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.header-custom-title {
-  font-family: var(--font-display, 'Outfit', sans-serif);
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: #ffffff;
-}
-
-.header-icon-btn {
-  width: 38px;
-  height: 38px;
+/* 2. Floating Circular Glass Action Buttons */
+.floating-circle-btn {
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  min-height: 42px;
   border-radius: 50%;
-  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
-  background: rgba(255, 255, 255, 0.06);
-  color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: rgba(10, 14, 24, 0.75);
+  backdrop-filter: blur(28px) saturate(200%);
+  -webkit-backdrop-filter: blur(28px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 
+    0 8px 24px rgba(0, 0, 0, 0.6),
+    inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  color: #ffffff;
   cursor: pointer;
   position: relative;
-  transition: all 0.2s ease;
+  padding: 0;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  -webkit-tap-highlight-color: transparent;
 }
 
-.header-icon-btn:hover {
-  background: rgba(255, 255, 255, 0.16);
-  border-color: rgba(255, 255, 255, 0.3);
-  transform: scale(1.05);
+.floating-circle-btn:hover {
+  transform: scale(1.08);
+  background: rgba(20, 28, 44, 0.9);
+  border-color: rgba(255, 255, 255, 0.32);
+  box-shadow: 
+    0 12px 30px rgba(0, 0, 0, 0.75),
+    inset 0 1px 1px rgba(255, 255, 255, 0.3);
 }
 
-/* Header Right Actions */
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
+.floating-circle-btn:active {
+  transform: scale(0.92);
 }
 
-.header-action-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.45rem 0.65rem;
-  min-height: 38px;
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--text-muted, #a1a1aa);
-  cursor: pointer;
-  position: relative;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  font-family: inherit;
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-
-.header-action-btn:hover {
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.22);
-  transform: translateY(-1px);
-}
-
-.header-action-btn.active {
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.16);
-  border-color: rgba(255, 255, 255, 0.35);
-  box-shadow: 0 0 14px rgba(255, 255, 255, 0.08);
-}
-
-.movies-mode-header .header-action-btn.active {
-  border-color: rgba(0, 210, 255, 0.5);
-  background: rgba(0, 210, 255, 0.12);
+/* Active State for screen navigation buttons */
+.floating-circle-btn.active {
+  background: rgba(0, 210, 255, 0.18);
+  border-color: #00d2ff;
   color: #00d2ff;
-  box-shadow: 0 0 16px rgba(0, 210, 255, 0.25);
+  box-shadow: 
+    0 8px 24px rgba(0, 210, 255, 0.3),
+    inset 0 1px 1px rgba(255, 255, 255, 0.25);
 }
 
-.music-mode-header .header-action-btn.active {
-  border-color: rgba(200, 255, 0, 0.5);
-  background: rgba(200, 255, 0, 0.12);
+.mode-music .floating-circle-btn.active {
+  background: rgba(200, 255, 0, 0.18);
+  border-color: #c8ff00;
   color: #c8ff00;
-  box-shadow: 0 0 16px rgba(200, 255, 0, 0.25);
+  box-shadow: 
+    0 8px 24px rgba(200, 255, 0, 0.3),
+    inset 0 1px 1px rgba(255, 255, 255, 0.25);
 }
 
-.header-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+/* In-Party Active State */
+.floating-circle-btn.party-btn.in-party {
+  background: rgba(200, 255, 0, 0.18);
+  border-color: #c8ff00;
+  color: #c8ff00;
+  animation: partyBtnPulse 2s ease-in-out infinite alternate;
+}
+
+@keyframes partyBtnPulse {
+  0% { box-shadow: 0 0 10px rgba(200, 255, 0, 0.25); }
+  100% { box-shadow: 0 0 22px rgba(200, 255, 0, 0.55); }
+}
+
+/* 3. Floating Counter Badge on Circular Buttons */
+.floating-badge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
   min-width: 18px;
   height: 18px;
-  padding: 0 5px;
-  border-radius: 9px;
-  font-size: 0.68rem;
+  padding: 0 4px;
+  border-radius: 9999px;
+  font-size: 0.62rem;
   font-weight: 800;
   line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #000000;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
 }
 
-.cyan-badge {
-  background: #00d2ff;
-  color: #000000;
-  box-shadow: 0 0 8px rgba(0, 210, 255, 0.6);
-}
-
-.lime-badge {
+.floating-badge.lime-badge {
   background: #c8ff00;
   color: #000000;
-  box-shadow: 0 0 8px rgba(200, 255, 0, 0.6);
 }
 
-/* Mobile & Desktop Label Visibility */
-.desktop-btn-label {
-  display: none;
+.floating-badge.cyan-badge {
+  background: #00e5ff;
+  color: #000000;
 }
 
-@media (min-width: 768px) {
-  .desktop-btn-label {
-    display: inline-block;
+/* 4. Floating Title Pill on Subpages */
+.floating-title-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 16px;
+  border-radius: 9999px;
+  background: rgba(10, 14, 24, 0.75);
+  backdrop-filter: blur(28px) saturate(200%);
+  -webkit-backdrop-filter: blur(28px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 
+    0 8px 24px rgba(0, 0, 0, 0.6),
+    inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  font-family: var(--font-display, 'Outfit', sans-serif);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+/* Mode Name Trending Badge beside Logo inside floating brand pill */
+.header-mode-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+.header-mode-badge.mode-movies {
+  background: rgba(0, 162, 255, 0.15);
+  border: 1px solid rgba(0, 180, 255, 0.4);
+  color: #00e5ff;
+  box-shadow: 0 0 14px rgba(0, 180, 255, 0.25);
+}
+
+.header-mode-badge.mode-music {
+  background: rgba(200, 255, 0, 0.15);
+  border: 1px solid rgba(200, 255, 0, 0.4);
+  color: #c8ff00;
+  box-shadow: 0 0 14px rgba(200, 255, 0, 0.25);
+}
+
+.mode-badge-name {
+  line-height: 1;
+  font-weight: 800;
+}
+
+.cyan-icon {
+  color: #00e5ff;
+}
+
+.lime-icon {
+  color: #c8ff00;
+}
+
+/* Mobile Screens Adaptation */
+@media (max-width: 480px) {
+  .mobile-floating-top-bar {
+    padding: 0 0.85rem;
   }
-  .header-action-btn {
-    padding: 0.45rem 0.95rem;
+
+  .floating-circle-btn {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    min-height: 38px;
+  }
+
+  .floating-brand-logo {
+    width: 24px;
+    height: 24px;
+  }
+
+  .floating-title-pill {
+    font-size: 0.88rem;
+    padding: 6px 12px;
   }
 }
-

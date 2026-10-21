@@ -1,9 +1,13 @@
 /* 10. Playlists Screen */
 .playlist-screen-container {
-  padding: 1rem 1rem 5rem;
+  padding-top: max(env(safe-area-inset-top, 14px), 64px);
+  padding-left: 1rem;
+  padding-right: 1rem;
+  padding-bottom: 5rem;
   min-height: 100vh;
-  background: #000000;
+  background: transparent;
   color: #ffffff;
+  position: relative;
 }
 
 .playlists-header-action {

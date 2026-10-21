@@ -11,7 +11,9 @@ import {
   fetchGenreSongs,
   fetchInfiniteLanguageSongs,
   fetchArtistSongsPaged,
-  fetchMusicFilterUniverseSongs
+  fetchMusicFilterUniverseSongs,
+  getCachedInitialMusic,
+  saveCachedInitialMusic
 } from '../services/musicService';
 import { useRecommendations } from '../context/RecommendationContext';
 import { SkeletonMusicHome, SkeletonMusicRow } from '../components/SkeletonLoader';
@@ -41,10 +43,10 @@ export const MusicHomeScreen: React.FC<MusicHomeScreenProps> = ({
   const { setActiveScreen, activeCategory, setActiveCategory } = useNavigation();
   const { dailyMix, forYouSongs, becauseYouListened, discoverWeekly } = useRecommendations();
 
-  // Language Curated Songs State
-  const [primaryLangSongs, setPrimaryLangSongs] = useState<SongItem[]>([]);
-  const [secondaryLangSongs, setSecondaryLangSongs] = useState<SongItem[]>([]);
-  const [videoSongs, setVideoSongs] = useState<SongItem[]>([]);
+  // Language Curated Songs State initialized with local persistent cache
+  const [primaryLangSongs, setPrimaryLangSongs] = useState<SongItem[]>(() => getCachedInitialMusic('primary_lang'));
+  const [secondaryLangSongs, setSecondaryLangSongs] = useState<SongItem[]>(() => getCachedInitialMusic('secondary_lang'));
+  const [videoSongs, setVideoSongs] = useState<SongItem[]>(() => getCachedInitialMusic('video_songs'));
 
   // 1. Top Picks 15-by-15 Infinite Scrolling State
   const [topPicksState, setTopPicksState] = useState<SongItem[]>([]);
@@ -291,9 +293,18 @@ export const MusicHomeScreen: React.FC<MusicHomeScreenProps> = ({
           fetchVideoSongs(primaryLanguage, 12)
         ]);
         if (isMounted) {
-          setPrimaryLangSongs(primList);
-          setSecondaryLangSongs(secList);
-          setVideoSongs(vids);
+          if (primList && primList.length > 0) {
+            setPrimaryLangSongs(primList);
+            saveCachedInitialMusic('primary_lang', primList);
+          }
+          if (secList && secList.length > 0) {
+            setSecondaryLangSongs(secList);
+            saveCachedInitialMusic('secondary_lang', secList);
+          }
+          if (vids && vids.length > 0) {
+            setVideoSongs(vids);
+            saveCachedInitialMusic('video_songs', vids);
+          }
         }
       } catch (err) {
         console.error('Failed to load language/video music:', err);

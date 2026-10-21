@@ -65,6 +65,31 @@ let cachedTopMovies: { dateKey: string; items: MovieItem[] } | null = null;
 let cachedTopSeries: MovieItem[] | null = null;
 const ottCache = new Map<string, MovieItem[]>();
 
+export function getCachedInitialMovies(key: string): MovieItem[] {
+  try {
+    const raw = localStorage.getItem(`streamplay_cached_movie_${key}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return [];
+}
+
+export function saveCachedInitialMovies(key: string, items: MovieItem[]) {
+  try {
+    if (Array.isArray(items) && items.length > 0) {
+      localStorage.setItem(`streamplay_cached_movie_${key}`, JSON.stringify(items.slice(0, 25)));
+    }
+  } catch {
+    // ignore
+  }
+}
+
 /**
  * Returns real-time Web Trending Movies.
  * Combines live web trending from Cinemeta with 2025/2026 releases (both theater & OTT).
@@ -75,6 +100,9 @@ export async function fetchTopMovies(): Promise<MovieItem[]> {
   if (cachedTopMovies && cachedTopMovies.dateKey === todayKey && cachedTopMovies.items.length > 0) {
     return cachedTopMovies.items;
   }
+
+  // Instant local cache fallback
+  const localCached = getCachedInitialMovies('top_movies');
 
   try {
     const [topBaseRes, year26Res, year25Res] = await Promise.all([
@@ -106,11 +134,12 @@ export async function fetchTopMovies(): Promise<MovieItem[]> {
     const result = trendingRecent.length >= 10 ? trendingRecent : pool.filter(m => (parseInt(m.releaseInfo || '0') || 0) >= 2024);
     if (result.length > 0) {
       cachedTopMovies = { dateKey: todayKey, items: result };
+      saveCachedInitialMovies('top_movies', result);
     }
-    return result;
+    return result.length > 0 ? result : localCached;
   } catch (err) {
     console.error('Failed to fetch web trending movies:', err);
-    return [];
+    return localCached;
   }
 }
 
@@ -118,6 +147,7 @@ export async function fetchTopSeries(): Promise<MovieItem[]> {
   if (cachedTopSeries && cachedTopSeries.length > 0) {
     return cachedTopSeries;
   }
+  const localCached = getCachedInitialMovies('top_series');
   try {
     const [topSeriesRes, year25SeriesRes] = await Promise.all([
       fetch(`${CINEMETA_BASE}/catalog/series/top.json`).then(r => r.json()).catch(() => ({ metas: [] })),
@@ -139,11 +169,15 @@ export async function fetchTopSeries(): Promise<MovieItem[]> {
       }
     }
 
-    cachedTopSeries = combined.length > 0 ? combined : topSeries;
-    return cachedTopSeries || [];
+    const finalResult = combined.length > 0 ? combined : topSeries;
+    if (finalResult.length > 0) {
+      cachedTopSeries = finalResult;
+      saveCachedInitialMovies('top_series', finalResult);
+    }
+    return finalResult.length > 0 ? finalResult : localCached;
   } catch (err) {
     console.error('Failed to fetch top series:', err);
-    return [];
+    return localCached;
   }
 }
 
@@ -736,31 +770,53 @@ export interface StreamingServerMeta {
 }
 
 export const STREAMING_SERVERS: StreamingServerMeta[] = [
-  // 1. AutoEmbed CC (Zero-Sandbox, Zero Ads, Ultra Fast HTML5)
+  // 1. AutoEmbed CC / CO (Instant 1080p, Multi-Audio, Zero Sandbox Error)
   {
     id: 0,
-    name: 'AutoEmbed CC (Ultra Fast)',
+    name: 'AutoEmbed (Multi-Audio & Subs)',
     isNoAds: true,
-    specialty: 'Direct HTML5 stream with instant playback & no sandbox issues',
+    specialty: 'Multi-language audio & subtitles with 0 sandbox blocks',
     getUrl: (id, _, type, s, e) =>
       type === 'series'
         ? `https://player.autoembed.cc/embed/tv/${id}/${s}/${e}`
         : `https://player.autoembed.cc/embed/movie/${id}`
   },
-  // 2. VidSrc CC (Clean 1080p Full HD)
+  // 2. SmashyStream (High-Speed Cluster, Zero Sandbox)
   {
     id: 1,
-    name: 'VidSrc CC (Clean 1080p)',
+    name: 'SmashyStream (Ultra Clean)',
     isNoAds: true,
-    specialty: 'High-bitrate pristine 1080p stream with multi-audio',
+    specialty: 'High-speed cluster with multiple audio & CC tracks',
     getUrl: (id, _, type, s, e) =>
       type === 'series'
-        ? `https://vidsrc.cc/v2/embed/tv/${id}/${s}/${e}`
-        : `https://vidsrc.cc/v2/embed/movie/${id}`
+        ? `https://embed.smashystream.com/playere.php?tmdb=${id}&season=${s}&episode=${e}`
+        : `https://embed.smashystream.com/playere.php?tmdb=${id}`
   },
-  // 3. MoviesAPI (Ad-Free Fast CDN)
+  // 3. MultiEmbed / SuperEmbed (Universal Dynamic Mirrors)
   {
     id: 2,
+    name: 'MultiEmbed (Universal Mirrors)',
+    isNoAds: true,
+    specialty: 'Dynamic multi-source selector with auto-fallback',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${s}&e=${e}`
+        : `https://multiembed.mov/?video_id=${id}&tmdb=1`
+  },
+  // 4. 2Embed (Multi-Audio & Subs)
+  {
+    id: 3,
+    name: '2Embed CC (Multi-Audio)',
+    isNoAds: false,
+    specialty: 'Multi-subtitles & audio tracks',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://www.2embed.cc/embedtv/${id}&s=${s}&e=${e}`
+        : `https://www.2embed.cc/embed/${id}`
+  },
+  // 5. MoviesAPI (Ad-Free Fast CDN)
+  {
+    id: 4,
     name: 'MoviesAPI (No Ads)',
     isNoAds: true,
     specialty: 'Multi-resolution streaming with adaptive bitrate',
@@ -769,53 +825,42 @@ export const STREAMING_SERVERS: StreamingServerMeta[] = [
         ? `https://moviesapi.club/tv/${id}-${s}-${e}`
         : `https://moviesapi.club/movie/${id}`
   },
-  // 4. MultiEmbed / SuperEmbed (Universal Dynamic Mirrors)
+  // 6. VidSrc CC (Clean 1080p Full HD)
   {
-    id: 3,
-    name: 'MultiEmbed (Auto Stream)',
+    id: 5,
+    name: 'VidSrc CC (Clean 1080p)',
     isNoAds: true,
-    specialty: 'Dynamic multi-source selector with auto-fallback',
+    specialty: 'High-bitrate pristine 1080p stream with multi-audio',
     getUrl: (id, _, type, s, e) =>
       type === 'series'
-        ? `https://multiembed.mov/?video_id=${id}&s=${s}&e=${e}`
-        : `https://multiembed.mov/?video_id=${id}`
+        ? `https://vidsrc.cc/v2/embed/tv/${id}/${s}/${e}`
+        : `https://vidsrc.cc/v2/embed/movie/${id}`
   },
-  // 5. VidSrc PM (Fast Origin Cluster)
+  // 7. VidSrc PM (Origin Cluster)
   {
-    id: 4,
-    name: 'VidSrc PM',
+    id: 6,
+    name: 'VidSrc PM (Origin)',
     isNoAds: true,
-    specialty: 'Reliable fast origin cluster with direct buffers',
+    specialty: 'High-speed origin cluster',
     getUrl: (id, _, type, s, e) =>
       type === 'series'
         ? `https://vidsrc.pm/embed/tv/${id}/${s}/${e}`
         : `https://vidsrc.pm/embed/movie/${id}`
   },
-  // 6. VidLink (Ultra HD 4K/1080p)
+  // 8. VidLink Pro (Ultra HD Alternative)
   {
-    id: 5,
-    name: 'VidLink (Ultra HD)',
+    id: 7,
+    name: 'VidLink Pro (Alternative)',
     isNoAds: true,
-    specialty: 'High-speed 4K/1080p fast CDN',
+    specialty: 'High-speed 4K/1080p mirror',
     getUrl: (id, _, type, s, e) =>
       type === 'series'
         ? `https://vidlink.pro/tv/${id}/${s}/${e}`
         : `https://vidlink.pro/movie/${id}`
   },
-  // 7. 2Embed (Multi-Audio & Subs)
+  // 9. 111Movies (Regional Indian & Asian Cinema)
   {
-    id: 6,
-    name: '2Embed',
-    isNoAds: false,
-    specialty: 'Multi-subtitles & audio tracks',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://2embed.cc/embedtv/${id}&s=${s}&e=${e}`
-        : `https://2embed.cc/embed/${id}`
-  },
-  // 8. 111Movies (Regional Indian & Asian Cinema)
-  {
-    id: 7,
+    id: 8,
     name: '111Movies',
     isNoAds: false,
     specialty: 'Regional Indian & Asian cinema',

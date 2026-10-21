@@ -2,12 +2,26 @@ import CryptoJS from 'crypto-js';
 import { Capacitor } from '@capacitor/core';
 import { SongItem } from '../types/media';
 
-const SAAVN_API_BASE =
-  Capacitor.isNativePlatform()
-    ? 'https://www.jiosaavn.com/api.php'
-    : (typeof window !== 'undefined' && window.location.hostname === 'localhost' && window.location.port === '1420'
-        ? '/api/saavn'
-        : 'https://www.jiosaavn.com/api.php');
+const isNative = Capacitor.isNativePlatform();
+
+/**
+ * Resolves the primary Saavn endpoint.
+ * On native mobile (Capacitor Android/iOS), uses direct Saavn cluster with CapacitorHttp.
+ * In any web browser (mobile Chrome, desktop, Vercel, IP access), uses the server proxy /api/saavn to bypass CORS.
+ */
+function getSaavnBaseUrls(): string[] {
+  if (isNative) {
+    return [
+      'https://www.jiosaavn.com/api.php',
+      '/api/saavn'
+    ];
+  }
+  return [
+    '/api/saavn',
+    'https://www.jiosaavn.com/api.php'
+  ];
+}
+
 const DES_KEY = '38346591';
 
 export type AudioQualitySetting = 'auto' | '320kbps' | '160kbps' | '96kbps' | 'lossless';
@@ -47,6 +61,59 @@ export function decryptMediaUrl(encryptedUrl: string, quality: AudioQualitySetti
 }
 
 /**
+ * Normalizes song titles by stripping extraneous film tags, lyrical qualifiers,
+ * and album suffixes to prevent duplicate tracks in search and recommendations.
+ */
+export function cleanSongTitle(title: string): string {
+  if (!title) return '';
+  return title
+    .replace(/\s*\(From\s+["'][^"']+["']\)/gi, '')
+    .replace(/\s*\(From\s+[^)]+\)/gi, '')
+    .replace(/\s*\[From\s+[^\]]+\]/gi, '')
+    .replace(/\s*\(From\s+Tamil[^)]*\)/gi, '')
+    .replace(/\s*\(From\s+Telugu[^)]*\)/gi, '')
+    .replace(/\s*\(From\s+Hindi[^)]*\)/gi, '')
+    .replace(/\s*\[Lyrical[^\]]*\]/gi, '')
+    .replace(/\s*\(Lyrical[^)]*\)/gi, '')
+    .replace(/\s*\(Original[^)]*\)/gi, '')
+    .replace(/\s*\(Soundtrack[^)]*\)/gi, '')
+    .replace(/\s*\(Remix[^)]*\)/gi, '')
+    .replace(/\s*-\s*Lyrical/gi, '')
+    .replace(/\s*-\s*Original Motion Picture[^)]*/gi, '')
+    .replace(/\s*-\s*From[^)]*/gi, '')
+    .trim();
+}
+
+/**
+ * Deduplicates an array of songs based on normalized title and lead artist.
+ * Prevents identical songs with different thumbnails or compilation album names from repeating.
+ */
+export function deduplicateSongs(songs: SongItem[]): SongItem[] {
+  const seenKeys = new Set<string>();
+  const seenIds = new Set<string>();
+  const unique: SongItem[] = [];
+
+  for (const song of songs) {
+    if (!song || !song.title) continue;
+    if (song.id && seenIds.has(String(song.id))) continue;
+
+    const normalizedTitle = cleanSongTitle(song.title).toLowerCase().replace(/[^a-z0-9]/g, '');
+    const leadArtist = (song.artist || '').split(',')[0].toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+    const dedupeKey = `${normalizedTitle}|${leadArtist}`;
+
+    if (seenKeys.has(dedupeKey)) {
+      continue;
+    }
+
+    if (song.id) seenIds.add(String(song.id));
+    seenKeys.add(dedupeKey);
+    unique.push(song);
+  }
+
+  return unique;
+}
+
+/**
  * Multi-CDN free audio mirror constructor.
  * Creates an ordered chain of free failover streaming endpoints from JioSaavn, Audius, and Piped
  * to guarantee continuous playback across all free music providers.
@@ -81,7 +148,35 @@ function buildBackupMirrors(primaryUrl: string, title: string, artist: string): 
 }
 
 const searchCache = new Map<string, { timestamp: number; data: SongItem[] }>();
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+/**
+ * Retrieve cached initial songs for instant 0ms cold-start display.
+ */
+export function getCachedInitialMusic(key: string): SongItem[] {
+  try {
+    const raw = localStorage.getItem(`streamplay_cached_music_${key}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return [];
+}
+
+export function saveCachedInitialMusic(key: string, songs: SongItem[]) {
+  try {
+    if (Array.isArray(songs) && songs.length > 0) {
+      localStorage.setItem(`streamplay_cached_music_${key}`, JSON.stringify(songs.slice(0, 20)));
+    }
+  } catch {
+    // ignore
+  }
+}
 
 /**
  * Paged song search from the JioSaavn API cluster with multi-mirror failover support.
@@ -96,69 +191,72 @@ export async function searchSongsPaged(query: string, page = 1, limit = 25): Pro
     return cached.data;
   }
 
-  const url = `${SAAVN_API_BASE}?__call=search.getResults&_marker=0&q=${encodeURIComponent(
-    trimmed
-  )}&ctx=web6dot0&_format=json&n=${limit}&p=${page}`;
+  const baseUrls = getSaavnBaseUrls();
 
-  for (let attempt = 1; attempt <= 2; attempt++) {
-    try {
-      const res = await fetch(url);
-      if (!res.ok) {
+  for (const base of baseUrls) {
+    const url = `${base}?__call=search.getResults&_marker=0&q=${encodeURIComponent(
+      trimmed
+    )}&ctx=web6dot0&_format=json&n=${limit}&p=${page}`;
+
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+        if (!res.ok) {
+          if (attempt === 1) {
+            await new Promise(r => setTimeout(r, 250));
+            continue;
+          }
+          break;
+        }
+        const data = await res.json();
+        const list = data.results || [];
+
+        const parsed: SongItem[] = list
+          .map((item: any) => {
+            const encrypted = item.encrypted_media_url || item.more_info?.encrypted_media_url;
+            if (!encrypted) return null;
+
+            const streamUrl = decryptMediaUrl(encrypted);
+            if (!streamUrl) return null;
+
+            const rawTitle = decodeHtml(item.song || item.title || 'Unknown Track');
+            const artist = decodeHtml(
+              item.primary_artists || item.more_info?.artistMap?.primary_artists?.[0]?.name || 'Various Artists'
+            );
+            const album = decodeHtml(item.album || item.more_info?.album || 'Single');
+            const backupStreamUrls = buildBackupMirrors(streamUrl, rawTitle, artist);
+
+            const ACCENT_COLORS = ['#ff9800', '#00e5ff', '#c8ff00', '#ff4081', '#7c4dff', '#00e676', '#ffab00'];
+
+            return {
+              id: String(item.id),
+              title: rawTitle,
+              album,
+              artist,
+              year: item.year || item.more_info?.year,
+              duration: parseInt(item.duration || item.more_info?.duration || '180', 10),
+              image: (item.image || item.more_info?.thumbnail || '').replace('150x150', '500x500'),
+              streamUrl,
+              backupStreamUrls,
+              videoUrl: `https://www.youtube-nocookie.com/embed?listType=search&list=${encodeURIComponent(
+                rawTitle + ' ' + artist + ' official video'
+              )}`,
+              accentColor: ACCENT_COLORS[Math.floor(Math.random() * ACCENT_COLORS.length)],
+              quality: '320kbps Ultra-HD'
+            };
+          })
+          .filter((s: SongItem | null): s is SongItem => s !== null);
+
+        if (parsed.length > 0) {
+          searchCache.set(cacheKey, { timestamp: Date.now(), data: parsed });
+          return parsed;
+        }
+      } catch (err) {
         if (attempt === 1) {
-          await new Promise(r => setTimeout(r, 350));
+          await new Promise(r => setTimeout(r, 300));
           continue;
         }
-        break;
       }
-      const data = await res.json();
-      const list = data.results || [];
-
-      const parsed: SongItem[] = list
-        .map((item: any) => {
-          const encrypted = item.encrypted_media_url || item.more_info?.encrypted_media_url;
-          if (!encrypted) return null;
-
-          const streamUrl = decryptMediaUrl(encrypted);
-          if (!streamUrl) return null;
-
-          const title = decodeHtml(item.song || item.title || 'Unknown Track');
-          const artist = decodeHtml(
-            item.primary_artists || item.more_info?.artistMap?.primary_artists?.[0]?.name || 'Various Artists'
-          );
-          const album = decodeHtml(item.album || item.more_info?.album || 'Single');
-          const backupStreamUrls = buildBackupMirrors(streamUrl, title, artist);
-
-          const ACCENT_COLORS = ['#ff9800', '#00e5ff', '#c8ff00', '#ff4081', '#7c4dff', '#00e676', '#ffab00'];
-
-          return {
-            id: item.id,
-            title,
-            album,
-            artist,
-            year: item.year || item.more_info?.year,
-            duration: parseInt(item.duration || item.more_info?.duration || '180', 10),
-            image: (item.image || item.more_info?.thumbnail || '').replace('150x150', '500x500'),
-            streamUrl,
-            backupStreamUrls,
-            videoUrl: `https://www.youtube-nocookie.com/embed?listType=search&list=${encodeURIComponent(
-              title + ' ' + artist + ' official video'
-            )}`,
-            accentColor: ACCENT_COLORS[Math.floor(Math.random() * ACCENT_COLORS.length)],
-            quality: '320kbps Ultra-HD'
-          };
-        })
-        .filter((s: SongItem | null): s is SongItem => s !== null);
-
-      if (parsed.length > 0) {
-        searchCache.set(cacheKey, { timestamp: Date.now(), data: parsed });
-        return parsed;
-      }
-    } catch (err) {
-      if (attempt === 1) {
-        await new Promise(r => setTimeout(r, 400));
-        continue;
-      }
-      console.warn(`[StreamPlay Music] Saavn fetch error for "${trimmed}" page ${page}:`, err);
     }
   }
 

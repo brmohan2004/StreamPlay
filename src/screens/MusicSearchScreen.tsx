@@ -1,7 +1,7 @@
 import './MusicSearchScreen.css';
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Music, X, ArrowLeft, History, Play, Pause, Heart, Sparkles, Loader2 } from 'lucide-react';
-import { searchSongsPaged } from '../services/musicService';
+import { Mic, MicOff, Music, X, ArrowLeft, History, Play, Pause, Heart, Sparkles, Loader2, Clapperboard } from 'lucide-react';
+import { searchSongsPaged, deduplicateSongs } from '../services/musicService';
 import { SongItem } from '../types/media';
 import { useMedia } from '../context/MediaContext';
 import { useNavigation } from '../context/NavigationContext';
@@ -24,6 +24,7 @@ const POPULAR_ARTISTS = [
 const SEARCH_CAPSULES = [
   { id: 'All', label: 'All Content' },
   { id: 'Songs', label: 'Songs' },
+  { id: 'Videos', label: '🎬 Video Songs' },
   { id: 'Playlists', label: 'Playlists' },
   { id: 'Artists', label: 'Artists' }
 ];
@@ -34,10 +35,10 @@ export const MusicSearchScreen: React.FC = () => {
     activeCategory,
     setActiveCategory
   } = useNavigation();
-  const { playSong, currentSong, isPlayingSong, toggleSongPlay, toggleLikeSong, isLikedSong } = useMedia();
+  const { playSong, openVideoSong, currentSong, isPlayingSong, toggleSongPlay, toggleLikeSong, isLikedSong } = useMedia();
 
   const [query, setQuery] = useState('');
-  const [selectedCapsule, setSelectedCapsule] = useState<'All' | 'Songs' | 'Playlists' | 'Artists'>('All');
+  const [selectedCapsule, setSelectedCapsule] = useState<'All' | 'Songs' | 'Videos' | 'Playlists' | 'Artists'>('All');
   const [isListening, setIsListening] = useState(false);
   const [songResults, setSongResults] = useState<SongItem[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -67,12 +68,13 @@ export const MusicSearchScreen: React.FC = () => {
   const getCapsuleQuery = (rawQuery: string, capsule: string) => {
     const trimmed = rawQuery.trim();
     if (!trimmed) return '';
+    if (capsule === 'Videos') return `${trimmed} video songs official`;
     if (capsule === 'Playlists') return `${trimmed} playlist`;
     if (capsule === 'Artists') return `${trimmed} artist songs`;
     return trimmed;
   };
 
-  // Perform initial search (page 1, 25 items)
+  // Perform initial search (page 1, 25 items) with automatic deduplication
   const triggerSearch = async (term: string, capsule = selectedCapsule) => {
     const trimmed = term.trim();
     if (!trimmed) {
@@ -99,9 +101,19 @@ export const MusicSearchScreen: React.FC = () => {
 
     try {
       const targetQuery = getCapsuleQuery(trimmed, capsule);
-      const songs = await searchSongsPaged(targetQuery, 1, 25);
-      setSongResults(songs || []);
-      if (!songs || songs.length < 25) {
+      const rawSongs = await searchSongsPaged(targetQuery, 1, 25);
+      // Mark as video items if searching in Videos capsule or query contains video
+      const processed = (rawSongs || []).map(s => {
+        if (capsule === 'Videos' || trimmed.toLowerCase().includes('video')) {
+          return { ...s, isVideo: true };
+        }
+        return s;
+      });
+      // Deduplicate songs so identical tracks from compilation albums are eliminated
+      const uniqueSongs = deduplicateSongs(processed);
+      setSongResults(uniqueSongs);
+
+      if (!rawSongs || rawSongs.length < 25) {
         setHasMore(false);
       }
 
@@ -125,7 +137,7 @@ export const MusicSearchScreen: React.FC = () => {
     }
   };
 
-  // Load next batch of 25 tracks
+  // Load next batch of tracks with deduplication
   const loadNextBatch = async () => {
     if (isLoadingMore || !hasMore || !query.trim() || isSearching) return;
     setIsLoadingMore(true);
@@ -138,11 +150,13 @@ export const MusicSearchScreen: React.FC = () => {
       if (!moreSongs || moreSongs.length === 0) {
         setHasMore(false);
       } else {
-        setSongResults(prev => {
-          const seen = new Set(prev.map(s => s.id));
-          const unique = moreSongs.filter(s => !seen.has(s.id));
-          return [...prev, ...unique];
+        const processed = moreSongs.map(s => {
+          if (selectedCapsule === 'Videos' || query.toLowerCase().includes('video')) {
+            return { ...s, isVideo: true };
+          }
+          return s;
         });
+        setSongResults(prev => deduplicateSongs([...prev, ...processed]));
         setPage(nextPage);
         if (moreSongs.length < 25) {
           setHasMore(false);
@@ -196,8 +210,17 @@ export const MusicSearchScreen: React.FC = () => {
     }
   };
 
-  // Voice Search via Web Speech API
-  const handleVoiceSearch = () => {
+  // Voice Search via Web Speech API with explicit permission prompt
+  const handleVoiceSearch = async () => {
+    // Explicitly prompt for mic permission across mobile browsers & Android WebView
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      try {
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch (err) {
+        console.warn('Microphone permission request:', err);
+      }
+    }
+
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
       alert('Voice search is not supported in this browser. Please type your query.');
       return;
@@ -212,6 +235,7 @@ export const MusicSearchScreen: React.FC = () => {
 
       recognition.onstart = () => setIsListening(true);
       recognition.onend = () => setIsListening(false);
+      recognition.onerror = () => setIsListening(false);
       recognition.onresult = (event: any) => {
         const transcript = event.results[0][0].transcript;
         setQuery(transcript);
@@ -425,6 +449,52 @@ export const MusicSearchScreen: React.FC = () => {
                   const isPlayingThis = isCurrent && isPlayingSong;
                   const isLiked = isLikedSong(song.id);
 
+                  // Distinct Video Song Capsule Card Design
+                  if (song.isVideo || selectedCapsule === 'Videos') {
+                    return (
+                      <div
+                        key={song.id || i}
+                        className="search-video-song-card"
+                        onClick={() => openVideoSong(song, songResults)}
+                      >
+                        <div className="video-card-thumb-container">
+                          <img
+                            src={song.image || '/StreamPlay.png'}
+                            alt={song.title}
+                            className="video-card-thumb-img"
+                            loading="lazy"
+                          />
+                          <div className="video-card-gradient-scrim" />
+                          <div className="video-card-pill-tag">
+                            <Clapperboard size={11} color="#00e5ff" />
+                            <span>4K VIDEO SONG</span>
+                          </div>
+                          <div className="video-card-center-play">
+                            <div className="video-play-pulse-btn">
+                              <Play size={18} fill="#000000" color="#000000" style={{ marginLeft: 2 }} />
+                            </div>
+                          </div>
+                          {song.duration && (
+                            <span className="video-card-duration-badge">
+                              {Math.floor(song.duration / 60)}:{(song.duration % 60).toString().padStart(2, '0')}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="video-card-details">
+                          <div className="video-card-title-row">
+                            <span className="video-card-heading">{song.title}</span>
+                            <span className="video-card-label-badge">Official Video</span>
+                          </div>
+                          <span className="video-card-artist-line">
+                            {song.artist} {song.album ? `• ${song.album}` : ''}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // Standard Minimal Audio Track Row Design
                   return (
                     <div
                       key={song.id || i}

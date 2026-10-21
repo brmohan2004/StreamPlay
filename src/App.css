@@ -46,13 +46,27 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Master App Container */
+/* Master App Container & Mode Theme Gradients */
 .streamplay-app.pure-black-theme {
   min-height: 100vh;
-  background-color: #000000;
   position: relative;
   display: flex;
   flex-direction: column;
+  transition: background 0.4s ease;
+}
+
+/* Movie Mode: Luxury Cyan-Blue light gradient screen background */
+.streamplay-app.mode-movies,
+.mode-movies {
+  background: radial-gradient(circle at 50% -5%, #082645 0%, #041427 35%, #020812 75%, #000000 100%) !important;
+  background-attachment: fixed !important;
+}
+
+/* Music Mode: Spotify/Apple Music Luxury Green Ambient Screen Background */
+.streamplay-app.mode-music,
+.mode-music {
+  background: radial-gradient(circle at 50% -5%, #0d1f12 0%, #061109 35%, #020603 75%, #000000 100%) !important;
+  background-attachment: fixed !important;
 }
 
 .app-main-content {

@@ -1,5 +1,17 @@
 @import '../components/MovieCardsDesign.css';
 
+.movies-home-screen {
+  min-height: 100vh;
+  background: radial-gradient(circle at 50% -5%, #082645 0%, #041427 35%, #020812 75%, #000000 100%);
+  color: #ffffff;
+  position: relative;
+}
+
+.movies-home-scrollable {
+  padding-top: max(env(safe-area-inset-top, 14px), 64px);
+  padding-bottom: 8.5rem;
+}
+
 /* 4. Continue to Watch Section */
 .continue-watching-section {
   padding: 0 1rem 1.5rem;

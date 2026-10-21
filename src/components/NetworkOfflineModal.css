@@ -1,0 +1,150 @@
+/* === StreamPlay Network Offline Overlay & Toast === */
+
+.network-offline-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(3, 6, 12, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.network-offline-card {
+  position: relative;
+  width: 100%;
+  max-width: 380px;
+  background: linear-gradient(145deg, rgba(20, 24, 36, 0.95) 0%, rgba(10, 13, 20, 0.98) 100%);
+  border: 1px solid rgba(255, 60, 60, 0.25);
+  border-radius: 24px;
+  padding: 2.2rem 1.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  box-shadow: 
+    0 24px 60px -10px rgba(0, 0, 0, 0.9),
+    0 0 35px rgba(255, 60, 60, 0.15),
+    inset 0 1px 1px rgba(255, 255, 255, 0.12);
+}
+
+.offline-icon-circle {
+  position: relative;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: rgba(255, 60, 60, 0.12);
+  border: 1px solid rgba(255, 60, 60, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.25rem;
+}
+
+.offline-icon-halo {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 1.5px dashed rgba(255, 60, 60, 0.4);
+  animation: haloRotate 12s linear infinite;
+}
+
+@keyframes haloRotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.wifi-off-icon {
+  color: #ff4d4d;
+  filter: drop-shadow(0 0 10px rgba(255, 77, 77, 0.6));
+}
+
+.offline-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0 0 0.6rem;
+  letter-spacing: -0.02em;
+}
+
+.offline-description {
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.65);
+  margin: 0 0 1.75rem;
+}
+
+.offline-refresh-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 0.85rem 1.5rem;
+  background: linear-gradient(135deg, #00d2ff 0%, #0077b6 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 9999px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(0, 150, 255, 0.35);
+  transition: all 0.2s ease;
+}
+
+.offline-refresh-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 25px rgba(0, 150, 255, 0.5);
+}
+
+.offline-refresh-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.offline-refresh-btn:disabled {
+  opacity: 0.75;
+  cursor: not-allowed;
+}
+
+.refresh-spinner-icon.spin {
+  animation: spinRefresh 0.8s linear infinite;
+}
+
+@keyframes spinRefresh {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Success Reconnected Toast */
+.network-restored-toast {
+  position: fixed;
+  top: max(env(safe-area-inset-top, 14px), 16px);
+  left: 50%;
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(10, 28, 18, 0.95);
+  border: 1px solid rgba(0, 230, 118, 0.4);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  padding: 8px 16px;
+  border-radius: 9999px;
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  box-shadow: 
+    0 10px 25px rgba(0, 0, 0, 0.6),
+    0 0 20px rgba(0, 230, 118, 0.25);
+}

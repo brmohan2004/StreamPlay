@@ -26,7 +26,9 @@ import {
   fetchByOTT,
   fetchTheaterReleases,
   fetchCuratedTrendingDeck,
-  fetchChannelContent
+  fetchChannelContent,
+  getCachedInitialMovies,
+  saveCachedInitialMovies
 } from '../services/movieService';
 
 interface MoviesHomeScreenProps {
@@ -67,12 +69,13 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
   const { continueWatching, primaryLanguage, secondaryLanguage } = useMedia();
   const { forYouMovies, becauseYouWatched, explorationMovies } = useRecommendations();
 
-  const [primaryLangMovies, setPrimaryLangMovies] = useState<MovieItem[]>([]);
-  const [secondaryLangMovies, setSecondaryLangMovies] = useState<MovieItem[]>([]);
+  // Language Curated Movies State initialized with persistent local storage cache
+  const [primaryLangMovies, setPrimaryLangMovies] = useState<MovieItem[]>(() => getCachedInitialMovies('prim_lang_movies'));
+  const [secondaryLangMovies, setSecondaryLangMovies] = useState<MovieItem[]>(() => getCachedInitialMovies('sec_lang_movies'));
   const movieBottomRef = useRef<HTMLDivElement>(null);
 
-  // Curated Trending Deck state (combining 2025/2026 Theater, OTT, primary/secondary lang, high IMDb)
-  const [curatedTrending, setCuratedTrending] = useState<MovieItem[]>([]);
+  // Curated Trending Deck state initialized with persistent cache for instant 0ms render
+  const [curatedTrending, setCuratedTrending] = useState<MovieItem[]>(() => getCachedInitialMovies('curated_trending'));
 
   // OTT Top 20 Language Filter Capsule state
   const [selectedOttLang, setSelectedOttLang] = useState<string>('All');
@@ -97,8 +100,8 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
   const [ottUniverseMovies, setOttUniverseMovies] = useState<MovieItem[]>([]);
   const [isLoadingOtt, setIsLoadingOtt] = useState(false);
 
-  // Theatrical Releases
-  const [theaterReleases, setTheaterReleases] = useState<MovieItem[]>([]);
+  // Theatrical Releases initialized with persistent cache
+  const [theaterReleases, setTheaterReleases] = useState<MovieItem[]>(() => getCachedInitialMovies('theaters'));
 
   // Filter flags
   const isTVFilter = activeCategory === 'Series' || activeCategory === 'Shows' || activeCategory === 'TV';
@@ -150,7 +153,10 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
   useEffect(() => {
     let isMounted = true;
     fetchTheaterReleases().then(res => {
-      if (isMounted) setTheaterReleases(res);
+      if (isMounted && res.length > 0) {
+        setTheaterReleases(res);
+        saveCachedInitialMovies('theaters', res);
+      }
     });
     return () => {
       isMounted = false;
@@ -163,6 +169,7 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
     fetchCuratedTrendingDeck(primaryLanguage, secondaryLanguage).then(res => {
       if (isMounted && res.length > 0) {
         setCuratedTrending(res);
+        saveCachedInitialMovies('curated_trending', res);
       }
     });
     return () => {
@@ -275,8 +282,14 @@ export const MoviesHomeScreen: React.FC<MoviesHomeScreenProps> = ({
           fetchLanguageMovies(secondaryLanguage)
         ]);
         if (isMounted) {
-          setPrimaryLangMovies(primList);
-          setSecondaryLangMovies(secList);
+          if (primList && primList.length > 0) {
+            setPrimaryLangMovies(primList);
+            saveCachedInitialMovies('prim_lang_movies', primList);
+          }
+          if (secList && secList.length > 0) {
+            setSecondaryLangMovies(secList);
+            saveCachedInitialMovies('sec_lang_movies', secList);
+          }
         }
       } catch (err) {
         console.error('Failed to load language movies:', err);

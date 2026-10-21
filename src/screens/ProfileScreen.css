@@ -1,15 +1,20 @@
-/* 9. Profile Screen */
+/* 9. Profile Screen, Playlists & Watch Later Containers */
 .profile-screen-container,
 .playlist-screen-container,
 .watchlater-screen-container {
   min-height: 100vh;
-  background: #000000;
+  background: transparent;
+  color: #ffffff;
+  position: relative;
 }
 
 .profile-scroll-body,
 .playlist-scroll-body,
 .watchlater-scroll-body {
-  padding: 1.25rem 1rem 6.5rem;
+  padding-top: max(env(safe-area-inset-top, 14px), 64px);
+  padding-left: 1rem;
+  padding-right: 1rem;
+  padding-bottom: 6.5rem;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
