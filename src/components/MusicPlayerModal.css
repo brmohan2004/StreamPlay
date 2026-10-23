@@ -1,11 +1,59 @@
-/* Fullscreen Immersive Music Player Modal Overlay */
+/* Fullscreen Immersive Music Player Modal Sheet */
+.music-player-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
 .music-player-modal-overlay {
   position: fixed;
   inset: 0;
   z-index: 1000;
-  background: radial-gradient(circle at 50% 20%, #152210 0%, #0a1107 45%, #000000 100%);
+  background: radial-gradient(circle at 50% 15%, #16260f 0%, #0b1408 45%, #000000 100%);
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
+  overflow: hidden;
   user-select: none;
+  touch-action: none; /* Prevents mobile browser scrolling so swipe down sheet works butter-smooth */
+  border-top-left-radius: 26px;
+  border-top-right-radius: 26px;
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.9), 0 -1px 0 rgba(255, 255, 255, 0.12);
+  will-change: transform;
+}
+
+/* Grab handle bar at the top of the sheet */
+.music-sheet-drag-handle-wrap {
+  width: 100%;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  flex-shrink: 0;
+  touch-action: none;
+  padding-top: max(8px, env(safe-area-inset-top, 8px));
+  z-index: 30;
+  outline: none;
+}
+
+.music-sheet-drag-handle-wrap:active {
+  cursor: grabbing;
+}
+
+.music-sheet-drag-pill {
+  width: 44px;
+  height: 4.5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.32);
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.music-sheet-drag-handle-wrap:hover .music-sheet-drag-pill,
+.music-sheet-drag-handle-wrap:active .music-sheet-drag-pill {
+  background: #c8ff00;
+  transform: scaleX(1.18);
+  box-shadow: 0 0 12px rgba(200, 255, 0, 0.7);
 }

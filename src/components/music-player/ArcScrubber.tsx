@@ -70,6 +70,7 @@ export const ArcScrubber: React.FC<ArcScrubberProps> = ({
 
   const handlePointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
     e.preventDefault();
+    e.stopPropagation();
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
     } catch {}
@@ -82,6 +83,7 @@ export const ArcScrubber: React.FC<ArcScrubberProps> = ({
   };
 
   const handlePointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    e.stopPropagation();
     if (!isDragging) return;
     const newRatio = calculateRatioFromEvent(e.clientX, e.clientY);
     setDragRatio(newRatio);
@@ -91,6 +93,7 @@ export const ArcScrubber: React.FC<ArcScrubberProps> = ({
   };
 
   const handlePointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
+    e.stopPropagation();
     if (!isDragging) return;
     try {
       e.currentTarget.releasePointerCapture(e.pointerId);
@@ -103,7 +106,8 @@ export const ArcScrubber: React.FC<ArcScrubberProps> = ({
     }
   };
 
-  const handlePointerCancel = () => {
+  const handlePointerCancel = (e: React.PointerEvent<SVGSVGElement>) => {
+    e.stopPropagation();
     setIsDragging(false);
     setDragRatio(null);
   };

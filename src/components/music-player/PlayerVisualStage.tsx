@@ -81,6 +81,7 @@ export const PlayerVisualStage: React.FC<PlayerVisualStageProps> = ({ currentSon
             src={currentSong.image}
             alt={currentSong.title}
             className="player-artwork-image"
+            draggable={false}
           />
           <div className="artwork-bokeh-overlay" />
           <div className="artwork-vignette" />
