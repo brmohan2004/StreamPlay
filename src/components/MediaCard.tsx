@@ -12,7 +12,7 @@ interface MediaCardProps {
 }
 
 export const MediaCard: React.FC<MediaCardProps> = ({ item, rank }) => {
-  const { openMovieDetails } = useMedia();
+  const { openMovieDetails, openMoviePlayer } = useMedia();
   const { setActiveScreen } = useNavigation();
 
   const handleCardClick = () => {
@@ -59,9 +59,9 @@ export const MediaCard: React.FC<MediaCardProps> = ({ item, rank }) => {
               whileTap={{ scale: 0.9 }}
               onClick={e => {
                 e.stopPropagation();
-                handleCardClick();
+                openMoviePlayer(item);
               }}
-              title="View Details & Watch"
+              title="Instant Watch Free"
             >
               <Play size={18} fill="#000000" color="#000000" style={{ marginLeft: 2 }} />
             </motion.button>

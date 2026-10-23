@@ -125,20 +125,22 @@ export class AudioBufferWatchdog {
   }
 }
 
+import { STREAMING_SERVERS } from './movieService';
+
 /**
  * VideoBufferWatchdog
- * Manages silent background switching across the 30 streaming video servers.
+ * Manages silent background switching across streaming video servers.
  * Preserves the current movie timestamp so the switch is imperceptible.
  */
 export class VideoBufferWatchdog {
   private currentServerIndex = 0;
-  private totalServers = 30;
+  private totalServers = STREAMING_SERVERS.length;
   private stallTimer: ReturnType<typeof setTimeout> | null = null;
   private onServerChange: (newServerIndex: number) => void;
 
   constructor(
     initialServerIndex = 0,
-    totalServers = 30,
+    totalServers = STREAMING_SERVERS.length,
     onServerChange: (newServerIndex: number) => void
   ) {
     this.currentServerIndex = initialServerIndex;

@@ -249,6 +249,7 @@
   align-items: center;
   gap: 0.85rem;
   max-width: 60%;
+  padding-left: 3.2rem;
 }
 
 .player-title-block {
@@ -773,4 +774,177 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* Aspect Ratio HUD Notification Toast */
+.aspect-ratio-hud-toast {
+  position: absolute;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(10, 16, 26, 0.94);
+  border: 1.5px solid #00d2ff;
+  box-shadow: 0 0 25px rgba(0, 210, 255, 0.4), inset 0 0 10px rgba(0, 210, 255, 0.15);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  padding: 0.5rem 1.2rem;
+  border-radius: 9999px;
+  color: #00d2ff;
+  font-family: var(--font-display, 'Outfit', sans-serif);
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* Playback Speed Selector Pills */
+.speed-options-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  overflow-x: auto;
+  padding: 0.25rem 0.2rem 0.6rem;
+  scrollbar-width: none;
+}
+
+.speed-options-row::-webkit-scrollbar {
+  display: none;
+}
+
+.speed-pill-btn {
+  padding: 0.4rem 0.75rem;
+  border-radius: 18px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #d4d4d8;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+}
+
+.speed-pill-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  border-color: #c8ff00;
+}
+
+.speed-pill-btn.active {
+  background: rgba(200, 255, 0, 0.2);
+  border-color: #c8ff00;
+  color: #c8ff00;
+  box-shadow: 0 0 12px rgba(200, 255, 0, 0.3);
+}
+
+/* Season Tabs in Episode Drawer */
+.episode-season-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  overflow-x: auto;
+  padding: 0.2rem 0.1rem 0.6rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 0.4rem;
+  scrollbar-width: none;
+}
+
+.episode-season-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.season-tab-btn {
+  padding: 0.4rem 0.9rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #a1a1aa;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.season-tab-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.season-tab-btn.active {
+  background: linear-gradient(135deg, rgba(200, 255, 0, 0.22) 0%, rgba(0, 210, 255, 0.22) 100%);
+  border-color: #c8ff00;
+  color: #c8ff00;
+  font-weight: 800;
+  box-shadow: 0 0 14px rgba(200, 255, 0, 0.25);
+}
+
+/* Multi-Audio Quick Switchers in Language Menu */
+.multi-audio-recommend-card {
+  background: linear-gradient(135deg, rgba(0, 210, 255, 0.08) 0%, rgba(200, 255, 0, 0.06) 100%);
+  border: 1px solid rgba(0, 210, 255, 0.28);
+  border-radius: 12px;
+  padding: 0.65rem 0.85rem;
+  margin-bottom: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.multi-audio-recommend-title {
+  font-size: 0.73rem;
+  font-weight: 800;
+  color: #00d2ff;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.multi-audio-recommend-desc {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.35;
+  margin: 0;
+}
+
+.multi-audio-pills-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.2rem;
+}
+
+.multi-audio-server-badge-btn {
+  padding: 0.35rem 0.65rem;
+  border-radius: 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: rgba(0, 210, 255, 0.16);
+  border: 1px solid rgba(0, 210, 255, 0.4);
+  color: #ffffff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: all 0.2s ease;
+}
+
+.multi-audio-server-badge-btn:hover {
+  background: rgba(0, 210, 255, 0.35);
+  transform: translateY(-1px);
+  border-color: #00d2ff;
+}
+
+.multi-audio-server-badge-btn.active {
+  background: #00d2ff;
+  color: #000000;
+  font-weight: 800;
+}
+
 

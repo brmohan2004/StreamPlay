@@ -4,7 +4,7 @@ import { TopAppHeader } from '../components/TopAppHeader';
 import { SongItem } from '../types/media';
 import { useMedia } from '../context/MediaContext';
 import { useNavigation } from '../context/NavigationContext';
-import { ChevronLeft, ChevronRight, Mic2, Play, Pause } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Mic2, Play, Pause, ListPlus } from 'lucide-react';
 import { DailyMixFannedDeck } from '../components/DailyMixFannedDeck';
 import {
   fetchVideoSongs,
@@ -40,7 +40,7 @@ export const MusicHomeScreen: React.FC<MusicHomeScreenProps> = ({
   trendingSongs,
   recentSongs
 }) => {
-  const { playSong, openMusicPlayer, openVideoSong, primaryLanguage, secondaryLanguage, userLocation, currentSong, isPlayingSong, toggleSongPlay } = useMedia();
+  const { playSong, openMusicPlayer, openVideoSong, primaryLanguage, secondaryLanguage, userLocation, currentSong, isPlayingSong, toggleSongPlay, openAddToPlaylist } = useMedia();
   const { setActiveScreen, activeCategory, setActiveCategory } = useNavigation();
   const { dailyMix, forYouSongs, becauseYouListened, discoverWeekly } = useRecommendations();
 
@@ -572,6 +572,19 @@ export const MusicHomeScreen: React.FC<MusicHomeScreenProps> = ({
                       </div>
 
                       <div className="track-right-actions">
+                        <button
+                          type="button"
+                          className="track-playlist-btn"
+                          onClick={e => {
+                            e.stopPropagation();
+                            openAddToPlaylist(song);
+                          }}
+                          title="Add to Playlist"
+                          aria-label="Add to Playlist"
+                        >
+                          <ListPlus size={16} color="rgba(255,255,255,0.7)" />
+                        </button>
+
                         <button
                           type="button"
                           className="track-circle-play-btn"

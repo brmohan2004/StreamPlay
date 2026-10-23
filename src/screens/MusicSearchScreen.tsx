@@ -10,6 +10,7 @@ import {
   Play,
   Pause,
   Heart,
+  ListPlus,
   Sparkles,
   Loader2,
   Clapperboard,
@@ -64,6 +65,7 @@ export const MusicSearchScreen: React.FC = () => {
     toggleSongPlay,
     toggleLikeSong,
     isLikedSong,
+    openAddToPlaylist,
     primaryLanguage
   } = useMedia();
 
@@ -607,6 +609,19 @@ export const MusicSearchScreen: React.FC = () => {
             aria-label={isLiked ? 'Unlike track' : 'Like track'}
           >
             <Heart size={16} fill={isLiked ? '#c8ff00' : 'none'} color={isLiked ? '#c8ff00' : 'rgba(255,255,255,0.45)'} />
+          </button>
+
+          <button
+            type="button"
+            className="track-playlist-btn"
+            onClick={e => {
+              e.stopPropagation();
+              openAddToPlaylist(song);
+            }}
+            title="Add to Playlist"
+            aria-label="Add to Playlist"
+          >
+            <ListPlus size={16} color="rgba(255,255,255,0.7)" />
           </button>
 
           <button

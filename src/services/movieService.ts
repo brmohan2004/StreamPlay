@@ -105,33 +105,26 @@ export async function fetchTopMovies(): Promise<MovieItem[]> {
   const localCached = getCachedInitialMovies('top_movies');
 
   try {
-    const [topBaseRes, year26Res, year25Res] = await Promise.all([
+    const [topBaseRes, year25Res] = await Promise.all([
       fetch(`${CINEMETA_BASE}/catalog/movie/top.json`).then(r => r.json()).catch(() => ({ metas: [] })),
-      fetch(`${CINEMETA_BASE}/catalog/movie/year/genre=2026.json`).then(r => r.json()).catch(() => ({ metas: [] })),
       fetch(`${CINEMETA_BASE}/catalog/movie/year/genre=2025.json`).then(r => r.json()).catch(() => ({ metas: [] }))
     ]);
 
     const baseMovies = (topBaseRes.metas || []).map((m: any) => formatMovie(m, 'movie'));
-    const year26Movies = (year26Res.metas || []).map((m: any) => formatMovie(m, 'movie'));
     const year25Movies = (year25Res.metas || []).map((m: any) => formatMovie(m, 'movie'));
 
-    // Web trending: true real-time mix of current theatrical releases & hot OTT trending
-    const pool = [...year26Movies.slice(0, 10), ...year25Movies.slice(0, 15), ...baseMovies];
+    // Prioritize confirmed released blockbusters and active streaming hits
+    const pool = [...baseMovies.slice(0, 15), ...year25Movies.slice(0, 15), ...baseMovies.slice(15)];
     const seen = new Set<string>();
     const trendingRecent: MovieItem[] = [];
 
     for (const m of pool) {
       if (!m.id || seen.has(m.id)) continue;
       seen.add(m.id);
-
-      const y = parseInt(m.releaseInfo || '0') || 0;
-      // Strictly filter to current/recent titles (2025-2026) to prevent ancient movies
-      if (y >= 2025) {
-        trendingRecent.push(m);
-      }
+      trendingRecent.push(m);
     }
 
-    const result = trendingRecent.length >= 10 ? trendingRecent : pool.filter(m => (parseInt(m.releaseInfo || '0') || 0) >= 2024);
+    const result = trendingRecent.length > 0 ? trendingRecent : baseMovies;
     if (result.length > 0) {
       cachedTopMovies = { dateKey: todayKey, items: result };
       saveCachedInitialMovies('top_movies', result);
@@ -820,23 +813,31 @@ export interface StreamingServerMeta {
 }
 
 export const STREAMING_SERVERS: StreamingServerMeta[] = [
-  // 1. AutoEmbed CO (Ultra High-Speed, Multi-Audio & Subtitles, Zero Sandbox Error)
+  // 1. VidLink Pro (Modern 4K HTML5 Player — Next.js Clean Player, Zero Popunders, Multi-Subtitles)
   {
     id: 0,
-    name: 'AutoEmbed (Multi-Audio & Subs)',
+    name: 'VidLink Pro (Fast & CC)',
     isNoAds: true,
-    specialty: 'Multi-language audio & subtitles with zero sandbox blocks',
-    getUrl: (id, _, type, s, e) => {
-      const isImdb = id.startsWith('tt');
-      const prefix = isImdb ? 'imdb/' : 'tmdb/';
-      return type === 'series'
-        ? `https://autoembed.co/tv/${prefix}${id}-${s}-${e}`
-        : `https://autoembed.co/movie/${prefix}${id}`;
-    }
+    specialty: 'Modern Next.js HTML5 player with multi-subtitles, multi-audio & instant 1080p/4K',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://vidlink.pro/tv/${id}/${s}/${e}`
+        : `https://vidlink.pro/movie/${id}`
   },
-  // 2. 2Embed CC (Multi-Language & Audio Tracks)
+  // 2. VidSrc PM (Fast Origin Cluster — Verified 200 OK, Zero Black Screen, Instant Playback)
   {
     id: 1,
+    name: 'VidSrc PM (Fast Origin)',
+    isNoAds: true,
+    specialty: 'High-speed origin cluster with instant playback and zero black screen',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://vidsrc.pm/embed/tv/${id}/${s}/${e}`
+        : `https://vidsrc.pm/embed/movie/${id}`
+  },
+  // 3. 2Embed CC (Multi-Language & Audio Tracks — High Compatibility)
+  {
+    id: 2,
     name: '2Embed CC (Multi-Audio)',
     isNoAds: true,
     specialty: 'High compatibility multi-audio & CC subtitles',
@@ -845,118 +846,41 @@ export const STREAMING_SERVERS: StreamingServerMeta[] = [
         ? `https://www.2embed.cc/embedtv/${id}&s=${s}&e=${e}`
         : `https://www.2embed.cc/embed/${id}`
   },
-  // 3. VidSrc PM (Origin Cluster)
-  {
-    id: 2,
-    name: 'VidSrc PM (Origin Cluster)',
-    isNoAds: true,
-    specialty: 'Fast origin cluster with zero popup breakout',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://vidsrc.pm/embed/tv/${id}/${s}/${e}`
-        : `https://vidsrc.pm/embed/movie/${id}`
-  },
-  // 4. VidBinge (Clean Ad-Free Player)
+  // 4. AutoEmbed CO (Ultra-Fast Adaptive CDN)
   {
     id: 3,
-    name: 'VidBinge (Zero Ads & CC)',
+    name: 'AutoEmbed CO (Fast CDN)',
     isNoAds: true,
-    specialty: 'Clean ad-free HTML5 stream player with subtitle selection',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://vidbinge.dev/embed/tv/${id}/${s}/${e}`
-        : `https://vidbinge.dev/embed/movie/${id}`
-  },
-  // 5. VidSrc NL (High Bitrate Stream)
-  {
-    id: 4,
-    name: 'VidSrc NL (High Bitrate)',
-    isNoAds: true,
-    specialty: 'Direct smooth stream with multi-resolution',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://player.vidsrc.nl/embed/tv/${id}/${s}/${e}`
-        : `https://player.vidsrc.nl/embed/movie/${id}`
-  },
-  // 6. AutoEmbed TO (Backup Mirror)
-  {
-    id: 5,
-    name: 'AutoEmbed Mirror (TO)',
-    isNoAds: true,
-    specialty: 'High-availability mirror node for AutoEmbed',
+    specialty: 'Ultra-fast adaptive streaming with multi-resolution support',
     getUrl: (id, _, type, s, e) => {
       const isImdb = id.startsWith('tt');
       const prefix = isImdb ? 'imdb/' : 'tmdb/';
       return type === 'series'
-        ? `https://autoembed.to/tv/${prefix}${id}-${s}-${e}`
-        : `https://autoembed.to/movie/${prefix}${id}`;
+        ? `https://autoembed.co/tv/${prefix}${id}-${s}-${e}`
+        : `https://autoembed.co/movie/${prefix}${id}`;
     }
   },
-  // 7. 111Movies (Asian & Regional Cinema)
+  // 5. VidSrc Net (Direct Origin Mirror)
   {
-    id: 6,
-    name: '111Movies (Asian & Regional)',
-    isNoAds: false,
-    specialty: 'Regional Indian & Asian cinema catalog',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://111movies.com/tv/${id}/${s}/${e}`
-        : `https://111movies.com/movie/${id}`
-  },
-  // 8. VidLink Pro (Alternative Mirror)
-  {
-    id: 7,
-    name: 'VidLink Pro (Alternative)',
-    isNoAds: false,
-    specialty: 'High-speed 4K/1080p mirror',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://vidlink.pro/tv/${id}/${s}/${e}`
-        : `https://vidlink.pro/movie/${id}`
-  },
-  // 9. VidSrc CC (Clean 1080p)
-  {
-    id: 8,
-    name: 'VidSrc CC (Clean 1080p)',
+    id: 4,
+    name: 'VidSrc Net (Direct Mirror)',
     isNoAds: true,
-    specialty: 'High-bitrate pristine 1080p stream with multi-audio',
+    specialty: 'Direct origin cluster mirror with multi-language subs',
     getUrl: (id, _, type, s, e) =>
       type === 'series'
-        ? `https://vidsrc.cc/v2/embed/tv/${id}/${s}/${e}`
-        : `https://vidsrc.cc/v2/embed/movie/${id}`
+        ? `https://vidsrc.net/embed/tv/${id}/${s}/${e}`
+        : `https://vidsrc.net/embed/movie/${id}`
   },
-  // 10. SmashyStream (AnyEmbed)
+  // 6. VidSrc IN (Backup Origin Cluster)
   {
-    id: 9,
-    name: 'SmashyStream (Ultra Clean)',
+    id: 5,
+    name: 'VidSrc IN (High Availability)',
     isNoAds: true,
-    specialty: 'High-speed cluster with multiple audio & CC tracks',
+    specialty: 'Direct origin cluster with resilient playback',
     getUrl: (id, _, type, s, e) =>
       type === 'series'
-        ? `https://embed.smashystream.com/playere.php?tmdb=${id}&season=${s}&episode=${e}`
-        : `https://embed.smashystream.com/playere.php?tmdb=${id}`
-  },
-  // 11. MoviesAPI (Ad-Free Fast CDN)
-  {
-    id: 10,
-    name: 'MoviesAPI (No Ads)',
-    isNoAds: true,
-    specialty: 'Multi-resolution streaming with adaptive bitrate',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://moviesapi.club/tv/${id}-${s}-${e}`
-        : `https://moviesapi.club/movie/${id}`
-  },
-  // 12. MultiEmbed (Universal Mirrors)
-  {
-    id: 11,
-    name: 'MultiEmbed (Universal Mirrors)',
-    isNoAds: true,
-    specialty: 'Dynamic multi-source selector with auto-fallback',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${s}&e=${e}`
-        : `https://multiembed.mov/?video_id=${id}&tmdb=1`
+        ? `https://vidsrc.in/embed/tv/${id}/${s}/${e}`
+        : `https://vidsrc.in/embed/movie/${id}`
   }
 ];
 

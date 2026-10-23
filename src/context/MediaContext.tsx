@@ -98,11 +98,17 @@ interface MediaContextType {
 
   // Playlists
   playlists: { id: string; name: string; songs: SongItem[]; cover?: string }[];
-  createPlaylist: (name: string) => void;
+  createPlaylist: (name: string, initialSong?: SongItem) => void;
   editPlaylist: (playlistId: string, newName: string) => void;
   deletePlaylist: (playlistId: string) => void;
   removeSongFromPlaylist: (playlistId: string, songId: string) => void;
   addSongToPlaylist: (playlistId: string, song: SongItem) => void;
+  isSongInPlaylist: (playlistId: string, songId: string | number) => boolean;
+
+  // Add to Playlist Modal state
+  songToAddToPlaylist: SongItem | null;
+  openAddToPlaylist: (song: SongItem) => void;
+  closeAddToPlaylist: () => void;
 }
 
 const MediaContext = createContext<MediaContextType | undefined>(undefined);
@@ -295,6 +301,22 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   });
 
+  // Add to Playlist modal state
+  const [songToAddToPlaylist, setSongToAddToPlaylist] = useState<SongItem | null>(null);
+
+  const openAddToPlaylist = (song: SongItem) => {
+    setSongToAddToPlaylist(song);
+  };
+
+  const closeAddToPlaylist = () => {
+    setSongToAddToPlaylist(null);
+  };
+
+  const isSongInPlaylist = (playlistId: string, songId: string | number) => {
+    const pl = playlists.find(p => p.id === playlistId);
+    return pl ? pl.songs.some(s => String(s.id) === String(songId)) : false;
+  };
+
   const toggleWatchLater = (movie: MovieItem) => {
     setWatchLater(prev => {
       const exists = prev.some(m => m.id === movie.id);
@@ -332,18 +354,34 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
   };
 
-  const createPlaylist = (name: string) => {
+  const createPlaylist = (name: string, initialSong?: SongItem) => {
     if (!name.trim()) return;
     const newPl = {
       id: `pl-${Date.now()}`,
       name: name.trim(),
-      songs: []
+      songs: initialSong ? [initialSong] : [],
+      cover: initialSong?.image
     };
     setPlaylists(prev => {
       const updated = [...prev, newPl];
       localStorage.setItem('streamplay_playlists', JSON.stringify(updated));
       return updated;
     });
+
+    if (initialSong) {
+      logSignal({
+        type: 'add_playlist',
+        itemId: initialSong.id,
+        itemType: 'song',
+        timestamp: Date.now(),
+        metadata: {
+          artist: initialSong.artist,
+          language: initialSong.language,
+          query: initialSong.title,
+        },
+      });
+      notifyRecUpdate();
+    }
   };
 
   const editPlaylist = (playlistId: string, newName: string) => {
@@ -1089,6 +1127,10 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         deletePlaylist,
         removeSongFromPlaylist,
         addSongToPlaylist,
+        isSongInPlaylist,
+        songToAddToPlaylist,
+        openAddToPlaylist,
+        closeAddToPlaylist,
         userLocation,
         changeUserLocation,
         videoQuality,

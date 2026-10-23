@@ -4,7 +4,8 @@ import {
   ChevronDown,
   MoreHorizontal,
   Video,
-  Music2
+  Music2,
+  ListPlus
 } from 'lucide-react';
 import { useMedia } from '../context/MediaContext';
 import { PlayerVisualStage } from '../components/music-player/PlayerVisualStage';
@@ -36,7 +37,8 @@ export const MusicPlayerScreen: React.FC<MusicPlayerScreenProps> = ({ onClose })
     toggleLikeSong,
     isLikedSong,
     songQueue,
-    playSong
+    playSong,
+    openAddToPlaylist
   } = useMedia();
 
   const [showOptions, setShowOptions] = useState(false);
@@ -83,19 +85,43 @@ export const MusicPlayerScreen: React.FC<MusicPlayerScreenProps> = ({ onClose })
           </button>
         </div>
 
-        <button
-          className="player-round-btn"
-          onClick={() => setShowOptions(prev => !prev)}
-          aria-label="Options"
-          title="More Options"
-        >
-          <MoreHorizontal size={20} />
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button
+            className="player-round-btn"
+            onClick={() => openAddToPlaylist(currentSong)}
+            aria-label="Add to Playlist"
+            title="Add to Playlist"
+          >
+            <ListPlus size={20} />
+          </button>
+
+          <button
+            className="player-round-btn"
+            onClick={() => setShowOptions(prev => !prev)}
+            aria-label="Options"
+            title="More Options"
+          >
+            <MoreHorizontal size={20} />
+          </button>
+        </div>
       </div>
 
       {/* Options Dropdown */}
       {showOptions && (
         <div className="player-options-menu">
+          <div
+            className="option-row"
+            style={{ cursor: 'pointer' }}
+            onClick={() => {
+              setShowOptions(false);
+              openAddToPlaylist(currentSong);
+            }}
+          >
+            <span style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#c8ff00' }}>
+              <ListPlus size={16} /> Add to Playlist
+            </span>
+            <span className="text-lime font-bold">+</span>
+          </div>
           <div className="option-row">
             <span>Lossless Quality</span>
             <span className="text-lime font-bold">320kbps CD Quality</span>

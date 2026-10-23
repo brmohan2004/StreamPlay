@@ -1,5 +1,5 @@
 import './CustomVideoPlayer.css';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Hls from 'hls.js';
 import {
@@ -19,7 +19,9 @@ import {
   List,
   Server,
   Play,
-  Pause
+  Pause,
+  Gauge,
+  Sparkles
 } from 'lucide-react';
 import { useMedia } from '../context/MediaContext';
 import { getStreamEmbedUrl, STREAMING_SERVERS, fetchMovieDetails } from '../services/movieService';
@@ -55,28 +57,45 @@ export const CustomVideoPlayer: React.FC = () => {
   const [hasPlayerCrashed, setHasPlayerCrashed] = useState(false);
   const [serverToast, setServerToast] = useState<string | null>(null);
   const [showSlowNotice, setShowSlowNotice] = useState(false);
+  const [aspectRatioToast, setAspectRatioToast] = useState<string | null>(null);
 
-  const handleSwitchServer = (nextIdx: number) => {
+  // Playback speed state (0.5x to 2x)
+  const [playbackSpeed, setPlaybackSpeed] = useState<number>(1);
+  const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 2];
+
+  const handleSwitchServer = useCallback((nextIdx: number) => {
     const safeIdx = Math.abs(nextIdx) % STREAMING_SERVERS.length;
     const targetServer = STREAMING_SERVERS[safeIdx];
     setVideoProviderIndex(safeIdx);
     setIsLoading(true);
     setHasPlayerCrashed(false);
     setShowSlowNotice(false);
-    setServerToast(`Switched to ${targetServer?.name || 'Mirror Server'}`);
+    setServerToast(`Switched to Mirror: ${targetServer?.name || 'Server'}`);
     setTimeout(() => {
       setServerToast(null);
     }, 2800);
-  };
+  }, [setVideoProviderIndex]);
 
-  // Auto-dismiss loading curtain after 2.5s so iframe controls are instantly visible & responsive
+  // Loading curtain auto-dismiss & slow stream watchdog
   useEffect(() => {
     if (!isVideoModalOpen) return;
     setIsLoading(true);
+    setShowSlowNotice(false);
+
+    // Auto-dismiss loading curtain after 2.5s so iframe controls are instantly visible & responsive
     const dismissTimer = setTimeout(() => {
       setIsLoading(false);
     }, 2500);
-    return () => clearTimeout(dismissTimer);
+
+    // Watchdog: If server buffer or connection is slow after 4.5s, suggest next mirror server
+    const slowTimer = setTimeout(() => {
+      setShowSlowNotice(true);
+    }, 4500);
+
+    return () => {
+      clearTimeout(dismissTimer);
+      clearTimeout(slowTimer);
+    };
   }, [isVideoModalOpen, videoProviderIndex, activeMovie?.id, activeSeason, activeEpisode]);
 
   // Popup Guard: Prevent external embed ads from opening new Chrome tabs/windows
@@ -110,6 +129,7 @@ export const CustomVideoPlayer: React.FC = () => {
   const [showHealthModal, setShowHealthModal] = useState(false);
   const [showEpisodeDrawer, setShowEpisodeDrawer] = useState(false);
   const [dynamicEpisodes, setDynamicEpisodes] = useState<EpisodeItem[]>([]);
+  const [drawerSeasonTab, setDrawerSeasonTab] = useState<number>(activeSeason);
 
   useEffect(() => {
     if (!activeMovie || activeMovie.type !== 'series') return;
@@ -127,6 +147,29 @@ export const CustomVideoPlayer: React.FC = () => {
       isMounted = false;
     };
   }, [activeMovie]);
+
+  // Calculate distinct available seasons and episodes grouped by season
+  const allEpisodes = useMemo(() => {
+    if (activeMovie?.videos && activeMovie.videos.length > 0) return activeMovie.videos;
+    return dynamicEpisodes;
+  }, [activeMovie?.videos, dynamicEpisodes]);
+
+  const availableSeasons = useMemo(() => {
+    const seasonsSet = new Set<number>();
+    allEpisodes.forEach(ep => {
+      if (ep.season) seasonsSet.add(ep.season);
+    });
+    return seasonsSet.size > 0 ? Array.from(seasonsSet).sort((a, b) => a - b) : [1];
+  }, [allEpisodes]);
+
+  useEffect(() => {
+    setDrawerSeasonTab(activeSeason);
+  }, [activeSeason, showEpisodeDrawer]);
+
+  const filteredEpisodes = useMemo(() => {
+    const eps = allEpisodes.filter(ep => (ep.season || 1) === drawerSeasonTab);
+    return eps.length > 0 ? eps : allEpisodes;
+  }, [allEpisodes, drawerSeasonTab]);
 
   // Player Settings
   const [selectedQuality, setSelectedQuality] = useState('1080p FHD');
@@ -215,6 +258,52 @@ export const CustomVideoPlayer: React.FC = () => {
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
+
+  // Back gesture & hardware button interceptor for inner player drawers & menus
+  useEffect(() => {
+    if (!isVideoModalOpen) return;
+
+    const handleBackEvent = (e: Event) => {
+      if (showEpisodeDrawer) {
+        e.preventDefault();
+        setShowEpisodeDrawer(false);
+        return;
+      }
+      if (showQualityMenu) {
+        e.preventDefault();
+        setShowQualityMenu(false);
+        return;
+      }
+      if (showLangMenu) {
+        e.preventDefault();
+        setShowLangMenu(false);
+        return;
+      }
+      if (showHealthModal) {
+        e.preventDefault();
+        setShowHealthModal(false);
+        return;
+      }
+      if (isFullscreen) {
+        e.preventDefault();
+        toggleFullscreen();
+        return;
+      }
+      // If no sub-menus or fullscreen are active, let default handler close the player
+    };
+
+    window.addEventListener('streamplay-back-action', handleBackEvent);
+    return () => {
+      window.removeEventListener('streamplay-back-action', handleBackEvent);
+    };
+  }, [
+    isVideoModalOpen,
+    showEpisodeDrawer,
+    showQualityMenu,
+    showLangMenu,
+    showHealthModal,
+    isFullscreen
+  ]);
 
   // Native HLS Video Stream Mounting Lifecycle
   useEffect(() => {
@@ -309,15 +398,57 @@ export const CustomVideoPlayer: React.FC = () => {
     setIsMuted(prev => !prev);
   };
 
-  if (!isVideoModalOpen || !activeMovie) return null;
+  const currentEmbedUrl = activeMovie
+    ? getStreamEmbedUrl(
+        activeMovie.id,
+        activeMovie.type,
+        videoProviderIndex,
+        activeSeason,
+        activeEpisode
+      )
+    : '';
 
-  const currentEmbedUrl = getStreamEmbedUrl(
-    activeMovie.id,
-    activeMovie.type,
-    videoProviderIndex,
-    activeSeason,
-    activeEpisode
-  );
+  // Playback rate synchronization for native video
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.playbackRate = isHolding2X ? 2.0 : playbackSpeed;
+    }
+  }, [isHolding2X, playbackSpeed]);
+
+  // Keyboard controls listener
+  useEffect(() => {
+    if (!isVideoModalOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeTag = (document.activeElement?.tagName || '').toLowerCase();
+      if (activeTag === 'input' || activeTag === 'textarea') return;
+
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeMoviePlayer();
+      } else if (e.key === ' ' || e.key === 'k') {
+        e.preventDefault();
+        togglePlayPause();
+      } else if (e.key === 'f' || e.key === 'F') {
+        e.preventDefault();
+        toggleFullscreen();
+      } else if (e.key === 'm' || e.key === 'M') {
+        e.preventDefault();
+        toggleMute();
+      } else if (e.key === 's' || e.key === 'S') {
+        e.preventDefault();
+        handleSwitchServer(videoProviderIndex + 1);
+      } else if (e.key === 'a' || e.key === 'A') {
+        e.preventDefault();
+        cycleAspectRatio();
+      } else if (e.key === 'l' || e.key === 'L') {
+        e.preventDefault();
+        setIsLocked(prev => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isVideoModalOpen, videoProviderIndex, isPlaying, isMuted, aspectRatioMode, isLocked, closeMoviePlayer, handleSwitchServer]);
 
   const toggleFullscreen = () => {
     if (!playerContainerRef.current) return;
@@ -365,8 +496,22 @@ export const CustomVideoPlayer: React.FC = () => {
   const cycleAspectRatio = () => {
     const modes: ('fit' | 'fill' | 'zoom' | '16-9')[] = ['fit', 'fill', 'zoom', '16-9'];
     const nextIdx = (modes.indexOf(aspectRatioMode) + 1) % modes.length;
-    setAspectRatioMode(modes[nextIdx]);
+    const nextMode = modes[nextIdx];
+    setAspectRatioMode(nextMode);
+
+    const labels: Record<string, string> = {
+      fit: 'Screen Aspect: FIT (Original)',
+      fill: 'Screen Aspect: FILL (1.08x Stretch)',
+      zoom: 'Screen Aspect: ZOOM (1.28x Cinematic)',
+      '16-9': 'Screen Aspect: 16:9 (Standard Widescreen)'
+    };
+    setAspectRatioToast(labels[nextMode]);
+    setTimeout(() => {
+      setAspectRatioToast(null);
+    }, 2200);
   };
+
+  if (!isVideoModalOpen || !activeMovie) return null;
 
   return (
     <div
@@ -385,6 +530,22 @@ export const CustomVideoPlayer: React.FC = () => {
       >
         <X size={22} />
       </button>
+
+      {/* Aspect Ratio HUD Overlay Notification */}
+      <AnimatePresence>
+        {aspectRatioToast && (
+          <motion.div
+            className="aspect-ratio-hud-toast"
+            initial={{ opacity: 0, y: -15, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -15, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+          >
+            <Layers size={16} color="#00d2ff" />
+            <span>{aspectRatioToast}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* 1. Main Streaming Frame Viewport */}
       <div className="player-viewport-stage" style={getAspectStyle()}>
@@ -468,9 +629,10 @@ export const CustomVideoPlayer: React.FC = () => {
             src={currentEmbedUrl}
             className="custom-stream-iframe"
             title={activeMovie.name}
-            referrerPolicy="no-referrer"
             allowFullScreen
-            allow="autoplay; encrypted-media; gyroscope; picture-in-picture; fullscreen; clipboard-write; screen-wake-lock; web-share"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
+            referrerPolicy="origin"
+            allow="autoplay *; encrypted-media *; fullscreen *; clipboard-write *; screen-wake-lock *"
             onLoad={() => {
               setIsLoading(false);
             }}
@@ -518,10 +680,6 @@ export const CustomVideoPlayer: React.FC = () => {
       {/* 4. Top Header Overlay Bar — Only Title and Connection Health */}
       <div className={`player-header-bar ${showControls && !isLocked ? 'visible' : 'hidden'}`}>
         <div className="header-left-meta">
-          <button className="player-ctrl-round-btn" onClick={closeMoviePlayer} title="Close Player" aria-label="Close">
-            <X size={20} />
-          </button>
-
           <div className="player-title-block">
             <h2 className="stream-movie-title">{activeMovie.name}</h2>
             <div className="stream-meta-chips">
@@ -697,6 +855,27 @@ export const CustomVideoPlayer: React.FC = () => {
               <button className="menu-close-x" onClick={() => setShowQualityMenu(false)}>✕</button>
             </div>
             <div className="menu-options-list">
+              <span className="lang-col-title" style={{ padding: '0.4rem 0.6rem 0.1rem', fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <Gauge size={12} color="#c8ff00" />
+                Playback Speed ({playbackSpeed === 1 ? '1.0x Normal' : `${playbackSpeed}x`})
+              </span>
+              <div className="speed-options-row">
+                {SPEED_OPTIONS.map(spd => (
+                  <button
+                    key={spd}
+                    className={`speed-pill-btn ${playbackSpeed === spd ? 'active' : ''}`}
+                    onClick={() => {
+                      setPlaybackSpeed(spd);
+                      if (videoRef.current) {
+                        videoRef.current.playbackRate = spd;
+                      }
+                    }}
+                  >
+                    {spd === 1 ? '1.0x Normal' : `${spd}x`}
+                  </button>
+                ))}
+              </div>
+
               <span className="lang-col-title" style={{ padding: '0.4rem 0.6rem 0.1rem', fontSize: '0.72rem' }}>
                 Streaming Server ({STREAMING_SERVERS.length} Verified Mirrors)
               </span>
@@ -758,9 +937,43 @@ export const CustomVideoPlayer: React.FC = () => {
               <button className="menu-close-x" onClick={() => setShowLangMenu(false)}>✕</button>
             </div>
             {!activeMovie.streamUrl && (
-              <div className="player-embed-lang-hint">
-                <span>💡 <strong>Embed Server Notice:</strong> To change language/dubbing or toggle subtitles for third-party servers, use the native <strong>CC</strong> and <strong>Audio (⚙️)</strong> buttons directly inside the video player screen.</span>
-              </div>
+              <>
+                <div className="multi-audio-recommend-card">
+                  <span className="multi-audio-recommend-title">
+                    <Sparkles size={14} color="#00d2ff" />
+                    Multi-Language Audio & Regional Dubs
+                  </span>
+                  <p className="multi-audio-recommend-desc">
+                    Switch to our verified multi-audio origin mirrors for Hindi, Tamil, Telugu, and dual-audio tracks:
+                  </p>
+                  <div className="multi-audio-pills-row">
+                    <button
+                      className={`multi-audio-server-badge-btn ${videoProviderIndex === 0 ? 'active' : ''}`}
+                      onClick={() => {
+                        handleSwitchServer(0);
+                        setShowLangMenu(false);
+                      }}
+                    >
+                      <Server size={12} />
+                      <span>AutoEmbed (Multi-Audio)</span>
+                    </button>
+                    <button
+                      className={`multi-audio-server-badge-btn ${videoProviderIndex === 1 ? 'active' : ''}`}
+                      onClick={() => {
+                        handleSwitchServer(1);
+                        setShowLangMenu(false);
+                      }}
+                    >
+                      <Server size={12} />
+                      <span>2Embed CC (Multi-Audio)</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="player-embed-lang-hint">
+                  <span>💡 <strong>Embedded Player Notice:</strong> To change live language/dubbing or toggle subtitles within the player stream, use the native <strong>CC</strong> and <strong>Audio (⚙️)</strong> buttons inside the video screen.</span>
+                </div>
+              </>
             )}
             <div className="lang-split-sections">
               <div className="lang-col">
@@ -874,28 +1087,44 @@ export const CustomVideoPlayer: React.FC = () => {
               <h4>Episodes & Seasons</h4>
               <button className="menu-close-x" onClick={() => setShowEpisodeDrawer(false)}>✕</button>
             </div>
+            {/* Season Selector Tabs */}
+            {availableSeasons.length > 1 && (
+              <div className="episode-season-tabs">
+                {availableSeasons.map(sNum => (
+                  <button
+                    key={sNum}
+                    className={`season-tab-btn ${drawerSeasonTab === sNum ? 'active' : ''}`}
+                    onClick={() => setDrawerSeasonTab(sNum)}
+                  >
+                    Season {sNum}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <div className="menu-options-list">
-              {((activeMovie.videos && activeMovie.videos.length > 0) ? activeMovie.videos : dynamicEpisodes).length === 0 ? (
+              {filteredEpisodes.length === 0 ? (
                 <div className="menu-loading-episodes" style={{ padding: '16px', color: '#888', textAlign: 'center', fontSize: '13px' }}>
-                  Loading series episodes...
+                  Loading series episodes for Season {drawerSeasonTab}...
                 </div>
               ) : (
-                ((activeMovie.videos && activeMovie.videos.length > 0) ? activeMovie.videos : dynamicEpisodes).map(ep => (
-                <div
-                  key={ep.id}
-                  className={`menu-option-item ${activeSeason === ep.season && activeEpisode === ep.number ? 'active' : ''}`}
-                  onClick={() => {
-                    setIsLoading(true);
-                    setEpisode(ep.season, ep.number);
-                    setShowEpisodeDrawer(false);
-                  }}
-                >
-                  <div className="option-main-text">
-                    <span className="option-title">S{ep.season} : E{ep.number} - {ep.name}</span>
+                filteredEpisodes.map(ep => (
+                  <div
+                    key={ep.id}
+                    className={`menu-option-item ${activeSeason === (ep.season || 1) && activeEpisode === ep.number ? 'active' : ''}`}
+                    onClick={() => {
+                      setIsLoading(true);
+                      setEpisode(ep.season || 1, ep.number);
+                      setShowEpisodeDrawer(false);
+                    }}
+                  >
+                    <div className="option-main-text">
+                      <span className="option-title">S{ep.season || 1} : E{ep.number} - {ep.name}</span>
+                    </div>
+                    {activeSeason === (ep.season || 1) && activeEpisode === ep.number && <Check size={18} color="#c8ff00" />}
                   </div>
-                  {activeSeason === ep.season && activeEpisode === ep.number && <Check size={18} color="#c8ff00" />}
-                </div>
-              )))}
+                ))
+              )}
             </div>
           </motion.div>
         )}

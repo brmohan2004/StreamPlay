@@ -6,6 +6,7 @@ import {
   Pause,
   SkipForward,
   SkipBack,
+  ListPlus,
   X
 } from 'lucide-react';
 import { useMedia } from '../context/MediaContext';
@@ -21,7 +22,8 @@ export const AudioPlayerBar: React.FC = () => {
     songProgress,
     songDuration,
     seekSong,
-    openMusicPlayer
+    openMusicPlayer,
+    openAddToPlaylist
   } = useMedia();
 
   if (!currentSong) return null;
@@ -126,6 +128,18 @@ export const AudioPlayerBar: React.FC = () => {
                 title="Next Track"
               >
                 <SkipForward size={18} />
+              </button>
+
+              <button
+                className="ctrl-skip-btn-mini"
+                onClick={e => {
+                  e.stopPropagation();
+                  openAddToPlaylist(currentSong);
+                }}
+                title="Add to Playlist"
+                aria-label="Add to Playlist"
+              >
+                <ListPlus size={18} />
               </button>
             </div>
 

@@ -32,11 +32,10 @@ public class MainActivity extends BridgeActivity {
             );
         }
 
-        // 100% Workable Sandbox & Ad Breakout Solution:
-        // 1. Enable Multiple Windows & JavaScript window opening so embedded players (VidLink, AutoEmbed, VidSrc)
-        //    pass all anti-sandbox/popup capability checks without triggering "Playback blocked" errors.
-        // 2. Intercept window creation with an offscreen dummy WebView that silently absorbs & drops popup ads
-        //    preventing external Chrome browser tabs from ever launching!
+        // High-Speed Streaming & Zero-Ad WebView Configuration:
+        // 1. Enable Third-Party Cookies, DOM Storage, & Mixed Content so Cloudflare & video CDNs load instantly in mobile APK.
+        // 2. Disallow multiple windows & auto-open windows so ad popups cannot launch external Chrome tabs.
+        // 3. Clean User-Agent (strip '; wv') so streaming servers treat WebView as full Chrome Mobile.
         try {
             WebView webView = getBridge().getWebView();
             if (webView != null) {
@@ -46,36 +45,30 @@ public class MainActivity extends BridgeActivity {
                 webView.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
                 webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
 
-                webView.getSettings().setSupportMultipleWindows(true);
-                webView.getSettings().setJavaScriptCanOpenWindowsAutomatically(true);
-                webView.getSettings().setMediaPlaybackRequiresUserGesture(false);
+                android.webkit.WebSettings settings = webView.getSettings();
+                settings.setJavaScriptEnabled(true);
+                settings.setDomStorageEnabled(true);
+                settings.setDatabaseEnabled(true);
+                settings.setAllowFileAccess(true);
+                settings.setAllowContentAccess(true);
+                settings.setMediaPlaybackRequiresUserGesture(false);
+                settings.setMixedContentMode(android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+                
+                // Block ad breakout popups: disallow new windows/tabs from spawning external Chrome
+                settings.setSupportMultipleWindows(false);
+                settings.setJavaScriptCanOpenWindowsAutomatically(false);
 
-                webView.setWebChromeClient(new WebChromeClient() {
-                    @Override
-                    public boolean onCreateWindow(WebView view, boolean isDialog, boolean isUserGesture, Message resultMsg) {
-                        // Headless ad disposer: receives popup ad requests and destroys them silently
-                        WebView adSink = new WebView(view.getContext());
-                        adSink.setWebViewClient(new WebViewClient() {
-                            @Override
-                            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                                // Silently discard all ad URLs
-                                return true;
-                            }
+                // Enable Third-Party Cookies required for cross-domain embed players & Cloudflare tokens
+                android.webkit.CookieManager cookieManager = android.webkit.CookieManager.getInstance();
+                cookieManager.setAcceptCookie(true);
+                cookieManager.setAcceptThirdPartyCookies(webView, true);
 
-                            @Override
-                            public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                                // Backward compatibility
-                                return true;
-                            }
-                        });
-
-                        WebView.WebViewTransport transport = (WebView.WebViewTransport) resultMsg.obj;
-                        transport.setWebView(adSink);
-                        resultMsg.sendToTarget();
-                        // Handled internally: NO external Chrome tab or popup is ever opened!
-                        return true;
-                    }
-                });
+                // Clean User-Agent: Strip '; wv' and 'Version/4.0' so streaming providers don't block mobile APK
+                String defaultUa = settings.getUserAgentString();
+                if (defaultUa != null) {
+                    String cleanUa = defaultUa.replace("; wv", "").replaceAll("Version/[0-9.]+\\s*", "");
+                    settings.setUserAgentString(cleanUa);
+                }
             }
         } catch (Exception e) {
             // Safe fallback

@@ -1,7 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Play, ArrowRight, Sparkles } from 'lucide-react';
+import { Play, ArrowRight, Sparkles, ListPlus } from 'lucide-react';
 import { SongItem } from '../types/media';
+import { useMedia } from '../context/MediaContext';
 import './MusicCardsDesign.css';
 
 /* ========================================================
@@ -48,6 +49,8 @@ export const CompactTileCard: React.FC<CompactTileCardProps> = ({
   rank,
   showPlayBtn = false
 }) => {
+  const { openAddToPlaylist } = useMedia();
+
   return (
     <motion.div
       className={`music-compact-tile-card ${rank ? `has-rank rank-${rank <= 3 ? rank : 'gen'}` : ''}`}
@@ -75,6 +78,18 @@ export const CompactTileCard: React.FC<CompactTileCardProps> = ({
         <h4 className="compact-tile-title" title={song.title}>{song.title}</h4>
         <p className="compact-tile-artist" title={song.artist}>{song.artist}</p>
       </div>
+      <button
+        type="button"
+        className="compact-tile-playlist-btn"
+        onClick={e => {
+          e.stopPropagation();
+          openAddToPlaylist(song);
+        }}
+        title="Add to Playlist"
+        aria-label="Add to Playlist"
+      >
+        <ListPlus size={14} />
+      </button>
       {showPlayBtn && (
         <button className="compact-tile-action-play" aria-label="Play song">
           <Play size={14} fill="#000000" color="#000000" style={{ marginLeft: 1 }} />

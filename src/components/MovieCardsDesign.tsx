@@ -19,7 +19,7 @@ export interface MovieSpotlightCardProps {
 }
 
 export const MovieSpotlightCard: React.FC<MovieSpotlightCardProps> = ({ item, onClick }) => {
-  const { openMovieDetails } = useMedia();
+  const { openMovieDetails, openMoviePlayer } = useMedia();
   const { setActiveScreen } = useNavigation();
 
   const handleClick = () => {
@@ -54,7 +54,14 @@ export const MovieSpotlightCard: React.FC<MovieSpotlightCardProps> = ({ item, on
           <span>{item.imdbRating || '8.4'}</span>
         </div>
 
-        <div className="spotlight-play-overlay">
+        <div
+          className="spotlight-play-overlay"
+          onClick={e => {
+            e.stopPropagation();
+            openMoviePlayer(item);
+          }}
+          title="Instant Watch Free"
+        >
           <Play size={18} fill="#000000" color="#000000" style={{ marginLeft: 2 }} />
         </div>
       </div>
@@ -211,7 +218,7 @@ export interface MovieTileCardProps {
 }
 
 export const MovieTileCard: React.FC<MovieTileCardProps> = ({ item, onClick }) => {
-  const { openMovieDetails } = useMedia();
+  const { openMovieDetails, openMoviePlayer } = useMedia();
   const { setActiveScreen } = useNavigation();
 
   const handleClick = () => {
@@ -247,7 +254,15 @@ export const MovieTileCard: React.FC<MovieTileCardProps> = ({ item, onClick }) =
           {item.releaseInfo || '2025'} • {item.genres?.[0] || 'Hit'}
         </p>
       </div>
-      <button className="movie-tile-play-btn" aria-label="Play">
+      <button
+        className="movie-tile-play-btn"
+        aria-label="Play"
+        onClick={e => {
+          e.stopPropagation();
+          openMoviePlayer(item);
+        }}
+        title="Instant Watch Free"
+      >
         <Play size={13} fill="#000000" color="#000000" style={{ marginLeft: 1 }} />
       </button>
     </motion.div>
@@ -309,7 +324,7 @@ export interface MoviePosterCardProps {
 }
 
 export const MoviePosterCard: React.FC<MoviePosterCardProps> = ({ item, rank, onClick }) => {
-  const { openMovieDetails } = useMedia();
+  const { openMovieDetails, openMoviePlayer } = useMedia();
   const { setActiveScreen } = useNavigation();
 
   const handleCardClick = () => {
@@ -349,7 +364,15 @@ export const MoviePosterCard: React.FC<MoviePosterCardProps> = ({ item, rank, on
         )}
 
         <div className="movie-card-overlay">
-          <button className="movie-quick-play-btn" aria-label="Play">
+          <button
+            className="movie-quick-play-btn"
+            aria-label="Play"
+            onClick={e => {
+              e.stopPropagation();
+              openMoviePlayer(item);
+            }}
+            title="Instant Watch Free"
+          >
             <Play size={20} fill="#000000" color="#000000" style={{ marginLeft: 2 }} />
           </button>
         </div>

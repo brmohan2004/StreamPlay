@@ -14,6 +14,7 @@ import { WatchLaterScreen } from './screens/WatchLaterScreen';
 import { MovieDetailsScreen } from './screens/MovieDetailsScreen';
 import { VideoPlayerModal } from './components/VideoPlayerModal';
 import { MusicPlayerModal } from './components/MusicPlayerModal';
+import { AddToPlaylistModal } from './components/AddToPlaylistModal';
 import { AudioPlayerBar } from './components/AudioPlayerBar';
 import { FilterSheetModal } from './components/FilterSheetModal';
 import { MusicFilterSheetModal } from './components/MusicFilterSheetModal';
@@ -35,6 +36,7 @@ import { searchSongs, getCachedInitialMusic, saveCachedInitialMusic } from './se
 import { MovieItem, SongItem } from './types/media';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { Capacitor } from '@capacitor/core';
+import { useBackButtonHandler } from './hooks/useBackButtonHandler';
 import './App.css';
 
 export function AppContent() {
@@ -47,6 +49,23 @@ export function AppContent() {
     setPrimaryLanguage,
     setSecondaryLanguage
   } = useMedia();
+
+  // Active Android hardware back button & touch edge swipe navigation hook
+  useBackButtonHandler();
+
+  // Global toast state for Android back-to-exit feedback
+  const [globalToast, setGlobalToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleToast = (e: any) => {
+      if (e.detail?.message) {
+        setGlobalToast(e.detail.message);
+        setTimeout(() => setGlobalToast(null), 2000);
+      }
+    };
+    window.addEventListener('streamplay-toast', handleToast);
+    return () => window.removeEventListener('streamplay-toast', handleToast);
+  }, []);
 
   // Synchronize device status bar and meta theme-color with active mode
   // Movie mode: light blue modern gradient matching Image 3 (#0077b6 / #0099ff)
@@ -366,6 +385,9 @@ export function AppContent() {
         {/* Full-Screen Immersive Music Player Modal */}
         <MusicPlayerModal />
 
+        {/* Global Add to Playlist Picker Modal */}
+        <AddToPlaylistModal />
+
         {/* Slide-Up Filter & OTT Bottom Sheet Modals (Separate for Movie & Music Modes) */}
         {appMode === 'movies' ? <FilterSheetModal /> : <MusicFilterSheetModal />}
 
@@ -374,6 +396,13 @@ export function AppContent() {
 
         {/* Floating Real-Time Reaction Burst Layer */}
         <FloatingReactionLayer />
+
+        {/* Global Android Back Feedback Banner */}
+        {globalToast && (
+          <div className="streamplay-global-toast">
+            <span>{globalToast}</span>
+          </div>
+        )}
       </div>
     </RecommendationProvider>
   );

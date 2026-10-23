@@ -491,14 +491,14 @@ export const MovieDetailsScreen: React.FC = () => {
             className="details-bold-play-btn"
             whileHover={{ scale: 1.01 }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => openMoviePlayer(movieData, 1, 1)}
+            onClick={() => openMoviePlayer(movieData, selectedSeason, 1)}
           >
             <Play size={20} fill="#000000" color="#000000" style={{ marginLeft: 2 }} />
             <span>
               {movieData.streamUrl
                 ? 'Watch Live Stream Now'
                 : movieData.type === 'series'
-                ? 'Watch Season 1 : Ep 1'
+                ? `Watch Season ${selectedSeason} : Ep 1`
                 : 'Play Movie Full Screen'}
             </span>
           </motion.button>
