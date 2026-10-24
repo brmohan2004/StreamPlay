@@ -173,6 +173,10 @@ export async function handleRequest(req, res) {
         const antiAdScript = `
 <style>
   /* Strip all ad overlays, ad links, and fake error screens */
+  a, a *, a[href], a[target="_blank"] {
+    pointer-events: none !important;
+    cursor: default !important;
+  }
   a[target="_blank"],
   a[href*="interline"],
   a[href*="tagivi"],
@@ -184,10 +188,34 @@ export async function handleRequest(req, res) {
     pointer-events: none !important;
     visibility: hidden !important;
   }
+  .playbtnx, .playbtnx * {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+  }
 </style>
 <script>
   // Prevent popup window creation
   window.open = function() { return null; };
+
+  // Strip all href and target attributes so Chrome never previews or navigates any ad link
+  function stripAllAdLinks() {
+    var links = document.querySelectorAll('a');
+    for (var i = 0; i < links.length; i++) {
+      links[i].removeAttribute('href');
+      links[i].removeAttribute('target');
+      links[i].style.pointerEvents = 'none';
+    }
+  }
+  document.addEventListener('DOMContentLoaded', stripAllAdLinks);
+  if (document.body) stripAllAdLinks();
+  try {
+    new MutationObserver(stripAllAdLinks).observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['href']
+    });
+  } catch(e) {}
 
   // Intercept any clicks on ad links
   window.addEventListener('click', function(e) {

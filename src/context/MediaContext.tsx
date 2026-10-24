@@ -7,6 +7,7 @@ import {
   startNativeBackgroundAudio,
   updateNativeBackgroundAudio,
   stopNativeBackgroundAudio,
+  listenToNativeMediaActions,
   enableAudioPipelineKeepAlive
 } from '../services/nativeBackgroundAudio';
 import { getUserLocation, setUserLocation, UserLocation } from '../services/locationService';
@@ -51,6 +52,10 @@ interface MediaContextType {
   prevSong: () => void;
   seekSong: (timeInSeconds: number) => void;
   setSongVolume: (vol: number) => void;
+
+  // Recently Played Songs History
+  recentlyPlayed: SongItem[];
+  watchedVideoSongs: SongItem[];
 
   // Fullscreen Music Player Modal
   isMusicPlayerOpen: boolean;
@@ -149,12 +154,46 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
 
   // Audio Player
-  const [currentSong, setCurrentSong] = useState<SongItem | null>(null);
+  const [currentSong, setCurrentSong] = useState<SongItem | null>(() => {
+    try {
+      const saved = localStorage.getItem('streamplay_last_played_song');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [isPlayingSong, setIsPlayingSong] = useState(false);
-  const [songQueue, setSongQueue] = useState<SongItem[]>([]);
+  const [songQueue, setSongQueue] = useState<SongItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('streamplay_song_queue');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [songProgress, setSongProgress] = useState(0);
   const [songDuration, setSongDuration] = useState(0);
   const [songVolume, setVolumeState] = useState(0.85);
+
+  // Recently Played Songs History (Persisted to localStorage)
+  const [recentlyPlayed, setRecentlyPlayed] = useState<SongItem[]>(() => {
+    try {
+      const stored = localStorage.getItem('streamplay_recently_played_songs');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Watched Video Songs History (Persisted to localStorage)
+  const [watchedVideoSongs, setWatchedVideoSongs] = useState<SongItem[]>(() => {
+    try {
+      const stored = localStorage.getItem('streamplay_watched_video_songs');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
 
   // Fullscreen Music Player Modal & Playback options
   const [isMusicPlayerOpen, setIsMusicPlayerOpen] = useState(false);
@@ -267,11 +306,24 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const openVideoSong = (song: SongItem, queue?: SongItem[]) => {
     // If song has no videoUrl, assign a high-def video stream embed or fallback
-    const videoSongItem = {
+    const videoSongItem: SongItem = {
       ...song,
       isVideo: true,
       videoUrl: song.videoUrl || `https://www.youtube-nocookie.com/embed?listType=search&list=${encodeURIComponent(song.title + ' ' + song.artist + ' official video')}`
     };
+
+    setWatchedVideoSongs(prev => {
+      const idKey = String(song.id || '');
+      const filtered = prev.filter(s => String(s.id || '') !== idKey);
+      const updated = [videoSongItem, ...filtered].slice(0, 30);
+      try {
+        localStorage.setItem('streamplay_watched_video_songs', JSON.stringify(updated));
+      } catch (err) {
+        console.warn('Failed to save watched video songs:', err);
+      }
+      return updated;
+    });
+
     setPlaybackMode('video');
     playSong(videoSongItem, queue);
     setIsMusicPlayerOpen(true);
@@ -585,6 +637,11 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const audio = new Audio();
     audioRef.current = audio;
 
+    // Restore last played stream URL to audio element without autoplaying
+    if (currentSongRef.current?.streamUrl) {
+      audio.src = currentSongRef.current.streamUrl;
+    }
+
     // Invisible secondary audio preloader to pre-warm the next song's buffer in the background
     const preloadAudio = new Audio();
     preloadAudio.preload = 'auto';
@@ -825,8 +882,45 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       });
     }
 
-    // Start native background audio (Foreground Service + CPU WakeLock + WifiLock)
-    startNativeBackgroundAudio(updatedSong.title, updatedSong.artist);
+    // Persist last played song and queue to localStorage for app recovery on launch
+    try {
+      localStorage.setItem('streamplay_last_played_song', JSON.stringify(updatedSong));
+      const qToSave = (queue && queue.length > 0) ? queue : songQueueRef.current;
+      if (qToSave && qToSave.length > 0) {
+        localStorage.setItem('streamplay_song_queue', JSON.stringify(qToSave.slice(0, 50)));
+      }
+    } catch (e) {
+      console.warn('Failed to persist last played song:', e);
+    }
+
+    // Dynamically update Recently Played history and persist
+    setRecentlyPlayed(prev => {
+      const idKey = String(updatedSong.id || '');
+      const titleArtistKey = `${(updatedSong.title || '').toLowerCase().trim()} - ${(updatedSong.artist || '').toLowerCase().trim()}`;
+      const filtered = prev.filter(s => {
+        const sid = String(s.id || '');
+        const stKey = `${(s.title || '').toLowerCase().trim()} - ${(s.artist || '').toLowerCase().trim()}`;
+        return sid !== idKey && stKey !== titleArtistKey;
+      });
+      const updated = [updatedSong, ...filtered].slice(0, 30);
+      try {
+        localStorage.setItem('streamplay_recently_played_songs', JSON.stringify(updated));
+      } catch (err) {
+        console.warn('Failed to save recently played songs:', err);
+      }
+      return updated;
+    });
+
+    const coverImage = updatedSong.image || '';
+    // Start native background audio (Foreground Service + MediaSession)
+    startNativeBackgroundAudio(
+      updatedSong.title,
+      updatedSong.artist,
+      coverImage,
+      true,
+      audioRef.current?.duration || 0,
+      audioRef.current?.currentTime || 0
+    );
 
     if (audioRef.current) {
       if (audioWatchdogRef.current) {
@@ -840,7 +934,14 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           setIsPlayingSong(true);
           isPlayingSongRef.current = true;
           updateNativeMediaSession(updatedSong, true);
-          updateNativeBackgroundAudio(updatedSong.title, updatedSong.artist);
+          updateNativeBackgroundAudio(
+            updatedSong.title,
+            updatedSong.artist,
+            coverImage,
+            true,
+            audioRef.current?.duration || 0,
+            audioRef.current?.currentTime || 0
+          );
         })
         .catch(err => {
           console.warn('Playback blocked or failed, auto-advancing to next playable track:', err);
@@ -874,16 +975,34 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const toggleSongPlay = () => {
     if (!audioRef.current || !currentSong) return;
+    const coverImage = currentSong.image || '';
     if (isPlayingSong) {
       audioRef.current.pause();
       setIsPlayingSong(false);
       isPlayingSongRef.current = false;
-      stopNativeBackgroundAudio();
+      updateNativeBackgroundAudio(
+        currentSong.title,
+        currentSong.artist,
+        coverImage,
+        false,
+        audioRef.current.duration || 0,
+        audioRef.current.currentTime || 0
+      );
       if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
         navigator.mediaSession.playbackState = 'paused';
       }
     } else {
-      startNativeBackgroundAudio(currentSong.title, currentSong.artist);
+      if (audioRef.current && (!audioRef.current.src || audioRef.current.src === '' || audioRef.current.src === window.location.href)) {
+        audioRef.current.src = currentSong.streamUrl;
+      }
+      startNativeBackgroundAudio(
+        currentSong.title,
+        currentSong.artist,
+        coverImage,
+        true,
+        audioRef.current.duration || 0,
+        audioRef.current.currentTime || 0
+      );
       audioRef.current.play().then(() => {
         setIsPlayingSong(true);
         isPlayingSongRef.current = true;
@@ -962,6 +1081,41 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     nextSongRef.current = nextSong;
   });
+
+  useEffect(() => {
+    listenToNativeMediaActions({
+      onPlay: () => {
+        if (audioRef.current && currentSongRef.current && !isPlayingSongRef.current) {
+          audioRef.current.play().then(() => {
+            setIsPlayingSong(true);
+            isPlayingSongRef.current = true;
+            updateNativeMediaSession(currentSongRef.current, true);
+          }).catch(console.error);
+        }
+      },
+      onPause: () => {
+        if (audioRef.current && currentSongRef.current && isPlayingSongRef.current) {
+          audioRef.current.pause();
+          setIsPlayingSong(false);
+          isPlayingSongRef.current = false;
+          updateNativeMediaSession(currentSongRef.current, false);
+        }
+      },
+      onNext: () => {
+        if (nextSongRef.current) {
+          nextSongRef.current();
+        }
+      },
+      onPrevious: () => {
+        prevSong();
+      },
+      onSeek: (posSec) => {
+        if (audioRef.current) {
+          audioRef.current.currentTime = posSec;
+        }
+      }
+    });
+  }, []);
 
   const seekSong = (timeInSeconds: number) => {
     if (audioRef.current) {
@@ -1115,6 +1269,8 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         prevSong,
         seekSong,
         setSongVolume,
+        recentlyPlayed,
+        watchedVideoSongs,
 
         isMusicPlayerOpen,
         openMusicPlayer,

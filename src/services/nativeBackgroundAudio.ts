@@ -1,9 +1,27 @@
 import { registerPlugin } from '@capacitor/core';
 
 interface BackgroundAudioPlugin {
-  start(options: { title: string; artist: string }): Promise<{ success: boolean }>;
-  update(options: { title: string; artist: string }): Promise<{ success: boolean }>;
+  start(options: {
+    title: string;
+    artist: string;
+    coverUrl?: string;
+    isPlaying?: boolean;
+    duration?: number;
+    position?: number;
+  }): Promise<{ success: boolean }>;
+  update(options: {
+    title: string;
+    artist: string;
+    coverUrl?: string;
+    isPlaying?: boolean;
+    duration?: number;
+    position?: number;
+  }): Promise<{ success: boolean }>;
   stop(): Promise<{ success: boolean }>;
+  addListener(
+    eventName: 'mediaAction',
+    listenerFunc: (data: { action: string; position?: number }) => void
+  ): Promise<any>;
 }
 
 const BackgroundAudio = registerPlugin<BackgroundAudioPlugin>('BackgroundAudio');
@@ -40,16 +58,27 @@ export function enableAudioPipelineKeepAlive(): void {
 }
 
 /**
- * Starts the native Android Foreground Service with a CPU WakeLock and WifiLock.
- * Ensures infinite background audio playback when the app is minimized and the screen is turned off.
+ * Starts the native Android Foreground Service & MediaSession with a CPU WakeLock and WifiLock.
+ * Powers System Control Panel, Dynamic Island, Lockscreen, and background audio playback.
  */
-export async function startNativeBackgroundAudio(title: string, artist: string): Promise<void> {
+export async function startNativeBackgroundAudio(
+  title: string,
+  artist: string,
+  coverUrl?: string,
+  isPlaying: boolean = true,
+  duration: number = 0,
+  position: number = 0
+): Promise<void> {
   enableAudioPipelineKeepAlive();
   try {
     if (BackgroundAudio) {
       await BackgroundAudio.start({
         title: title || 'Playing Music',
-        artist: artist || 'StreamPlay'
+        artist: artist || 'StreamPlay',
+        coverUrl: coverUrl || '',
+        isPlaying,
+        duration: Math.floor((duration || 0) * 1000),
+        position: Math.floor((position || 0) * 1000)
       });
     }
   } catch {
@@ -58,14 +87,25 @@ export async function startNativeBackgroundAudio(title: string, artist: string):
 }
 
 /**
- * Updates the native Android Foreground Service with the next track details.
+ * Updates the native Android Foreground Service & MediaSession with the next track details & playback state.
  */
-export async function updateNativeBackgroundAudio(title: string, artist: string): Promise<void> {
+export async function updateNativeBackgroundAudio(
+  title: string,
+  artist: string,
+  coverUrl?: string,
+  isPlaying: boolean = true,
+  duration: number = 0,
+  position: number = 0
+): Promise<void> {
   try {
     if (BackgroundAudio) {
       await BackgroundAudio.update({
         title: title || 'Playing Music',
-        artist: artist || 'StreamPlay'
+        artist: artist || 'StreamPlay',
+        coverUrl: coverUrl || '',
+        isPlaying,
+        duration: Math.floor((duration || 0) * 1000),
+        position: Math.floor((position || 0) * 1000)
       });
     }
   } catch {
@@ -83,5 +123,32 @@ export async function stopNativeBackgroundAudio(): Promise<void> {
     }
   } catch {
     // Graceful fallback
+  }
+}
+
+/**
+ * Listens for system media actions from Android System Control Panel, Notification, Lockscreen & Dynamic Island.
+ */
+export function listenToNativeMediaActions(callbacks: {
+  onPlay: () => void;
+  onPause: () => void;
+  onNext: () => void;
+  onPrevious: () => void;
+  onSeek: (positionSec: number) => void;
+}): void {
+  try {
+    if (BackgroundAudio && typeof BackgroundAudio.addListener === 'function') {
+      BackgroundAudio.addListener('mediaAction', (data: { action: string; position?: number }) => {
+        if (data.action === 'play') callbacks.onPlay();
+        else if (data.action === 'pause') callbacks.onPause();
+        else if (data.action === 'next') callbacks.onNext();
+        else if (data.action === 'previous') callbacks.onPrevious();
+        else if (data.action === 'seek' && typeof data.position === 'number') {
+          callbacks.onSeek(data.position / 1000);
+        }
+      });
+    }
+  } catch (err) {
+    console.warn('[NativeMediaActions]', err);
   }
 }

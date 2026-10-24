@@ -47,7 +47,9 @@ export function AppContent() {
     userLocation,
     changeUserLocation,
     setPrimaryLanguage,
-    setSecondaryLanguage
+    setSecondaryLanguage,
+    isVideoModalOpen,
+    isMusicPlayerOpen
   } = useMedia();
 
   // Active Android hardware back button & touch edge swipe navigation hook
@@ -67,12 +69,21 @@ export function AppContent() {
     return () => window.removeEventListener('streamplay-toast', handleToast);
   }, []);
 
-  // Synchronize device status bar and meta theme-color with active mode
-  // Movie mode: light blue modern gradient matching Image 3 (#0077b6 / #0099ff)
-  // Music mode: deep neon dark (#080b12)
+  // Synchronize device status bar and meta theme-color dynamically based on current screen & mode background
   useEffect(() => {
-    const isMovies = appMode === 'movies';
-    const themeColor = isMovies ? '#0077b6' : '#080b12';
+    let themeColor = '#080b12';
+
+    if (isVideoModalOpen) {
+      themeColor = '#000000'; // Pitch black for fullscreen video player
+    } else if (isMusicPlayerOpen) {
+      themeColor = '#080b12'; // Music player modal dark background
+    } else if (activeScreen === 'details' || activeScreen === 'search' || activeScreen === 'movie-search' || activeScreen === 'music-search') {
+      themeColor = '#0b0f19'; // Details / Search dark backdrop
+    } else if (appMode === 'movies') {
+      themeColor = '#0077b6'; // Movies mode cyan/blue header background
+    } else {
+      themeColor = '#080b12'; // Music mode deep dark header background
+    }
 
     // 1. Update HTML meta theme-color for mobile browsers & PWAs
     let metaTag = document.querySelector('meta[name="theme-color"]');
@@ -83,12 +94,12 @@ export function AppContent() {
     }
     metaTag.setAttribute('content', themeColor);
 
-    // 2. Update Capacitor native status bar if running on Android/iOS
+    // 2. Update Capacitor native status bar dynamically on Android/iOS
     if (Capacitor.isNativePlatform()) {
       StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
       StatusBar.setBackgroundColor({ color: themeColor }).catch(() => {});
     }
-  }, [appMode]);
+  }, [appMode, activeScreen, isVideoModalOpen, isMusicPlayerOpen]);
 
   // Check if user has previously completed onboarding
   const isFirstTimeUser = useMemo<boolean>(() => {
@@ -187,14 +198,14 @@ export function AppContent() {
     };
     const regionalArtist = (userLocation && locationArtistMap[userLocation.id]) || 'Anirudh Ravichander';
 
-    searchSongs(primaryQuery, 16).then(trending => {
+    searchSongs(primaryQuery, 25).then(trending => {
       if (isMounted && trending.length > 0) {
         setTrendingSongs(trending);
         saveCachedInitialMusic('trending', trending);
       }
     });
 
-    searchSongs(secondaryQuery, 14).then(fresh => {
+    searchSongs(secondaryQuery, 20).then(fresh => {
       if (isMounted && fresh.length > 0) {
         setNewSongs(fresh);
         saveCachedInitialMusic('new', fresh);

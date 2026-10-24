@@ -385,7 +385,7 @@ function createMockWindow(initialUrl?: string): any {
 }
 
 /** Determines if a target navigation URL attempts to leave the application */
-function isExternalNavigation(targetUrl: string): boolean {
+export function isExternalNavigation(targetUrl: string): boolean {
   if (!targetUrl) return false;
   const host = extractHostname(targetUrl);
   if (!host) return false;

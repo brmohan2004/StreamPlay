@@ -7,7 +7,8 @@ import { useNavigation } from '../context/NavigationContext';
 import { ChevronLeft, ChevronRight, Mic2, Play, Pause, ListPlus } from 'lucide-react';
 import { DailyMixFannedDeck } from '../components/DailyMixFannedDeck';
 import {
-  fetchVideoSongs,
+  fetchVideoSongsPaged,
+  fetchRecommendedEnglishSongsPaged,
   fetchInfiniteLanguageSongs,
   fetchArtistSongsPaged,
   fetchMusicFilterUniverseSongs,
@@ -23,7 +24,6 @@ import {
   VinylMusicCard,
   CompactTileCard,
   TwoRowScrollGrid,
-  PanoramaCollectionCard,
   AuraMusicCard,
   CinematicVideoCard,
   PortraitMusicCard,
@@ -40,8 +40,8 @@ export const MusicHomeScreen: React.FC<MusicHomeScreenProps> = ({
   trendingSongs,
   recentSongs
 }) => {
-  const { playSong, openMusicPlayer, openVideoSong, primaryLanguage, secondaryLanguage, userLocation, currentSong, isPlayingSong, toggleSongPlay, openAddToPlaylist } = useMedia();
-  const { setActiveScreen, activeCategory, setActiveCategory } = useNavigation();
+  const { playSong, openMusicPlayer, openVideoSong, primaryLanguage, secondaryLanguage, userLocation, currentSong, isPlayingSong, toggleSongPlay, openAddToPlaylist, recentlyPlayed, watchedVideoSongs } = useMedia();
+  const { activeCategory, setActiveCategory } = useNavigation();
   const { dailyMix, forYouSongs, becauseYouListened, discoverWeekly } = useRecommendations();
 
   // Language Curated Songs State initialized with local persistent cache
@@ -111,19 +111,19 @@ export const MusicHomeScreen: React.FC<MusicHomeScreenProps> = ({
       setPopularLangSongs(trendingSongs.slice(0, 20));
       return;
     }
-    if (selectedPopularLang === primaryLanguage && primaryLangSongs.length > 0) {
+    if (selectedPopularLang === primaryLanguage && primaryLangSongs.length >= 20) {
       setPopularLangSongs(primaryLangSongs.slice(0, 20));
       return;
     }
-    if (selectedPopularLang === secondaryLanguage && secondaryLangSongs.length > 0) {
+    if (selectedPopularLang === secondaryLanguage && secondaryLangSongs.length >= 20) {
       setPopularLangSongs(secondaryLangSongs.slice(0, 20));
       return;
     }
 
     let isMounted = true;
-    fetchInfiniteLanguageSongs(selectedPopularLang, 0, 20).then(res => {
-      if (isMounted) {
-        setPopularLangSongs(res.slice(0, 20));
+    fetchInfiniteLanguageSongs(selectedPopularLang, 0, 25).then(res => {
+      if (isMounted && res.length > 0) {
+        setPopularLangSongs(res);
       }
     }).catch(() => {
       // fallback
@@ -134,7 +134,7 @@ export const MusicHomeScreen: React.FC<MusicHomeScreenProps> = ({
     };
   }, [selectedPopularLang, primaryLanguage, secondaryLanguage, primaryLangSongs, secondaryLangSongs, trendingSongs]);
 
-  // 3. Featured Artists & Discographies (25-by-25 pagination)
+  // 3. Featured Artists & Discographies (Continuous infinite pagination)
   const featuredArtists = useMemo(() => {
     const langArtistsMap: Record<string, string[]> = {
       Tamil: ['Anirudh Ravichander', 'A.R. Rahman', 'Yuvan Shankar Raja', 'Sid Sriram', 'Harris Jayaraj', 'Ilayaraja', 'Santhosh Narayanan'],
@@ -151,9 +151,10 @@ export const MusicHomeScreen: React.FC<MusicHomeScreenProps> = ({
 
   const [selectedArtist, setSelectedArtist] = useState<string>('');
   const [artistSongs, setArtistSongs] = useState<SongItem[]>([]);
-  const [artistPage, setArtistPage] = useState(1);
+  const artistPageRef = useRef(1);
   const [isLoadingArtistSongs, setIsLoadingArtistSongs] = useState(false);
-  const [hasMoreArtistSongs, setHasMoreArtistSongs] = useState(true);
+  const isLoadingArtistRef = useRef(false);
+  const hasMoreArtistRef = useRef(true);
 
   // Initialize selected artist once featuredArtists is resolved
   useEffect(() => {
@@ -162,22 +163,29 @@ export const MusicHomeScreen: React.FC<MusicHomeScreenProps> = ({
     }
   }, [featuredArtists, selectedArtist]);
 
-  // Load artist discography songs (pitch 25 by 25)
+  // Load artist discography songs (pitch 15-20 by 15-20)
   useEffect(() => {
     if (!selectedArtist) return;
     let isMounted = true;
     setIsLoadingArtistSongs(true);
-    setArtistPage(1);
-    setHasMoreArtistSongs(true);
+    isLoadingArtistRef.current = true;
+    artistPageRef.current = 1;
+    hasMoreArtistRef.current = true;
 
-    fetchArtistSongsPaged(selectedArtist, 1, 25).then(res => {
+    fetchArtistSongsPaged(selectedArtist, 1, 20).then(res => {
       if (isMounted) {
         setArtistSongs(res);
         setIsLoadingArtistSongs(false);
-        if (res.length < 25) setHasMoreArtistSongs(false);
+        isLoadingArtistRef.current = false;
+        if (!res || res.length === 0) {
+          hasMoreArtistRef.current = false;
+        }
       }
     }).catch(() => {
-      if (isMounted) setIsLoadingArtistSongs(false);
+      if (isMounted) {
+        setIsLoadingArtistSongs(false);
+        isLoadingArtistRef.current = false;
+      }
     });
 
     return () => {
@@ -186,26 +194,92 @@ export const MusicHomeScreen: React.FC<MusicHomeScreenProps> = ({
   }, [selectedArtist]);
 
   const loadMoreArtistSongs = async () => {
-    if (isLoadingArtistSongs || !hasMoreArtistSongs || !selectedArtist) return;
+    if (isLoadingArtistRef.current || !hasMoreArtistRef.current || !selectedArtist) return;
+    isLoadingArtistRef.current = true;
     setIsLoadingArtistSongs(true);
     try {
-      const nextPage = artistPage + 1;
-      const batch = await fetchArtistSongsPaged(selectedArtist, nextPage, 25);
-      if (batch.length === 0) {
-        setHasMoreArtistSongs(false);
+      const nextPage = artistPageRef.current + 1;
+      const batch = await fetchArtistSongsPaged(selectedArtist, nextPage, 15);
+      if (!batch || batch.length === 0) {
+        hasMoreArtistRef.current = false;
       } else {
         setArtistSongs(prev => {
-          const seen = new Set(prev.map(s => s.id));
-          const unique = batch.filter(s => !seen.has(s.id));
+          const seen = new Set(prev.map(s => String(s.id)));
+          const unique = batch.filter(s => !seen.has(String(s.id)));
           return [...prev, ...unique];
         });
-        setArtistPage(nextPage);
-        if (batch.length < 25) setHasMoreArtistSongs(false);
+        artistPageRef.current = nextPage;
       }
     } catch (e) {
       console.warn('Failed to load more artist tracks:', e);
     } finally {
+      isLoadingArtistRef.current = false;
       setIsLoadingArtistSongs(false);
+    }
+  };
+
+  // Video Songs Infinite Horizontal Scrolling State
+  const videoPageRef = useRef(1);
+  const isLoadingVideoRef = useRef(false);
+  const [isLoadingMoreVideo, setIsLoadingMoreVideo] = useState(false);
+  const hasMoreVideoRef = useRef(true);
+
+  const loadMoreVideoSongs = async () => {
+    if (isLoadingVideoRef.current || !hasMoreVideoRef.current) return;
+    isLoadingVideoRef.current = true;
+    setIsLoadingMoreVideo(true);
+    try {
+      const nextPage = videoPageRef.current + 1;
+      const batch = await fetchVideoSongsPaged(primaryLanguage, secondaryLanguage, nextPage, 10, watchedVideoSongs);
+      if (!batch || batch.length === 0) {
+        hasMoreVideoRef.current = false;
+      } else {
+        setVideoSongs(prev => {
+          const seen = new Set(prev.map(s => String(s.id)));
+          const unique = batch.filter(s => !seen.has(String(s.id)));
+          return [...prev, ...unique];
+        });
+        videoPageRef.current = nextPage;
+      }
+    } catch (e) {
+      console.warn('Failed to load more video tracks:', e);
+    } finally {
+      isLoadingVideoRef.current = false;
+      setIsLoadingMoreVideo(false);
+    }
+  };
+
+  // Secondary Language Melodies Infinite Horizontal Scrolling State
+  const secLangPageRef = useRef(1);
+  const isLoadingSecLangRef = useRef(false);
+  const [isLoadingMoreSecLang, setIsLoadingMoreSecLang] = useState(false);
+  const hasMoreSecLangRef = useRef(true);
+
+  const loadMoreSecondaryLangSongs = async () => {
+    if (isLoadingSecLangRef.current || !hasMoreSecLangRef.current || !secondaryLanguage) return;
+    isLoadingSecLangRef.current = true;
+    setIsLoadingMoreSecLang(true);
+    try {
+      const nextPage = secLangPageRef.current + 1;
+      const isEnglish = (secondaryLanguage || '').toLowerCase() === 'english';
+      const batch = isEnglish
+        ? await fetchRecommendedEnglishSongsPaged(recentlyPlayed, nextPage, 10)
+        : await fetchInfiniteLanguageSongs(secondaryLanguage, nextPage, 10);
+      if (!batch || batch.length === 0) {
+        hasMoreSecLangRef.current = false;
+      } else {
+        setSecondaryLangSongs(prev => {
+          const seen = new Set(prev.map(s => String(s.id)));
+          const unique = batch.filter(s => !seen.has(String(s.id)));
+          return [...prev, ...unique];
+        });
+        secLangPageRef.current = nextPage;
+      }
+    } catch (e) {
+      console.warn('Failed to load more secondary language tracks:', e);
+    } finally {
+      isLoadingSecLangRef.current = false;
+      setIsLoadingMoreSecLang(false);
     }
   };
 
@@ -276,13 +350,20 @@ export const MusicHomeScreen: React.FC<MusicHomeScreenProps> = ({
   // Load Language Specific Songs & Video Songs on mount / language change
   useEffect(() => {
     let isMounted = true;
+    videoPageRef.current = 1;
+    hasMoreVideoRef.current = true;
+    secLangPageRef.current = 1;
+    hasMoreSecLangRef.current = true;
 
     async function loadCuratedMusic() {
       try {
+        const isEnglish = (secondaryLanguage || '').toLowerCase() === 'english';
         const [primList, secList, vids] = await Promise.all([
           fetchInfiniteLanguageSongs(primaryLanguage, 0, 25),
-          fetchInfiniteLanguageSongs(secondaryLanguage, 0, 20),
-          fetchVideoSongs(primaryLanguage, 12)
+          isEnglish
+            ? fetchRecommendedEnglishSongsPaged(recentlyPlayed, 1, 20)
+            : fetchInfiniteLanguageSongs(secondaryLanguage, 0, 25),
+          fetchVideoSongsPaged(primaryLanguage, secondaryLanguage, 1, 15, watchedVideoSongs)
         ]);
         if (isMounted) {
           if (primList && primList.length > 0) {
@@ -379,48 +460,19 @@ export const MusicHomeScreen: React.FC<MusicHomeScreenProps> = ({
   const secondaryLangRef = useRef<HTMLDivElement>(null);
   const artistRef = useRef<HTMLDivElement>(null);
 
-  // New Collection Wide Cards dynamically using real music artwork
-  const newCollections = [
-    {
-      id: 'coll-1',
-      title: 'Top Songs Global',
-      subtitle: 'Global viral hits',
-      image: trendingSongs[0]?.image || '',
-      gradient: 'linear-gradient(135deg, #0b1f36 0%, #06111f 100%)',
-      query: 'Global Pop Hits'
-    },
-    {
-      id: 'coll-2',
-      title: `${primaryLanguage} Blockbusters`,
-      subtitle: `Curated ${primaryLanguage} tracks`,
-      image: primaryLangSongs[0]?.image || trendingSongs[1]?.image || '',
-      gradient: 'linear-gradient(135deg, #1b2612 0%, #0c1407 100%)',
-      query: `${primaryLanguage} Top Hits 2026`
-    },
-    {
-      id: 'coll-3',
-      title: 'Viral Club Classics',
-      subtitle: 'High energy dance beats',
-      image: secondaryLangSongs[0]?.image || trendingSongs[2]?.image || '',
-      gradient: 'linear-gradient(135deg, #2b1238 0%, #15061c 100%)',
-      query: 'Club Dance Hits'
-    }
-  ];
-
   // =========================================================================
-  // DEDUPLICATION ENGINE (Avoid repetitive content across different sections)
+  // DEDUPLICATION ENGINE (Avoid duplicate items within each section)
   // =========================================================================
-  const globalSeenSongKeys = new Set<string>();
-
-  const deduplicate = (items: SongItem[]): SongItem[] => {
+  const deduplicateSection = (items: SongItem[]): SongItem[] => {
+    const seen = new Set<string>();
     const unique: SongItem[] = [];
     for (const item of items) {
       if (!item || !item.title) continue;
       const idKey = String(item.id || '');
       const coreKey = getSongCoreKey(item.title, item.artist, item.streamUrl);
-      if (!globalSeenSongKeys.has(idKey) && !globalSeenSongKeys.has(coreKey)) {
-        globalSeenSongKeys.add(idKey);
-        globalSeenSongKeys.add(coreKey);
+      if (!seen.has(idKey) && !seen.has(coreKey)) {
+        seen.add(idKey);
+        seen.add(coreKey);
         unique.push(item);
       }
     }
@@ -428,41 +480,50 @@ export const MusicHomeScreen: React.FC<MusicHomeScreenProps> = ({
   };
 
   // 1. Daily Mix
-  const dedupDailyMix = deduplicate(dailyMix);
+  const dedupDailyMix = deduplicateSection(dailyMix);
 
   // 2. Top Picks For You (15-by-15)
-  const dedupTopPicks = deduplicate(topPicksState.length > 0 ? topPicksState : forYouSongs);
+  const dedupTopPicks = deduplicateSection(topPicksState.length > 0 ? topPicksState : forYouSongs);
 
   // 3. Because You Listened
   const dedupBecauseYouListened = becauseYouListened.map(entry => ({
     ...entry,
-    songs: deduplicate(entry.songs)
+    songs: deduplicateSection(entry.songs)
   })).filter(entry => entry.songs.length > 0);
 
-  // 4. Popular 20 Songs
-  const dedupPopularSongs = deduplicate(
-    popularLangSongs.length > 0 ? popularLangSongs : trendingSongs
-  ).slice(0, 20);
+  // 4. Popular 20 Songs (Guaranteed full 20 songs)
+  const rawPopular = popularLangSongs.length >= 20
+    ? popularLangSongs
+    : (popularLangSongs.length > 0 ? [...popularLangSongs, ...trendingSongs, ...primaryLangSongs] : trendingSongs);
+  const dedupPopularSongs = deduplicateSection(rawPopular).slice(0, 20);
 
-  // 5. Recently Played (User history)
-  const dedupRecent = recentSongs.slice(0, 12);
+  // 5. Recently Played (Dynamically loaded from user history; fallback to initial recents if empty)
+  const dedupRecent = useMemo(() => {
+    if (recentlyPlayed && recentlyPlayed.length > 0) {
+      return deduplicateSection(recentlyPlayed).slice(0, 20);
+    }
+    return deduplicateSection(recentSongs).slice(0, 12);
+  }, [recentlyPlayed, recentSongs]);
 
-  // 6. Featured Artist Songs (25-by-25)
-  const dedupArtistSongs = deduplicate(artistSongs);
+  // 6. Featured Artist Songs (Continuous discography)
+  const dedupArtistSongs = deduplicateSection(artistSongs);
 
-  // 7. Discover Weekly
-  const dedupDiscoverWeekly = deduplicate(discoverWeekly);
+  // 7. Discover Weekly (Enriched so it always renders a rich playlist, never only 1 song)
+  const rawDiscover = discoverWeekly.length >= 10
+    ? discoverWeekly
+    : [...discoverWeekly, ...secondaryLangSongs, ...primaryLangSongs];
+  const dedupDiscoverWeekly = deduplicateSection(rawDiscover).slice(0, 16);
 
   // 8. Video Songs
-  const dedupVideoSongs = deduplicate(videoSongs);
+  const dedupVideoSongs = deduplicateSection(videoSongs);
 
   // 9. Secondary Language Melodies
-  const dedupSecondaryLang = deduplicate(secondaryLangSongs);
+  const dedupSecondaryLang = deduplicateSection(secondaryLangSongs);
 
   // 10. Dynamic Infinite Genre Rows
   const dedupInfiniteMusicRows = infiniteMusicRows.map(row => ({
     ...row,
-    songs: deduplicate(row.songs)
+    songs: deduplicateSection(row.songs)
   })).filter(row => row.songs.length > 0);
 
   // Show Skeleton shimmer loading if initial music content has not loaded
@@ -727,9 +788,8 @@ export const MusicHomeScreen: React.FC<MusicHomeScreenProps> = ({
                 <div className="music-section-head">
                   <div className="section-title-wrap">
                     <h2 className="music-section-title">
-                      {userLocation.name} Sound & {userLocation.cinemaHub} Anthems
+                      Trending in {userLocation.name}
                     </h2>
-                    <span className="section-caption">Curated for your location • {userLocation.region}</span>
                   </div>
                 </div>
 
@@ -758,9 +818,6 @@ export const MusicHomeScreen: React.FC<MusicHomeScreenProps> = ({
                   <h2 className="music-section-title">Popular 20 Songs</h2>
                 </div>
                 <div className="section-right-actions">
-                  <span className="see-all-link" onClick={() => setActiveScreen('search')}>
-                    See all
-                  </span>
                   <div className="section-scroll-arrows">
                     <button
                       className="music-arrow-btn"
@@ -830,26 +887,6 @@ export const MusicHomeScreen: React.FC<MusicHomeScreenProps> = ({
               </div>
             )}
 
-            {/* ========================================================
-                SECTION 6: NEW COLLECTION (Panorama Wide Cards)
-                ======================================================== */}
-            <div className="music-section-block section-new-collection">
-              <div className="music-section-head">
-                <div className="section-title-wrap">
-                  <h2 className="music-section-title">New Collection</h2>
-                </div>
-              </div>
-
-              <div className="music-scroll-row style-collection-row">
-                {newCollections.map(coll => (
-                  <PanoramaCollectionCard
-                    key={coll.id}
-                    collection={coll}
-                    onClick={() => setActiveScreen('search')}
-                  />
-                ))}
-              </div>
-            </div>
 
             {/* ========================================================
                 SECTION 7: FEATURED ARTISTS & DISCOGRAPHIES (NEW SECTION)
@@ -899,7 +936,7 @@ export const MusicHomeScreen: React.FC<MusicHomeScreenProps> = ({
                 ref={artistRef}
                 onScroll={(e) => {
                   const el = e.currentTarget;
-                  if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 300) {
+                  if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 450) {
                     loadMoreArtistSongs();
                   }
                 }}
@@ -987,7 +1024,16 @@ export const MusicHomeScreen: React.FC<MusicHomeScreenProps> = ({
                   </div>
                 </div>
 
-                <div className="music-scroll-row style-cinematic-row" ref={videoRef}>
+                <div
+                  className="music-scroll-row style-cinematic-row"
+                  ref={videoRef}
+                  onScroll={(e) => {
+                    const el = e.currentTarget;
+                    if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 450) {
+                      loadMoreVideoSongs();
+                    }
+                  }}
+                >
                   {dedupVideoSongs.map(vs => (
                     <CinematicVideoCard
                       key={vs.id}
@@ -996,6 +1042,11 @@ export const MusicHomeScreen: React.FC<MusicHomeScreenProps> = ({
                       onPlay={(song, queue) => openVideoSong(song, queue || dedupVideoSongs)}
                     />
                   ))}
+                  {isLoadingMoreVideo && (
+                    <div className="row-auto-pitch-loader" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 80, height: '100%' }}>
+                      <div className="stream-glow-spinner" style={{ width: 24, height: 24 }} />
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -1027,7 +1078,16 @@ export const MusicHomeScreen: React.FC<MusicHomeScreenProps> = ({
                   </div>
                 </div>
 
-                <div className="music-scroll-row style-portrait-row" ref={secondaryLangRef}>
+                <div
+                  className="music-scroll-row style-portrait-row"
+                  ref={secondaryLangRef}
+                  onScroll={(e) => {
+                    const el = e.currentTarget;
+                    if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 450) {
+                      loadMoreSecondaryLangSongs();
+                    }
+                  }}
+                >
                   {dedupSecondaryLang.map((song, i) => (
                     <PortraitMusicCard
                       key={song.id || i}
@@ -1036,6 +1096,11 @@ export const MusicHomeScreen: React.FC<MusicHomeScreenProps> = ({
                       onPlay={handlePlaySong}
                     />
                   ))}
+                  {isLoadingMoreSecLang && (
+                    <div className="row-auto-pitch-loader" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 80, height: '100%' }}>
+                      <div className="stream-glow-spinner" style={{ width: 24, height: 24 }} />
+                    </div>
+                  )}
                 </div>
               </div>
             )}

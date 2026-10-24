@@ -10,7 +10,6 @@ import {
   Minimize2,
   Settings,
   Languages,
-  Activity,
   Layers,
   ChevronRight,
   Zap,
@@ -21,11 +20,12 @@ import {
   Play,
   Pause,
   Gauge,
-  Shield,
-  Sparkles
+  Sparkles,
+  MoreVertical
 } from 'lucide-react';
 import { useMedia } from '../context/MediaContext';
 import { getStreamEmbedUrl, STREAMING_SERVERS, fetchMovieDetails, markProviderHealthy, markProviderUnhealthy, isProviderHealthy, getFirstHealthyProviderIndex, getNextHealthyProviderIndex } from '../services/movieService';
+import { activateMovieModeAdRecovery, deactivateMovieModeAdRecovery } from '../services/adRecovery';
 import { activateAdBlocker, deactivateAdBlocker } from '../services/adBlocker';
 import { EpisodeItem } from '../types/media';
 
@@ -52,7 +52,14 @@ export const CustomVideoPlayer: React.FC = () => {
 
   // Player UI states
   const [isPlaying, setIsPlaying] = useState(true);
+  const [isPlaybackStarted, setIsPlaybackStarted] = useState(false);
+  const [showMobileActions, setShowMobileActions] = useState(false);
   const autoplayAttemptsRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    setIsPlaybackStarted(false);
+  }, [activeMovie?.id, videoProviderIndex, activeSeason, activeEpisode]);
+
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
@@ -76,6 +83,7 @@ export const CustomVideoPlayer: React.FC = () => {
     const safeIdx = Math.abs(nextIdx) % STREAMING_SERVERS.length;
     setVideoProviderIndex(safeIdx);
     setIsLoading(true);
+    setIsPlaybackStarted(false);
     setHasPlayerCrashed(false);
     setShowSlowNotice(false);
     setServerToast(`Switched to ${STREAMING_SERVERS[safeIdx]?.name || 'mirror'}`);
@@ -83,6 +91,61 @@ export const CustomVideoPlayer: React.FC = () => {
       setServerToast(null);
     }, 2800);
   }, [setVideoProviderIndex]);
+
+  const handleShieldPlayClick = useCallback(() => {
+    setIsPlaybackStarted(true);
+    setIsLoading(false);
+
+    try {
+      const iframe = iframeRef.current;
+      const iframeDoc = iframe?.contentDocument || iframe?.contentWindow?.document;
+      if (iframeDoc) {
+        // Strip all <a> tags to neutralize ad redirects completely
+        const links = iframeDoc.querySelectorAll('a');
+        links.forEach(a => {
+          a.removeAttribute('href');
+          a.removeAttribute('target');
+          (a as HTMLElement).style.pointerEvents = 'none';
+        });
+
+        // Remove 2embed wrapper background & error screen
+        const bg = iframeDoc.getElementById('bgImage');
+        if (bg) bg.remove();
+        const sbxErr = iframeDoc.getElementById('sbxErr');
+        if (sbxErr) sbxErr.remove();
+
+        const playbtnx = iframeDoc.querySelector('.playbtnx') as HTMLElement | null;
+        if (playbtnx) {
+          playbtnx.click();
+          playbtnx.style.display = 'none';
+        }
+
+        const ifr = iframeDoc.getElementById('iframesrc') as HTMLIFrameElement | null;
+        if (ifr && ifr.getAttribute('data-src')) {
+          ifr.src = ifr.getAttribute('data-src') || '';
+        }
+
+        // Click any player buttons or videos
+        iframeDoc.querySelectorAll('button[class*="play"], .play-button, .vjs-big-play-button, video').forEach(el => {
+          if (el instanceof HTMLVideoElement && el.paused) {
+            el.muted = false;
+            el.play().catch(() => {});
+          } else if (el instanceof HTMLElement) {
+            el.click();
+          }
+        });
+      }
+    } catch {
+      // Cross-origin fallback
+    }
+
+    try {
+      const iframe = iframeRef.current;
+      iframe?.contentWindow?.postMessage({ event: 'command', func: 'playVideo', args: [] }, '*');
+      iframe?.contentWindow?.postMessage({ type: 'play' }, '*');
+      iframe?.contentWindow?.postMessage('play', '*');
+    } catch {}
+  }, []);
 
   // Start on a healthy mirror instead of auto-cycling mirrors.
   useEffect(() => {
@@ -494,6 +557,17 @@ export const CustomVideoPlayer: React.FC = () => {
     return () => clearTimeout(timer);
   }, [hasPlayerCrashed, isVideoModalOpen, videoProviderIndex, handleSwitchServer]);
 
+  // Movie-mode ad recovery: when an ad URL is triggered, wait (ms) then
+  // trigger the back button (return to player) and auto-close opened tabs.
+  useEffect(() => {
+    if (!isVideoModalOpen) {
+      deactivateMovieModeAdRecovery();
+      return;
+    }
+    const cleanup = activateMovieModeAdRecovery({ delayMs: 1200 });
+    return () => cleanup();
+  }, [isVideoModalOpen]);
+
   // Playback rate synchronization for native video
   useEffect(() => {
     if (videoRef.current) {
@@ -536,13 +610,69 @@ export const CustomVideoPlayer: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isVideoModalOpen, videoProviderIndex, isPlaying, isMuted, aspectRatioMode, isLocked, closeMoviePlayer, handleSwitchServer]);
 
-  const toggleFullscreen = () => {
-    if (!playerContainerRef.current) return;
-    if (!document.fullscreenElement) {
-      playerContainerRef.current.requestFullscreen?.().catch(e => console.warn(e));
+  const toggleFullscreen = async () => {
+    const doc = document as any;
+    const isCurrentlyFull = !!(
+      doc.fullscreenElement ||
+      doc.webkitFullscreenElement ||
+      doc.mozFullScreenElement ||
+      doc.msFullscreenElement
+    );
+
+    const container = playerContainerRef.current || document.documentElement;
+
+    if (!isCurrentlyFull) {
+      try {
+        const rfs =
+          container.requestFullscreen ||
+          (container as any).webkitRequestFullscreen ||
+          (container as any).mozRequestFullScreen ||
+          (container as any).msRequestFullscreen;
+
+        if (rfs) {
+          await rfs.call(container, { navigationUI: 'hide' });
+        } else if (document.documentElement.requestFullscreen) {
+          await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+        }
+      } catch (err) {
+        console.warn('Fullscreen request failed:', err);
+      }
+
+      // Try locking screen orientation to landscape on mobile for true full view
+      try {
+        const orientation = (screen.orientation || (screen as any).mozOrientation || (screen as any).msOrientation) as any;
+        if (orientation && typeof orientation.lock === 'function') {
+          await orientation.lock('landscape').catch(() => {});
+        }
+      } catch {}
+
+      // Automatically engage Full View (fill) to remove side pillarboxes
+      setAspectRatioMode('fill');
+      setAspectRatioToast('Full View: Filled to Screen');
+      setTimeout(() => setAspectRatioToast(null), 2000);
       setIsFullscreen(true);
     } else {
-      document.exitFullscreen?.().catch(e => console.warn(e));
+      try {
+        const efs =
+          doc.exitFullscreen ||
+          doc.webkitExitFullscreen ||
+          doc.mozCancelFullScreen ||
+          doc.msExitFullscreen;
+        if (efs) {
+          await efs.call(doc);
+        }
+      } catch (err) {
+        console.warn('Exit fullscreen failed:', err);
+      }
+
+      try {
+        const orientation = (screen.orientation || (screen as any).mozOrientation || (screen as any).msOrientation) as any;
+        if (orientation && typeof orientation.unlock === 'function') {
+          orientation.unlock();
+        }
+      } catch {}
+
+      setAspectRatioMode('fit');
       setIsFullscreen(false);
     }
   };
@@ -550,7 +680,7 @@ export const CustomVideoPlayer: React.FC = () => {
   // Hold to 2x Play Handlers
   const handlePointerDown = (e: React.PointerEvent) => {
     if (isLocked) return;
-    if ((e.target as HTMLElement).closest('button, .player-menu-modal, .player-header-bar, .player-bottom-bar')) {
+    if ((e.target as HTMLElement).closest('button, .player-menu-modal, .player-header-bar, .player-bottom-bar, .player-mobile-actions-menu')) {
       return;
     }
     holdTimeoutRef.current = setTimeout(() => {
@@ -565,13 +695,23 @@ export const CustomVideoPlayer: React.FC = () => {
     }
   };
 
-  // Aspect ratio class helper
+  // Aspect ratio class helper: enhanced for modern ultra-wide (20:9) mobile screens
   const getAspectStyle = () => {
     switch (aspectRatioMode) {
       case 'fill':
-        return { width: '100%', height: '100%', transform: 'scale(1.08)' };
+        return {
+          width: '100%',
+          height: '100%',
+          transform: 'scaleX(1.24) scaleY(1.02)',
+          transformOrigin: 'center center'
+        };
       case 'zoom':
-        return { width: '100%', height: '100%', transform: 'scale(1.28)' };
+        return {
+          width: '100%',
+          height: '100%',
+          transform: 'scale(1.28)',
+          transformOrigin: 'center center'
+        };
       case '16-9':
         return { width: '100%', height: '100%', aspectRatio: '16/9' };
       default:
@@ -586,10 +726,10 @@ export const CustomVideoPlayer: React.FC = () => {
     setAspectRatioMode(nextMode);
 
     const labels: Record<string, string> = {
-      fit: 'Screen Aspect: FIT (Original)',
-      fill: 'Screen Aspect: FILL (1.08x Stretch)',
-      zoom: 'Screen Aspect: ZOOM (1.28x Cinematic)',
-      '16-9': 'Screen Aspect: 16:9 (Standard Widescreen)'
+      fit: 'Screen: Fit (Original 16:9)',
+      fill: 'Screen: Full View (Fill Display)',
+      zoom: 'Screen: Zoom (Cinematic Fill)',
+      '16-9': 'Screen: 16:9 Standard'
     };
     setAspectRatioToast(labels[nextMode]);
     setTimeout(() => {
@@ -603,7 +743,12 @@ export const CustomVideoPlayer: React.FC = () => {
     <div
       ref={playerContainerRef}
       className={`custom-fullscreen-player-container ${isFullscreen ? 'is-fullscreen' : ''}`}
-      onPointerDown={handlePointerDown}
+      onPointerDown={(e) => {
+        if (showMobileActions && !(e.target as HTMLElement).closest('.player-mobile-actions-menu, .player-mobile-more-btn')) {
+          setShowMobileActions(false);
+        }
+        handlePointerDown(e);
+      }}
       onPointerUp={handlePointerUp}
       onPointerLeave={handlePointerUp}
     >
@@ -616,6 +761,149 @@ export const CustomVideoPlayer: React.FC = () => {
       >
         <X size={22} />
       </button>
+
+      {/* Mobile 3-Dots Button: Always visible on mobile, DOES NOT HIDE */}
+      <button
+        className="player-mobile-more-btn"
+        onClick={(e) => {
+          e.stopPropagation();
+          setShowMobileActions(prev => !prev);
+        }}
+        title="Player Options"
+        aria-label="More Options"
+      >
+        <MoreVertical size={20} />
+      </button>
+
+      {/* Mobile 3-Dots Popup Action Menu */}
+      <AnimatePresence>
+        {showMobileActions && (
+          <motion.div
+            className="player-mobile-actions-menu"
+            initial={{ opacity: 0, scale: 0.92, x: -15 }}
+            animate={{ opacity: 1, scale: 1, x: 0 }}
+            exit={{ opacity: 0, scale: 0.92, x: -15 }}
+            transition={{ duration: 0.18 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mobile-actions-header">
+              <span className="mobile-actions-title">Options</span>
+              <button
+                className="menu-close-x"
+                onClick={() => setShowMobileActions(false)}
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mobile-actions-grid">
+              {/* Full View / Aspect Ratio Toggle */}
+              <button
+                className={`mobile-action-item ${aspectRatioMode !== 'fit' ? 'active' : ''}`}
+                onClick={() => {
+                  cycleAspectRatio();
+                }}
+              >
+                <Layers size={18} />
+                <span>Full View: {aspectRatioMode.toUpperCase()}</span>
+              </button>
+
+              {/* Fullscreen with Orientation Lock */}
+              <button
+                className={`mobile-action-item ${isFullscreen ? 'active' : ''}`}
+                onClick={() => {
+                  toggleFullscreen();
+                  setShowMobileActions(false);
+                }}
+              >
+                {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+                <span>{isFullscreen ? 'Exit Fullscreen' : 'Full Screen'}</span>
+              </button>
+
+              {/* Quality & Server Settings */}
+              <button
+                className="mobile-action-item"
+                onClick={() => {
+                  setShowQualityMenu(true);
+                  setShowMobileActions(false);
+                  setShowLangMenu(false);
+                  setShowEpisodeDrawer(false);
+                }}
+              >
+                <Settings size={18} />
+                <span>Quality & Mirrors</span>
+              </button>
+
+              {/* Audio & Subtitles */}
+              <button
+                className="mobile-action-item"
+                onClick={() => {
+                  setShowLangMenu(true);
+                  setShowMobileActions(false);
+                  setShowQualityMenu(false);
+                  setShowEpisodeDrawer(false);
+                }}
+              >
+                <Languages size={18} />
+                <span>Audio & Subtitles</span>
+              </button>
+
+              {/* Episodes (Series only) */}
+              {activeMovie.type === 'series' && (
+                <>
+                  <button
+                    className="mobile-action-item"
+                    onClick={() => {
+                      setShowEpisodeDrawer(true);
+                      setShowMobileActions(false);
+                      setShowQualityMenu(false);
+                      setShowLangMenu(false);
+                    }}
+                  >
+                    <List size={18} />
+                    <span>Episodes (S{activeSeason}:E{activeEpisode})</span>
+                  </button>
+
+                  <button
+                    className="mobile-action-item lime"
+                    onClick={() => {
+                      playNextEpisode();
+                      setShowMobileActions(false);
+                    }}
+                  >
+                    <ChevronRight size={18} />
+                    <span>Next Episode</span>
+                  </button>
+                </>
+              )}
+
+              {/* Mute Toggle */}
+              <button
+                className={`mobile-action-item ${isMuted ? 'active' : ''}`}
+                onClick={() => {
+                  toggleMute();
+                }}
+              >
+                {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+                <span>{isMuted ? 'Unmute Audio' : 'Mute Audio'}</span>
+              </button>
+
+              {/* Screen Lock */}
+              <button
+                className={`mobile-action-item ${isLocked ? 'active' : ''}`}
+                onClick={() => {
+                  setIsLocked(prev => !prev);
+                  setShowMobileActions(false);
+                }}
+              >
+                <Lock size={18} />
+                <span>{isLocked ? 'Unlock Screen' : 'Lock Screen'}</span>
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Left Vertical Control Rail — Icon-only transparent buttons */}
       <div className={`player-left-control-rail ${showControls || isLocked ? 'visible' : 'hidden'}`}>
@@ -753,7 +1041,10 @@ export const CustomVideoPlayer: React.FC = () => {
             onPlay={() => setIsPlaying(true)}
             onPause={() => setIsPlaying(false)}
             onWaiting={() => setIsLoading(true)}
-            onPlaying={() => setIsLoading(false)}
+            onPlaying={() => {
+              setIsLoading(false);
+              setIsPlaybackStarted(true);
+            }}
           />
         ) : (
           <iframe
@@ -838,8 +1129,11 @@ export const CustomVideoPlayer: React.FC = () => {
                     // If a video is already playing, stop retrying
                     if (videos.length > 0) {
                       const anyPlaying = Array.from(videos).some(v => !v.paused);
-                      if (anyPlaying && autoplayAttemptsRef.current) {
-                        clearInterval(autoplayAttemptsRef.current);
+                      if (anyPlaying) {
+                        setIsPlaybackStarted(true);
+                        if (autoplayAttemptsRef.current) {
+                          clearInterval(autoplayAttemptsRef.current);
+                        }
                       }
                     }
                   }
@@ -853,6 +1147,21 @@ export const CustomVideoPlayer: React.FC = () => {
               setHasPlayerCrashed(true);
             }}
           />
+        )}
+
+        {/* Anti-Ad Click & Hover Shield: Sits in front of iframe before playback starts */}
+        {!isPlaybackStarted && activeMovie && (
+          <div
+            className="player-ad-click-shield"
+            onClick={handleShieldPlayClick}
+          >
+            <div className="shield-play-backdrop-card">
+              <div className="shield-play-circle-btn">
+                <Play size={36} fill="#ffffff" color="#ffffff" style={{ marginLeft: 4 }} />
+              </div>
+              <span className="shield-play-title">{activeMovie.name}</span>
+            </div>
+          </div>
         )}
       </div>
 
@@ -872,7 +1181,7 @@ export const CustomVideoPlayer: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* 4. Top Header Overlay Bar — Only Title and Connection Health */}
+      {/* 4. Top Header Overlay Bar — Only Title and Meta (Removed AdBlock, Server, and Health indications) */}
       <div className={`player-header-bar ${showControls && !isLocked ? 'visible' : 'hidden'}`}>
         <div className="header-left-meta">
           <div className="player-title-block">
@@ -886,38 +1195,6 @@ export const CustomVideoPlayer: React.FC = () => {
               )}
             </div>
           </div>
-        </div>
-
-        {/* Top Right: Quick Server Switcher + Connection Health Pill */}
-        <div className="header-right-tools">
-          <span
-            className="connection-health-pill-btn"
-            title="Ad Blocker Active"
-            style={{ cursor: 'default', color: '#c8ff00' }}
-          >
-            <Shield size={13} style={{ color: '#c8ff00' }} />
-            <span className="health-ping-text">AdBlock</span>
-          </span>
-          <button
-            className="connection-health-pill-btn server-pill-btn"
-            onClick={() => handleSwitchServer(getNextHealthyProviderIndex(videoProviderIndex, STREAMING_SERVERS.length))}
-            title={`Current mirror. Click to switch mirror`}
-            aria-label="Switch Server"
-          >
-            <Server size={13} style={{ color: '#c8ff00' }} />
-            <span className="health-ping-text">{STREAMING_SERVERS[videoProviderIndex]?.name || 'Mirror'}</span>
-          </button>
-
-          <button
-            className="connection-health-pill-btn"
-            onClick={() => setShowHealthModal(prev => !prev)}
-            title="Connection Health"
-            aria-label="Connection Health"
-          >
-            <span className="health-dot-indicator green" />
-            <Activity size={14} />
-            <span className="health-ping-text">{ping}ms</span>
-          </button>
         </div>
       </div>
 

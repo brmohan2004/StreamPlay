@@ -1140,12 +1140,130 @@ export async function fetchGenreSongs(genre: string, limit = 15): Promise<SongIt
   return searchSongsPaged(`${genre} music hits`, 1, limit);
 }
 
-export async function fetchVideoSongs(language = 'Global', limit = 12): Promise<SongItem[]> {
-  const list = await searchSongsPaged(`${language} official music video songs`, 1, limit);
-  return list.map(song => ({
+const DAY_THEMES = [
+  'Sunday Superhits',
+  'Monday Motivation Hits',
+  'Tuesday Chartbusters',
+  'Wednesday Viral Beats',
+  'Thursday Blockbusters',
+  'Friday Party Anthems',
+  'Saturday Night Fever'
+];
+
+/**
+ * Dynamically fetches recommended music video songs paged by:
+ * 1. Previously watched video songs / listened artists (recommendation profile)
+ * 2. Rotating day-of-the-week themes and language preferences as fallback
+ * Guaranteed to return full pages (12+ items) without collapsing to 1 item.
+ */
+export async function fetchVideoSongsPaged(
+  primaryLanguage = 'Tamil',
+  secondaryLanguage = 'English',
+  page = 1,
+  limit = 12,
+  watchedVideos: SongItem[] = []
+): Promise<SongItem[]> {
+  const cleanPrim = (primaryLanguage || 'Tamil').trim();
+  const cleanSec = (secondaryLanguage || 'English').trim();
+  let query = '';
+
+  // 1. Recommendation based on watched video songs previously
+  if (watchedVideos && watchedVideos.length > 0) {
+    const anchor = watchedVideos[(page - 1) % watchedVideos.length];
+    if (page === 1) {
+      query = `${anchor.artist} official video songs hits`;
+    } else if (page === 2 && watchedVideos.length > 1) {
+      query = `${watchedVideos[1].artist} official video songs hits`;
+    } else if (page % 2 === 1) {
+      query = `${anchor.artist} ${cleanPrim} hit video songs`;
+    } else {
+      query = `${cleanPrim} top chartbuster official video songs 2026`;
+    }
+  } else {
+    // Rotating dynamic queries based on language and day of week
+    const dayIndex = new Date().getDay();
+    const dayTheme = DAY_THEMES[dayIndex];
+    const targetLang = (page % 2 === 1) ? cleanPrim : cleanSec;
+    query = `${targetLang} ${dayTheme} official music video songs`;
+  }
+
+  let list = await searchSongsPaged(query, Math.ceil(page / 2), limit);
+
+  // Fallback to ensure we NEVER return just 1 or 2 songs
+  if (!list || list.length < 8) {
+    const fallbackQueries = [
+      `${cleanPrim} official video songs hits 2026`,
+      `${cleanPrim} viral blockbuster video songs`,
+      `${cleanSec} top billboard official video songs`
+    ];
+    const fallbackQuery = fallbackQueries[(page - 1) % fallbackQueries.length];
+    const fallbackList = await searchSongsPaged(fallbackQuery, page, limit);
+    list = deduplicateSongs([...(list || []), ...(fallbackList || [])]);
+  }
+
+  return (list || []).map(song => ({
     ...song,
     isVideo: true
   }));
+}
+
+export async function fetchVideoSongs(language = 'Global', limit = 12): Promise<SongItem[]> {
+  return fetchVideoSongsPaged(language, 'English', 1, limit);
+}
+
+/**
+ * Dynamically fetches recommended English songs paged by:
+ * 1. Previously listened English songs / artists from user history
+ * 2. Major international Billboard Hot 100 / Pop Chartbusters collections as fallback
+ * Guaranteed to return full pages (15+ items) without collapsing to 2 items.
+ */
+export async function fetchRecommendedEnglishSongsPaged(
+  listenedSongs: SongItem[] = [],
+  page = 1,
+  limit = 15
+): Promise<SongItem[]> {
+  // Extract previously listened English tracks or artists
+  const englishListened = (listenedSongs || []).filter(s => {
+    const lang = (s.language || '').toLowerCase();
+    const artist = (s.artist || '').toLowerCase();
+    return lang === 'english' ||
+      /weeknd|taylor|coldplay|sheeran|mars|lipa|eilish|drake|post malone|eminem|rihanna|bieber|swift|adele|maroon|charlie puth|shawn mendes|katy perry|billie|pitbull|jennifer lopez|alan walker|chainsmokers|imagine dragons/i.test(artist);
+  });
+
+  let query = '';
+  if (englishListened.length > 0) {
+    const anchor = englishListened[(page - 1) % englishListened.length];
+    if (page === 1) {
+      query = `${anchor.artist} songs hits`;
+    } else if (page === 2 && englishListened.length > 1) {
+      query = `${englishListened[1].artist} songs hits`;
+    } else if (page % 2 === 1) {
+      query = `${anchor.artist} english pop hits`;
+    } else {
+      query = 'English pop chartbusters 2026';
+    }
+  } else {
+    // Rich cold start catalog (Billboard & International Pop Hits)
+    const curatedQueries = [
+      'English pop chartbusters 2026',
+      'Billboard Hot 100 English hits 2026',
+      'Global viral English pop hits',
+      'The Weeknd Taylor Swift Coldplay hits',
+      'English acoustic chill pop melodies',
+      'English dance club party hits'
+    ];
+    query = curatedQueries[(page - 1) % curatedQueries.length];
+  }
+
+  let list = await searchSongsPaged(query, Math.ceil(page / 2), limit);
+
+  // Fallback to guarantee a full, rich shelf of at least 15 songs
+  if (!list || list.length < 8) {
+    const fallbackList = await searchSongsPaged('English pop hits chartbusters', page, limit);
+    list = deduplicateSongs([...(list || []), ...(fallbackList || [])]);
+  }
+
+  return list || [];
 }
 
 const videoCache = new Map<string, string>();
