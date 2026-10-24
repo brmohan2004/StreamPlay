@@ -27,6 +27,7 @@ import { useMedia } from '../context/MediaContext';
 import { getStreamEmbedUrl, STREAMING_SERVERS, fetchMovieDetails, markProviderHealthy, markProviderUnhealthy, isProviderHealthy, getFirstHealthyProviderIndex, getNextHealthyProviderIndex } from '../services/movieService';
 import { activateMovieModeAdRecovery, deactivateMovieModeAdRecovery } from '../services/adRecovery';
 import { activateAdBlocker, deactivateAdBlocker } from '../services/adBlocker';
+import { audioEnhancer } from '../services/audioEnhancer';
 import { EpisodeItem } from '../types/media';
 
 export const CustomVideoPlayer: React.FC = () => {
@@ -52,13 +53,8 @@ export const CustomVideoPlayer: React.FC = () => {
 
   // Player UI states
   const [isPlaying, setIsPlaying] = useState(true);
-  const [isPlaybackStarted, setIsPlaybackStarted] = useState(false);
   const [showMobileActions, setShowMobileActions] = useState(false);
   const autoplayAttemptsRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  useEffect(() => {
-    setIsPlaybackStarted(false);
-  }, [activeMovie?.id, videoProviderIndex, activeSeason, activeEpisode]);
 
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -71,9 +67,14 @@ export const CustomVideoPlayer: React.FC = () => {
   useEffect(() => {
     setDirectStreamFailed(false);
   }, [activeMovie?.id, activeSeason, activeEpisode]);
-  const [serverToast, setServerToast] = useState<string | null>(null);
-  const [showSlowNotice, setShowSlowNotice] = useState(false);
   const [aspectRatioToast, setAspectRatioToast] = useState<string | null>(null);
+  const failoverCountRef = useRef<number>(0);
+  const streamPlaybackDetectedRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    failoverCountRef.current = 0;
+    streamPlaybackDetectedRef.current = false;
+  }, [activeMovie?.id, activeSeason, activeEpisode]);
 
   // Playback speed state (0.5x to 2x)
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1);
@@ -83,29 +84,57 @@ export const CustomVideoPlayer: React.FC = () => {
     const safeIdx = Math.abs(nextIdx) % STREAMING_SERVERS.length;
     setVideoProviderIndex(safeIdx);
     setIsLoading(true);
-    setIsPlaybackStarted(false);
     setHasPlayerCrashed(false);
-    setShowSlowNotice(false);
-    setServerToast(`Switched to ${STREAMING_SERVERS[safeIdx]?.name || 'mirror'}`);
-    setTimeout(() => {
-      setServerToast(null);
-    }, 2800);
   }, [setVideoProviderIndex]);
 
-  const handleShieldPlayClick = useCallback(() => {
-    setIsPlaybackStarted(true);
-    setIsLoading(false);
+  // Automated Autoplay Driver for Embedded Streaming Servers
+  const triggerAutoPlay = useCallback(() => {
+    setIsPlaying(true);
 
     try {
       const iframe = iframeRef.current;
-      const iframeDoc = iframe?.contentDocument || iframe?.contentWindow?.document;
+      if (!iframe) return;
+
+      // 1. PostMessage autoplay signals across major web embed engines
+      const playSignals = [
+        { event: 'command', func: 'playVideo', args: [] },
+        { type: 'play' },
+        { type: 'player:play' },
+        { action: 'play' },
+        { method: 'play' },
+        { event: 'play' },
+        'play',
+        JSON.stringify({ event: 'command', func: 'playVideo' }),
+        JSON.stringify({ type: 'play' })
+      ];
+
+      playSignals.forEach(sig => {
+        try {
+          iframe.contentWindow?.postMessage(sig, '*');
+        } catch {}
+      });
+
+      // 2. Direct DOM access (works for proxied & same-origin mirrors)
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
       if (iframeDoc) {
-        // Strip all <a> tags to neutralize ad redirects completely
+        // Detect 404 / Missing stream page inside mirror
+        const docText = (iframeDoc.body?.innerText || '').toLowerCase();
+        if (docText.includes('404') && (docText.includes('content not found') || docText.includes('not found') || docText.includes('no stream'))) {
+          console.warn('[StreamPlay] Detected 404 Content Not Found on mirror. Auto-switching to next mirror...');
+          markProviderUnhealthy(videoProviderIndex);
+          handleSwitchServer(getNextHealthyProviderIndex(videoProviderIndex, STREAMING_SERVERS.length));
+          return;
+        }
+
+        // Strip lingering ad anchors
         const links = iframeDoc.querySelectorAll('a');
         links.forEach(a => {
-          a.removeAttribute('href');
-          a.removeAttribute('target');
-          (a as HTMLElement).style.pointerEvents = 'none';
+          const href = a.getAttribute('href') || '';
+          if (href && !href.includes(window.location.host)) {
+            a.removeAttribute('href');
+            a.removeAttribute('target');
+            (a as HTMLElement).style.pointerEvents = 'none';
+          }
         });
 
         // Remove 2embed wrapper background & error screen
@@ -121,12 +150,12 @@ export const CustomVideoPlayer: React.FC = () => {
         }
 
         const ifr = iframeDoc.getElementById('iframesrc') as HTMLIFrameElement | null;
-        if (ifr && ifr.getAttribute('data-src')) {
+        if (ifr && ifr.getAttribute('data-src') && !ifr.src) {
           ifr.src = ifr.getAttribute('data-src') || '';
         }
 
         // Click any player buttons or videos
-        iframeDoc.querySelectorAll('button[class*="play"], .play-button, .vjs-big-play-button, video').forEach(el => {
+        iframeDoc.querySelectorAll('button[class*="play"], button[aria-label*="play" i], button[title*="play" i], .play-button, .vjs-big-play-button, video').forEach(el => {
           if (el instanceof HTMLVideoElement && el.paused) {
             el.muted = false;
             el.play().catch(() => {});
@@ -136,18 +165,40 @@ export const CustomVideoPlayer: React.FC = () => {
         });
       }
     } catch {
-      // Cross-origin fallback
+      // Cross-origin fallback handled by postMessage & allow="autoplay *"
     }
+  }, [videoProviderIndex, handleSwitchServer]);
 
-    try {
-      const iframe = iframeRef.current;
-      iframe?.contentWindow?.postMessage({ event: 'command', func: 'playVideo', args: [] }, '*');
-      iframe?.contentWindow?.postMessage({ type: 'play' }, '*');
-      iframe?.contentWindow?.postMessage('play', '*');
-    } catch {}
-  }, []);
+  // Auto-play driver: repeatedly triggers play on modal open and for the first 3 seconds
+  useEffect(() => {
+    if (!isVideoModalOpen || !activeMovie) return;
+    triggerAutoPlay();
+    const timers = [150, 400, 800, 1400, 2400].map(ms => setTimeout(triggerAutoPlay, ms));
+    return () => timers.forEach(t => clearTimeout(t));
+  }, [isVideoModalOpen, activeMovie?.id, videoProviderIndex, activeSeason, activeEpisode, triggerAutoPlay]);
 
-  // Start on a healthy mirror instead of auto-cycling mirrors.
+  // Listen for upstream 404 / playback signals
+  useEffect(() => {
+    const handleUpstreamMessage = (e: MessageEvent) => {
+      if (e.data === 'playing' || e.data?.type === 'playing' || e.data?.event === 'playing') {
+        streamPlaybackDetectedRef.current = true;
+        markProviderHealthy(videoProviderIndex);
+      }
+      if (e.data?.type === 'streamplay_player_error' && e.data?.code === 404) {
+        if (failoverCountRef.current < STREAMING_SERVERS.length) {
+          failoverCountRef.current += 1;
+          markProviderUnhealthy(videoProviderIndex);
+          setTimeout(() => {
+            handleSwitchServer(getNextHealthyProviderIndex(videoProviderIndex, STREAMING_SERVERS.length));
+          }, 300);
+        }
+      }
+    };
+    window.addEventListener('message', handleUpstreamMessage);
+    return () => window.removeEventListener('message', handleUpstreamMessage);
+  }, [videoProviderIndex, handleSwitchServer]);
+
+  // Start on the best healthy mirror instead of arbitrary mirror
   useEffect(() => {
     if (!isVideoModalOpen) return;
     if (!isProviderHealthy(videoProviderIndex)) {
@@ -155,27 +206,30 @@ export const CustomVideoPlayer: React.FC = () => {
     }
   }, [isVideoModalOpen, videoProviderIndex, setVideoProviderIndex]);
 
-  // Loading curtain auto-dismiss & slow stream watchdog
+  // Watchdog: Auto-dismisses loading curtain and provides silent deadlock recovery on genuine failures
   useEffect(() => {
-    if (!isVideoModalOpen) return;
-    setIsLoading(true);
-    setShowSlowNotice(false);
+    if (!isVideoModalOpen || !activeMovie) return;
+    streamPlaybackDetectedRef.current = false;
 
-    // Auto-dismiss loading curtain after 1.2s so iframe controls are instantly visible & responsive
+    // Auto-dismiss loading curtain after 1.2s for responsive player interaction
     const dismissTimer = setTimeout(() => {
       setIsLoading(false);
     }, 1200);
 
-    // Watchdog: If server buffer or connection is slow after 4.5s, suggest next mirror server
-    const slowTimer = setTimeout(() => {
-      setShowSlowNotice(true);
-    }, 4500);
+    // Deadlock watchdog: Only switches if a connection completely hangs for 18 seconds
+    const deadlockTimer = setTimeout(() => {
+      if (isLoading && failoverCountRef.current < STREAMING_SERVERS.length) {
+        failoverCountRef.current += 1;
+        markProviderUnhealthy(videoProviderIndex);
+        handleSwitchServer(getNextHealthyProviderIndex(videoProviderIndex, STREAMING_SERVERS.length));
+      }
+    }, 18000);
 
     return () => {
       clearTimeout(dismissTimer);
-      clearTimeout(slowTimer);
+      clearTimeout(deadlockTimer);
     };
-  }, [isVideoModalOpen, videoProviderIndex, activeMovie?.id, activeSeason, activeEpisode]);
+  }, [isVideoModalOpen, videoProviderIndex, activeMovie?.id, activeSeason, activeEpisode, isLoading, handleSwitchServer]);
 
   // Ad blocker (src/services/adBlocker.ts) now handles popup/redirect suppression.
 
@@ -391,8 +445,11 @@ export const CustomVideoPlayer: React.FC = () => {
       });
       hlsRef.current = hls;
 
+      try { video.crossOrigin = 'anonymous'; } catch { /* ignore */ }
+      audioEnhancer.warmUp();
       hls.loadSource(activeMovie.streamUrl);
       hls.attachMedia(video);
+      audioEnhancer.attach(video, 'movie');
 
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         setIsLoading(false);
@@ -465,7 +522,14 @@ export const CustomVideoPlayer: React.FC = () => {
         }
       });
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      try {
+        video.crossOrigin = 'anonymous';
+      } catch {
+        /* ignore */
+      }
+      audioEnhancer.warmUp();
       video.src = activeMovie.streamUrl;
+      audioEnhancer.attach(video, 'movie');
       video.addEventListener('loadedmetadata', () => {
         setIsLoading(false);
         video.play().catch(e => console.warn('Autoplay prevented:', e));
@@ -477,6 +541,7 @@ export const CustomVideoPlayer: React.FC = () => {
         hls.destroy();
         hlsRef.current = null;
       }
+      audioEnhancer.detach();
     };
   }, [isVideoModalOpen, activeMovie?.streamUrl, activeMovie?.id]);
 
@@ -998,41 +1063,12 @@ export const CustomVideoPlayer: React.FC = () => {
           </div>
         )}
 
-        {/* Slow or Blocked Connection Auto-Watchdog Pill */}
-        <AnimatePresence>
-          {showSlowNotice && isLoading && (
-            <motion.div
-              className="player-slow-stream-toast"
-              initial={{ opacity: 0, y: -10, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10, scale: 0.95 }}
-              onClick={() => handleSwitchServer(getNextHealthyProviderIndex(videoProviderIndex, STREAMING_SERVERS.length))}
-              title="Click to switch to next fast mirror server"
-            >
-              <Zap size={14} color="#c8ff00" />
-              <span>Slow or blocked stream? Tap to switch to next mirror ⚡</span>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
-        {/* Server Switched Notification Toast */}
-        <AnimatePresence>
-          {serverToast && (
-            <motion.div
-              className="player-server-switched-toast"
-              initial={{ opacity: 0, y: 15, scale: 0.92 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 15, scale: 0.92 }}
-            >
-              <Server size={14} color="#00d2ff" />
-              <span>{serverToast}</span>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {activeMovie.streamUrl && !directStreamFailed ? (
           <video
             ref={videoRef}
+            crossOrigin="anonymous"
             className="custom-stream-video"
             playsInline
             autoPlay
@@ -1043,7 +1079,6 @@ export const CustomVideoPlayer: React.FC = () => {
             onWaiting={() => setIsLoading(true)}
             onPlaying={() => {
               setIsLoading(false);
-              setIsPlaybackStarted(true);
             }}
           />
         ) : (
@@ -1062,106 +1097,27 @@ export const CustomVideoPlayer: React.FC = () => {
               setHasPlayerCrashed(false);
               setIsPlaying(true);
               markProviderHealthy(videoProviderIndex);
+              triggerAutoPlay();
 
-              // Auto-play: attempt to click play inside the iframe via postMessage
-              // and by directly interacting with the iframe document (same-origin only)
+              // Auto-play: repeatedly trigger playback inside the iframe via postMessage & DOM
               if (autoplayAttemptsRef.current) {
                 clearInterval(autoplayAttemptsRef.current);
               }
               let attempts = 0;
               autoplayAttemptsRef.current = setInterval(() => {
                 attempts++;
-                if (attempts > 15) {
+                if (attempts > 12) {
                   if (autoplayAttemptsRef.current) clearInterval(autoplayAttemptsRef.current);
                   return;
                 }
-                try {
-                  const iframe = iframeRef.current;
-                  if (!iframe) return;
-
-                  // Method 1: postMessage autoplay signal
-                  iframe.contentWindow?.postMessage({ event: 'command', func: 'playVideo', args: [] }, '*');
-                  iframe.contentWindow?.postMessage({ type: 'play' }, '*');
-                  iframe.contentWindow?.postMessage('play', '*');
-
-                  // Method 2: Try direct DOM access (works for same-origin/proxy)
-                  const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-                  if (iframeDoc) {
-                    // Strip any lingering ad anchor overlays (e.g. interlinecustomroofingllc)
-                    const adAnchors = iframeDoc.querySelectorAll(
-                      'a[href*="interline" i], a[href*="tagivi" i], a[href*="adplox" i], ' +
-                      'a[target="_blank"], a[href^="http"]:not([href*="' + window.location.host + '"]):not([href*="vidsrc"])'
-                    );
-                    adAnchors.forEach(a => a.remove());
-
-                    // Dismiss any sandbox warning overlay
-                    const sbxErr = iframeDoc.getElementById('sbxErr');
-                    if (sbxErr) sbxErr.remove();
-
-                    // If 2embed wrapper play button exists, trigger it
-                    const wrapperPlayBtn = iframeDoc.querySelector('.playbtnx') as HTMLElement | null;
-                    if (wrapperPlayBtn && wrapperPlayBtn.style.display !== 'none') {
-                      wrapperPlayBtn.click();
-                    }
-
-                    // Click any visible play button
-                    const playBtns = iframeDoc.querySelectorAll(
-                      'button[aria-label*="play" i], button[aria-label*="Play" i], ' +
-                      'button[title*="play" i], button[title*="Play" i], ' +
-                      '.play-button, .vjs-big-play-button, ' +
-                      '[class*="play-btn"], [class*="playBtn"], [class*="play_button"], ' +
-                      '.jw-icon-display, .plyr__control--overlaid, ' +
-                      'div[class*="play"] svg, button svg'
-                    );
-                    playBtns.forEach(btn => {
-                      (btn as HTMLElement).click();
-                    });
-
-                    // Also try triggering play on any video element
-                    const videos = iframeDoc.querySelectorAll('video');
-                    videos.forEach(v => {
-                      if (v.paused) {
-                        v.muted = false;
-                        v.play().catch(() => {});
-                      }
-                    });
-
-                    // If a video is already playing, stop retrying
-                    if (videos.length > 0) {
-                      const anyPlaying = Array.from(videos).some(v => !v.paused);
-                      if (anyPlaying) {
-                        setIsPlaybackStarted(true);
-                        if (autoplayAttemptsRef.current) {
-                          clearInterval(autoplayAttemptsRef.current);
-                        }
-                      }
-                    }
-                  }
-                } catch {
-                  // Cross-origin restriction, postMessage is the only option
-                }
-              }, 800);
+                triggerAutoPlay();
+              }, 400);
             }}
             onError={() => {
               markProviderUnhealthy(videoProviderIndex);
               setHasPlayerCrashed(true);
             }}
           />
-        )}
-
-        {/* Anti-Ad Click & Hover Shield: Sits in front of iframe before playback starts */}
-        {!isPlaybackStarted && activeMovie && (
-          <div
-            className="player-ad-click-shield"
-            onClick={handleShieldPlayClick}
-          >
-            <div className="shield-play-backdrop-card">
-              <div className="shield-play-circle-btn">
-                <Play size={36} fill="#ffffff" color="#ffffff" style={{ marginLeft: 4 }} />
-              </div>
-              <span className="shield-play-title">{activeMovie.name}</span>
-            </div>
-          </div>
         )}
       </div>
 

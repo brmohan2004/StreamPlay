@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
 import { MovieItem, SongItem } from '../types/media';
+import { audioEnhancer } from '../services/audioEnhancer';
 import { logSignal } from '../services/recommendationTracker';
 import { AudioBufferWatchdog } from '../services/streamingWatchdog';
 import { getAudioStreamForQuality, fetchInfiniteLanguageSongs, AudioQualitySetting } from '../services/musicService';
@@ -594,7 +595,24 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  // Multi-Provider Audio Quality Setting
+  // Warm up the audio enhancer on first user interaction (unlocks AudioContext)
+  useEffect(() => {
+    const warm = () => {
+      audioEnhancer.warmUp();
+      window.removeEventListener('pointerdown', warm);
+      window.removeEventListener('keydown', warm);
+      window.removeEventListener('touchstart', warm);
+    };
+    window.addEventListener('pointerdown', warm, { once: true });
+    window.addEventListener('keydown', warm, { once: true });
+    window.addEventListener('touchstart', warm, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', warm);
+      window.removeEventListener('keydown', warm);
+      window.removeEventListener('touchstart', warm);
+    };
+  }, []);
+
   const [audioQuality, setAudioQualityState] = useState<AudioQualitySetting>(() => {
     return (localStorage.getItem('streamplay_audio_quality') as AudioQualitySetting) || '320kbps';
   });
@@ -636,6 +654,8 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     const audio = new Audio();
     audioRef.current = audio;
+    try { audio.crossOrigin = 'anonymous'; } catch { /* ignore */ }
+    audioEnhancer.attach(audio, 'music');
 
     // Restore last played stream URL to audio element without autoplaying
     if (currentSongRef.current?.streamUrl) {
@@ -646,6 +666,7 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const preloadAudio = new Audio();
     preloadAudio.preload = 'auto';
     preloadAudio.volume = 0;
+    preloadAudio.muted = true;
     preloadAudioRef.current = preloadAudio;
 
     let isTransitioning = false;
@@ -701,6 +722,8 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               preloadedUrlRef.current = candidate.streamUrl;
               preloadAudioRef.current.src = candidate.streamUrl;
               preloadAudioRef.current.load();
+              audioEnhancer.warmUp();
+              audioEnhancer.prime(preloadAudioRef.current, 'music');
             }
           }
 
@@ -766,6 +789,7 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setActiveEpisode(episode);
     setVideoProviderIndex(getFirstHealthyProviderIndex(STREAMING_SERVERS.length));
     setIsVideoModalOpen(true);
+    audioEnhancer.warmUp();
 
     // NetMirror-style path: try to resolve a direct HLS/MP4 URL from a backend.
     // If available, the custom player renders native video instead of an iframe.
@@ -805,6 +829,10 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const closeMoviePlayer = () => {
     setIsVideoModalOpen(false);
+    if (audioRef.current) {
+      audioEnhancer.warmUp();
+      audioEnhancer.attach(audioRef.current, 'music');
+    }
   };
 
   const cycleVideoProvider = () => {
@@ -923,6 +951,8 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     );
 
     if (audioRef.current) {
+      audioEnhancer.warmUp();
+      audioEnhancer.attach(audioRef.current, 'music');
       if (audioWatchdogRef.current) {
         const mirrors = [updatedSong.streamUrl, ...(updatedSong.backupStreamUrls || [])];
         audioWatchdogRef.current.setMirrors(Array.from(new Set(mirrors)));

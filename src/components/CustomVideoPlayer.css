@@ -697,34 +697,7 @@
 }
 
 /* Failover Watchdog & Server Switch Toasts */
-.player-slow-stream-toast {
-  position: absolute;
-  top: max(env(safe-area-inset-top, 14px), 64px);
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 10000;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: rgba(20, 26, 36, 0.94);
-  border: 1px solid rgba(200, 255, 0, 0.5);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8), 0 0 16px rgba(200, 255, 0, 0.2);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  padding: 0.5rem 1rem;
-  border-radius: 9999px;
-  cursor: pointer;
-  color: #ffffff;
-  font-size: 0.78rem;
-  font-weight: 600;
-  white-space: nowrap;
-  max-width: 92vw;
-}
 
-.player-slow-stream-toast:hover {
-  background: rgba(30, 38, 52, 0.98);
-  border-color: #c8ff00;
-}
 
 .player-server-switched-toast {
   position: absolute;
@@ -1186,68 +1159,5 @@
   min-height: 100% !important;
 }
 
-/* Anti-Ad Click & Hover Shield: Sits directly in front of the iframe before playback starts */
-.player-ad-click-shield {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 15;
-  background: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  user-select: none;
-  transition: opacity 0.3s ease;
-}
 
-.shield-play-backdrop-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1.15rem;
-  padding: 2rem 2.5rem;
-  border-radius: 24px;
-  background: rgba(12, 18, 28, 0.82);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.8), 0 0 35px rgba(0, 210, 255, 0.22);
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease, box-shadow 0.25s ease;
-}
-
-.player-ad-click-shield:hover .shield-play-backdrop-card {
-  transform: scale(1.06);
-  border-color: rgba(0, 210, 255, 0.45);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9), 0 0 45px rgba(0, 210, 255, 0.4);
-}
-
-.shield-play-circle-btn {
-  width: 76px;
-  height: 76px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #00d2ff 0%, #0066ff 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 8px 28px rgba(0, 210, 255, 0.55);
-  transition: transform 0.2s ease, filter 0.2s ease;
-}
-
-.player-ad-click-shield:hover .shield-play-circle-btn {
-  transform: scale(1.1);
-  filter: brightness(1.15);
-}
-
-.shield-play-title {
-  font-family: var(--font-display, 'Outfit', sans-serif);
-  font-size: 1.35rem;
-  font-weight: 700;
-  color: #ffffff;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
-  letter-spacing: 0.5px;
-  text-align: center;
-  max-width: 360px;
-}
 

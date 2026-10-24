@@ -813,38 +813,38 @@ export interface StreamingServerMeta {
 }
 
 export const STREAMING_SERVERS: StreamingServerMeta[] = [
-  // 1. VidSrc PM (Fast Origin Cluster — Zero Black Screen, Instant Playback)
+  // 1. VidLink Pro (Modern 4K HTML5 Player — Fast & CC)
   {
     id: 0,
-    name: 'VidSrc PM (Fast Origin)',
-    isNoAds: true,
-    specialty: 'High-speed origin cluster with instant playback and zero black screen',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://vidsrc.pm/embed/tv/${id}/${s}/${e}`
-        : `https://vidsrc.pm/embed/movie/${id}`
-  },
-  // 2. VidLink Pro (Modern 4K HTML5 Player — Fast & Clean)
-  {
-    id: 1,
     name: 'VidLink Pro (Fast & CC)',
     isNoAds: true,
     specialty: 'Modern Next.js HTML5 player with multi-subtitles, multi-audio & instant 1080p/4K',
     getUrl: (id, _, type, s, e) =>
       type === 'series'
-        ? `https://vidlink.pro/tv/${id}/${s}/${e}`
-        : `https://vidlink.pro/movie/${id}`
+        ? `https://vidlink.pro/tv/${id}/${s}/${e}?autoplay=true`
+        : `https://vidlink.pro/movie/${id}?autoplay=true`
   },
-  // 3. VidBinge (Fast HTML5 Player — Multi-Audio & Subtitles)
+  // 2. VidSrc PM (Fast Origin Cluster — Zero Black Screen, Instant Playback)
   {
-    id: 2,
-    name: 'VidBinge (Fast Player)',
+    id: 1,
+    name: 'VidSrc PM (Fast Origin)',
     isNoAds: true,
-    specialty: 'Fast HTML5 player with multi-audio & subtitle support',
+    specialty: 'High-speed origin cluster with instant playback and zero black screen',
     getUrl: (id, _, type, s, e) =>
       type === 'series'
-        ? `https://vidbinge.dev/embed/tv/${id}/${s}/${e}`
-        : `https://vidbinge.dev/embed/movie/${id}`
+        ? `https://vidsrc.pm/embed/tv/${id}/${s}/${e}?autoplay=1`
+        : `https://vidsrc.pm/embed/movie/${id}?autoplay=1`
+  },
+  // 3. AutoEmbed (Global & Regional — High Indian & International Catalog)
+  {
+    id: 2,
+    name: 'AutoEmbed (Global & Regional)',
+    isNoAds: true,
+    specialty: 'Ultra-fast multi-source engine with broad Indian, regional & global coverage',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://autoembed.co/tv/imdb/${id}-${s}-${e}`
+        : `https://autoembed.co/movie/imdb/${id}`
   },
   // 4. 2Embed CC (Multi-Language & Audio Tracks — Sanitized via Proxy)
   {
@@ -857,9 +857,31 @@ export const STREAMING_SERVERS: StreamingServerMeta[] = [
         ? `https://www.2embed.cc/embedtv/${id}&s=${s}&e=${e}`
         : `https://www.2embed.cc/embed/${id}`
   },
-  // 5. VidSrc NL (Player Mirror — Clean Playback)
+  // 5. SmashyStream (Multi-Source Player)
   {
     id: 4,
+    name: 'SmashyStream (Multi-Source)',
+    isNoAds: true,
+    specialty: 'Multi-source player with broad format and regional Indian support',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://embed.smashystream.com/playere.php?imdb=${id}&s=${s}&e=${e}&autoplay=1`
+        : `https://embed.smashystream.com/playere.php?imdb=${id}&autoplay=1`
+  },
+  // 6. VidBinge (Fast HTML5 Player — Multi-Audio & Subtitles)
+  {
+    id: 5,
+    name: 'VidBinge (Fast Player)',
+    isNoAds: true,
+    specialty: 'Fast HTML5 player with multi-audio & subtitle support',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://vidbinge.dev/embed/tv/${id}/${s}/${e}`
+        : `https://vidbinge.dev/embed/movie/${id}`
+  },
+  // 7. VidSrc NL (Player Mirror — Clean Playback)
+  {
+    id: 6,
     name: 'VidSrc NL (Player Mirror)',
     isNoAds: true,
     specialty: 'Clean player mirror with stable playback',
@@ -868,9 +890,9 @@ export const STREAMING_SERVERS: StreamingServerMeta[] = [
         ? `https://player.vidsrc.nl/embed/tv/${id}/${s}/${e}`
         : `https://player.vidsrc.nl/embed/movie/${id}`
   },
-  // 6. 111Movies (Community Mirror)
+  // 8. 111Movies (Community Mirror)
   {
-    id: 5,
+    id: 7,
     name: '111Movies (Community Mirror)',
     isNoAds: false,
     specialty: 'Community mirror with broad catalog coverage',
@@ -879,9 +901,9 @@ export const STREAMING_SERVERS: StreamingServerMeta[] = [
         ? `https://111movies.com/tv/${id}/${s}/${e}`
         : `https://111movies.com/movie/${id}`
   },
-  // 7. VidSrc CC (Official v2 Embed)
+  // 9. VidSrc CC (Official v2 Embed)
   {
-    id: 6,
+    id: 8,
     name: 'VidSrc CC (Official v2)',
     isNoAds: true,
     specialty: 'Official v2 embed with reliable playback',
@@ -890,20 +912,9 @@ export const STREAMING_SERVERS: StreamingServerMeta[] = [
         ? `https://vidsrc.cc/v2/embed/tv/${id}/${s}/${e}`
         : `https://vidsrc.cc/v2/embed/movie/${id}`
   },
-  // 8. SmashyStream (Multi-Source Player)
+  // 10. MoviesAPI (Club Mirror)
   {
-    id: 7,
-    name: 'SmashyStream (Multi-Source)',
-    isNoAds: true,
-    specialty: 'Multi-source player with broad format support',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://embed.smashystream.com/playere.php?imdb=${id}&s=${s}&e=${e}`
-        : `https://embed.smashystream.com/playere.php?imdb=${id}`
-  },
-  // 9. MoviesAPI (Club Mirror)
-  {
-    id: 8,
+    id: 9,
     name: 'MoviesAPI (Club Mirror)',
     isNoAds: true,
     specialty: 'Club mirror with multi-language support',
@@ -912,9 +923,9 @@ export const STREAMING_SERVERS: StreamingServerMeta[] = [
         ? `https://moviesapi.club/tv/${id}/${s}/${e}`
         : `https://moviesapi.club/movie/${id}`
   },
-  // 10. MultiEmbed (Aggregated Sources)
+  // 11. MultiEmbed (Aggregated Sources)
   {
-    id: 9,
+    id: 10,
     name: 'MultiEmbed (Aggregated)',
     isNoAds: true,
     specialty: 'Aggregated sources with automatic fallback',
@@ -1002,17 +1013,38 @@ export function isProviderHealthy(index: number): boolean {
   return true;
 }
 
-export function getFirstHealthyProviderIndex(total: number): number {
-  for (let idx = 0; idx < total; idx++) {
-    if (isProviderHealthy(idx)) return idx;
+export function getBestHealthyProviderIndex(currentIndex = -1, total: number = STREAMING_SERVERS.length): number {
+  const state = readProviderHealth();
+  const safeTotal = total > 0 ? total : STREAMING_SERVERS.length;
+
+  const candidates: { index: number; score: number }[] = [];
+
+  for (let idx = 0; idx < safeTotal; idx++) {
+    if (idx === currentIndex && safeTotal > 1) continue;
+
+    const entry = state[idx] || { success: 0, failure: 0 };
+    const isRecentFailure = entry.lastFailure && (Date.now() - entry.lastFailure < 10 * 60 * 1000);
+
+    // Initial base score by server hierarchy (AutoEmbed, VidSrc PM, VidLink, etc.)
+    let score = 100 - (idx * 2);
+    score += (entry.success * 15);
+    score -= (entry.failure * 35);
+
+    if (isRecentFailure) {
+      score -= 100;
+    }
+
+    candidates.push({ index: idx, score });
   }
-  return 0;
+
+  candidates.sort((a, b) => b.score - a.score);
+  return candidates[0]?.index ?? 0;
 }
 
-export function getNextHealthyProviderIndex(start: number, total: number): number {
-  for (let offset = 1; offset <= total; offset++) {
-    const idx = (start + offset) % total;
-    if (isProviderHealthy(idx)) return idx;
-  }
-  return (start + 1) % total;
+export function getFirstHealthyProviderIndex(total: number = STREAMING_SERVERS.length): number {
+  return getBestHealthyProviderIndex(-1, total);
+}
+
+export function getNextHealthyProviderIndex(start: number, total: number = STREAMING_SERVERS.length): number {
+  return getBestHealthyProviderIndex(start, total);
 }

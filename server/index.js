@@ -155,6 +155,22 @@ export async function handleRequest(req, res) {
           targetOrigin = new URL(target).origin;
         } catch {}
 
+        // 0. Detect upstream 404 / Missing content and inform parent StreamPlay player
+        const is404Missing = status === 404 ||
+          (text.includes('404') && (text.includes('Content not found') || text.includes('not found'))) ||
+          (text.includes('Content not found') && text.includes('IMDB:'));
+
+        if (is404Missing) {
+          const failoverScript = `
+<script>
+  try {
+    window.parent.postMessage({ type: 'streamplay_player_error', code: 404, message: 'Content not found on mirror' }, '*');
+  } catch(e) {}
+</script>
+`;
+          text = failoverScript + text;
+        }
+
         // 1. Inject <base> tag so relative paths (posters, styles, icons) resolve to target origin
         if (targetOrigin && !/<base\s/i.test(text)) {
           text = text.includes('<head>')
@@ -230,20 +246,52 @@ export async function handleRequest(req, res) {
     }
   }, true);
 
-  // Auto-start embedded player if playbtnx exists (e.g. 2embed wrapper)
-  document.addEventListener('DOMContentLoaded', function() {
-    setTimeout(function() {
+  // Auto-play driver: triggers video play and clicks player controls automatically
+  function autoPlayEmbeddedMedia() {
+    try {
       var ifr = document.getElementById('iframesrc');
-      if (ifr && ifr.getAttribute('data-src')) {
+      if (ifr && ifr.getAttribute('data-src') && !ifr.src) {
         ifr.src = ifr.getAttribute('data-src');
       }
       var bg = document.getElementById('bgImage');
       if (bg) bg.remove();
       var p = document.querySelector('.playbtnx');
-      if (p) p.style.display = 'none';
+      if (p) {
+        p.click();
+        p.style.display = 'none';
+      }
       var drop = document.querySelector('.dropdown');
       if (drop) drop.style.display = 'block';
-    }, 50);
+
+      // Auto-click play buttons
+      var playBtns = document.querySelectorAll('button[aria-label*="play" i], button[title*="play" i], .play-button, .vjs-big-play-button, .jw-icon-display, .plyr__control--overlaid, [class*="play-btn"], [class*="playBtn"]');
+      for (var i = 0; i < playBtns.length; i++) {
+        playBtns[i].click();
+      }
+
+      // Unpause any HTML5 video
+      var vids = document.querySelectorAll('video');
+      for (var j = 0; j < vids.length; j++) {
+        if (vids[j].paused) {
+          vids[j].muted = false;
+          vids[j].play().catch(function() {});
+        }
+      }
+    } catch(e) {}
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    autoPlayEmbeddedMedia();
+    setTimeout(autoPlayEmbeddedMedia, 150);
+    setTimeout(autoPlayEmbeddedMedia, 450);
+    setTimeout(autoPlayEmbeddedMedia, 1000);
+    setTimeout(autoPlayEmbeddedMedia, 2000);
+  });
+
+  window.addEventListener('message', function(e) {
+    if (e.data === 'play' || (e.data && (e.data.type === 'play' || e.data.func === 'playVideo' || e.data.action === 'play'))) {
+      autoPlayEmbeddedMedia();
+    }
   });
 </script>
 `;
