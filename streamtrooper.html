@@ -1,0 +1,1520 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Edit Streamtrooper | OpenUserJS</title>
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Download userscripts to enhance your browser.">
+<meta name="keywords" content="userscript, userscripts, user script, user scripts, user.js, .user.js, repository, Greasemonkey, Greasemonkey Port, Tampermonkey, Violentmonkey, JavaScript, add-ons, extensions, browser">
+<link rel="shortcut icon" href="/images/favicon.ico" >
+<link rel="apple-touch-icon" href="/images/favicon64.png" />
+<link rel="apple-touch-icon-precomposed" href="/images/favicon64.png" />
+<link rel="apple-touch-icon" sizes="120x120" href="/images/favicon120.png" />
+<link rel="apple-touch-icon-precomposed" sizes="120x120" href="/images/favicon120.png" />
+<link rel="apple-touch-icon" sizes="152x152" href="/images/favicon152.png" />
+<link rel="apple-touch-icon-precomposed" sizes="152x152" href="/images/favicon152.png" />
+<link rel="apple-touch-icon" sizes="167x167" href="/images/favicon167.png" />
+<link rel="apple-touch-icon-precomposed" sizes="167x167" href="/images/favicon167.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="/images/favicon180.png" />
+<link rel="apple-touch-icon-precomposed" sizes="180x180" href="/images/favicon180.png" />
+<link rel="apple-touch-icon" sizes="1024x1024" href="/images/favicon1024.png" />
+<link rel="apple-touch-icon-precomposed" sizes="1024x1024" href="/images/favicon1024.png" />
+
+<!-- Open Search -->
+<link href="/xml/opensearch-userscripts.xml" type="application/opensearchdescription+xml" rel="search" title="OpenUserJS Userscripts">
+<link href="/xml/opensearch-groups.xml" type="application/opensearchdescription+xml" rel="search" title="OpenUserJS Groups">
+<link href="/xml/opensearch-libraries.xml" type="application/opensearchdescription+xml" rel="search" title="OpenUserJS Libraries">
+<link href="/xml/opensearch-users.xml" type="application/opensearchdescription+xml" rel="search" title="OpenUserJS Users">
+
+<!-- CSS -->
+<link rel="stylesheet" type="text/css" media="all" href='/redist/npm/font-awesome/css/font-awesome.min.css'>
+<link rel="stylesheet" type="text/css" media="all" href='/redist/npm/octicons/build/font/octicons.css'>
+<link rel="stylesheet" type="text/css" media="all" href="/less/bootstrap/oujs.css">
+<link rel="stylesheet" type="text/css" media="all" href="/redist/npm/highlight.js/styles/github.css">
+<link rel="stylesheet" type="text/css" media="all" href="/css/common.css">
+
+  <style type="text/css">
+    #editor {
+      position: relative;
+      min-height: 200px;
+      height: -moz-calc(100vh - 303px);
+      height: -ms-calc(100vh - 303px);
+      height: -o-calc(100vh - 303px);
+      height: -webkit-calc(100vh - 303px);
+      height: calc(100vh - 303px);
+    }
+   .path-divider {
+      margin: 0 .25em;
+      color: #666;
+    }
+  </style>
+  <link rel="stylesheet" type="text/css" media="all" href="/redist/npm/animate.css/animate.css">
+</head>
+<body>
+  <nav role="navigation" class="navbar navbar-default navbar-static-top">
+  <div class="container-fluid">
+    <div class="navbar-header">
+      <button type="button" data-toggle="collapse" data-target=".navbar-collapse-top" class="navbar-toggle"><i class="fa fa-bars"></i></button>
+      <a href="/" class="navbar-brand" title="A Presentational Userscripts Repository">OpenUserJS<span class="mode"></span></a>
+    </div>
+    <div class="navbar-collapse navbar-collapse-top collapse">
+      <ul class="nav navbar-nav navbar-right">
+        <li><a href="/" title="Userscripts"><span class="visible-xs-inline"><i class="fa fa-file-code-o"></i> </span>Userscripts</a></li>
+        <li><a href="/?library=true" title="Libraries"><span class="visible-xs-inline"><i class="fa fa-file-excel-o"></i> </span>Libraries</a></li>
+        <li><a href="/groups" title="Userscript Groups"><span class="visible-xs-inline"><i class="fa fa-tag"></i> </span>Groups</a></li>
+        <li><a href="/forum"><span class="visible-xs-inline"><i class="fa fa-commenting"></i> </span>Discussions</a></li>
+        <li><a href="/users"><span class="visible-xs-inline"><i class="fa fa-user"></i> </span>Users</a></li>
+        
+        
+        <li><a href="/login">Sign In / Sign Up <i class="fa fa-sign-in"></i></a></li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+<div class="reminders">
+
+  
+    <div class="alert alert-warning alert-dismissible small fade in" role="alert">
+      <button type="button" class="close" data-dismiss="alert"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+      <p><i class="fa fa-fw fa-exclamation-triangle"></i> <b>NOTICE:</b> By continued use of this site you understand and agree to the binding <a class= "alert-link" href="/about/Terms-of-Service">Terms of Service</a> and <a class="alert-link" href="/about/Privacy-Policy">Privacy Policy</a>.</p>
+    </div>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--  <div class="alert alert-info alert-dismissible alert-autodismissible small fade in" role="alert">
+    <button type="button" class="close" data-dismiss="alert"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+    <p><i class="fa fa-fw fa-exclamation-triangle"></i> <b>REMINDER:</b> Don't miss out reading the <a class="alert-link" href="/">descriptive</a> announcement.</p>
+  </div>-->
+
+</div>
+
+
+  <div class="container-fluid">
+    <div class="row">
+      
+      
+      <div class="col-md-12">
+      
+        <h2 class="page-heading">
+  
+  
+    <div class="btn-group pull-right">
+      <a href="/src/scripts/amit/Streamtrooper.user.js#bypass=true" class="btn btn-info" rel="noindex, nofollow, ugc">
+        <i class="fa fa-file-code-o"></i> Raw Source
+      </a>
+      <button type="button" class="btn btn-info dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+        <span class="caret"></span>
+        <span class="sr-only">Toggle Dropdown</span>
+      </button>
+      <ul class="dropdown-menu dropdown-menu-right">
+        <li>
+          <div class="btn-group btn-group-justified">
+            <a href="/src/scripts/amit/Streamtrooper.min.user.js#bypass=true" class="btn btn-info" title="EXPERIMENTAL" rel="noindex, nofollow, ugc"><i class="fa fa-file-code-o"></i> Minified Source</a>
+          </div>
+          
+        </li>
+      </ul>
+    </div>
+
+  
+  
+  <span class="page-heading-icon" data-icon-src="https://www.videolan.org/favicon.ico">
+    <i class="fa fa-fw fa-file-code-o"></i>
+  </span>
+  
+  <a href="/users/amit" class="script-author">amit</a>
+  <span class="path-divider">/</span>
+  <a href="/scripts/amit/Streamtrooper" class="script-name">Streamtrooper</a>
+</h2>
+<nav class="navbar navbar-default navbar-static-top" role="navigation">
+  <div class="navbar-header">
+    <button type="button" data-toggle="collapse" data-target="#content-navbar" class="navbar-toggle"><i class="fa fa-bars"></i></button>
+    <div class="navbar-brand visible-xs-block"></div> 
+    
+    <p class="navbar-text visible-xs-block"><i class="fa fa-fw fa-signal"></i> <b>Installs:</b> 806</p>
+    
+  </div>
+  <div class="navbar-collapse collapse in" id="content-navbar">
+    <ul class="nav navbar-nav">
+      <li class=""><a href="/scripts/amit/Streamtrooper">About</a></li>
+      <li class="active"><a href="/scripts/amit/Streamtrooper/source" class="">Source Code</a></li>
+      <li class=""><a href="/scripts/amit/Streamtrooper/issues" class="">Issues</a></li>
+    </ul>
+    
+    <p class="navbar-text pull-right hidden-xs"><i class="fa fa-fw fa-signal"></i> <b>Installs:</b> 806</p>
+    
+  </div>
+</nav>
+
+        <pre class="notranslate" translate="no" id="editor">// ==UserScript==
+// @name        Streamtrooper
+// @version     V1.0.0
+// @author      Amit
+// @match       https://www.imdb.com/*
+// @match       https://www.themoviedb.org/*
+// @icon        https://www.videolan.org/favicon.ico
+// @run-at      document-end
+// @connect     ipapi.co
+// @grant       GM_registerMenuCommand
+// @grant       GM_addStyle
+// @grant       GM_openInTab
+// @grant       GM_setValue
+// @grant       GM_getValue
+// @grant       GM_xmlhttpRequest
+// @connect     *
+// @updateURL   https://openuserjs.org/meta/amit/Streamtrooper.meta.js
+// @downloadURL https://openuserjs.org/install/amit/Streamtrooper.user.js
+// @copyright   2025, amit (https://openuserjs.org/users/amit)
+// @require     https://update.greasyfork.org/scripts/528923/1599357/MonkeyConfig%20Mod.js
+// @license     CC-BY-NC-SA-4.0; https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode
+// @license     GPL-3.0-or-later; https://www.gnu.org/licenses/gpl-3.0.txt
+// @description  Streamtrooper automatically adds VidSrc links to IMDb and TMDb pages for easy access to streaming content.
+// ==/UserScript==
+
+/**
+ * Streamtrooper is a userscript that automatically adds VidSrc links to IMDb and TMDb pages.
+ * the links are added to the page as buttons that open in a new tab.
+ * the script uses the VidSrc API to get the links and adds them to the page.
+ * The URLs are of the form: https://vidsrc/embed/movie?imdb=&lt;imdb_id&gt;
+ * or https://vidsrc/embed/tv?imdb=&lt;imdb_id&gt;&amp;season=&lt;season&gt;&amp;episode=&lt;episode&gt;
+ * where &lt;imdb_id&gt; is the IMDb ID of the movie or TV show, and
+ * &lt;season&gt; and &lt;episode&gt; are the season and episode numbers for TV shows.
+ * For TMDb, the URLs are of the form:
+ * https://vidsrc/embed/movie?tmdb=&lt;tmdb_id&gt;
+ * or https://vidsrc/embed/tv?tmdb=&lt;tmdb_id&gt;&amp;season=&lt;season&gt;&amp;episode=&lt;episode&gt;
+ * where &lt;tmdb_id&gt; is the TMDb ID of the movie or TV show.
+ */
+
+'use strict';
+// Default VidSrc domain
+let vidsrcDomain = GM_getValue('vidsrcDomain', '');
+let domainLastCheckedTime = GM_getValue('domainLastCheckedTime', 0);
+
+let countryCode = &quot;&quot;;
+// Available VidSrc domains
+const availableDomains = GM_getValue ('availableDomains', ['vidsrc.pm', 'vidsrc.xyz', 'vidsrc.net',
+'vidsrc-embed.ru', 'vidsrc-embed.su' , 'vidsrcme.su ','vidsrc.in',  'vsrc.su', 'player.vidplus.to', 'www.vidking.net'] );
+const api2Domains = [ 'player.vidplus.to', 'www.vidking.net'];
+GM_registerMenuCommand(`Edit Domains`, () =&gt; {
+  const message = 'Enter new line VidSrc domains:';
+  document.body.insertAdjacentHTML('beforeend',
+    `&lt;div id=&quot;vidsrc-domain-editor&quot; style=&quot;position:fixed;top:10%;left:50%;transform:translateX(-50%);background-color:#fff;padding:20px;box-shadow:0 0 10px rgba(0,0,0,0.5);z-index:10000;&quot;&gt;
+      &lt;h3&gt;Edit VidSrc Domains&lt;/h3&gt;
+      &lt;textarea id=&quot;vidsrc-domains-textarea&quot; rows=&quot;10&quot; cols=&quot;50&quot;&gt;${availableDomains.join('\n')}&lt;/textarea&gt;&lt;br&gt;
+      &lt;button id=&quot;vidsrc-save-domains&quot;&gt;Save&lt;/button&gt;
+      &lt;button id=&quot;vidsrc-cancel-domains&quot;&gt;Cancel&lt;/button&gt;
+    &lt;/div&gt;`);
+
+  document.getElementById('vidsrc-save-domains').onclick = () =&gt; {
+    const textareaValue = document.getElementById('vidsrc-domains-textarea').value;
+    const newDomains = textareaValue.split('\n').map(domain =&gt; domain.trim()).filter(domain =&gt; domain !== '');
+    GM_setValue('availableDomains', newDomains);
+    alert('VidSrc domains updated. Please reload the page for changes to take effect.');
+    document.getElementById('vidsrc-domain-editor').remove();
+  };
+
+  document.getElementById('vidsrc-cancel-domains').onclick = () =&gt; {
+    document.getElementById('vidsrc-domain-editor').remove();
+  };
+  
+});
+
+// Add custom styles for buttons
+GM_addStyle(`
+  .vidsrc-button {
+    background-color: #4CAF50;
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 14px;
+    margin: 4px 2px;
+    cursor: pointer;
+    border-radius: 4px;
+    font-weight: bold;
+  }
+  .vidsrc-button:hover {
+    background-color: #45a049;
+  }
+  .vidsrc-container {
+    margin: 10px 0;
+    padding: 10px;
+    background-color: #f9f9f9;
+    border-left: 4px solid #4CAF50;
+  }
+`);
+
+// Function to extract IMDb ID from URL
+function getImdbId() {
+  const match = window.location.href.match(/\/title\/(tt\d+)/);
+  return match ? match[1] : null;
+}
+
+// Function to extract TMDb ID from URL
+function getTmdbId() {
+  const match = window.location.href.match(/\/(movie|tv)\/(\d+)/);
+  return match ? match[2] : null;
+}
+
+// Function to get content type (movie or tv)
+function getContentType() {
+  if (window.location.hostname.includes('imdb.com')) {
+    // Check if it's a TV show or movie on IMDb
+    // TV URLs are of the form https://www.imdb.com/title/&lt;id&gt;/episodes/
+    // movie URLs are of the form https://www.imdb.com/title/&lt;id&gt;/
+    return window.location.pathname.includes('/episodes/') ? 'tv' : 'movie';
+  }
+  else if (window.location.hostname.includes('themoviedb.org')) {
+    return window.location.pathname.includes('/tv/') ? 'tv' : 'movie';
+  }
+  return 'movie';
+}
+
+
+function failureMessage(badDomains) {
+  document.body.insertAdjacentHTML('afterbegin',
+    `&lt;div style=&quot;position:fixed;top:0;left:0;width:100%;background-color:#FFFF00;color:#000;padding:10px;text-align:center;z-index:10000;&quot;&gt;
+      Streamtrooper: Unable to find a working source after multiple attempts Checked ${badDomains}.
+    &lt;/div&gt;`);
+}
+
+function makeURLPath(domain, opts) {
+  if ( api2Domains.includes( domain)) {
+    if (opts.type === 'movie') {
+      return `https://${domain}/embed/movie/${opts.movie}`;
+    } else if (opts.type === 'tv' &amp;&amp; opts.season &amp;&amp; opts.episode) {
+      return `https://${domain}/embed/tv/${opts.movie}/${opts.season}/${opts.episode}`;
+    }
+  }
+  if (opts.type === 'movie') {
+    urlPath = `/embed/movie?${opts.source || 'imdb'}=${opts.movie}`;
+  } else if (opts.type === 'tv' &amp;&amp; opts.season &amp;&amp; opts.episode) {
+    urlPath = `/embed/tv?${opts.source || 'imdb'}=${opts.movie}&amp;season=${opts.season}&amp;episode=${opts.episode}`;
+  }
+  return `https://${domain}/${urlPath}`;
+}
+
+async function filterAdsAndOpen(opts, badDomains=[]) {
+  let domain = await getVidsrcDomain(opts, badDomains );
+  if (domain=='' || badDomains.length &gt; 10) return failureMessage(badDomains);
+  let url = makeURLPath(domain, opts);
+  console.log('Streamtrooper: Filtering ads for URL:', url);
+  try {
+    const response = await new Promise((resolve, reject) =&gt; {
+      GM_xmlhttpRequest({
+        method: 'GET',
+        url: url,
+        headers: {
+          &quot;User-Agent&quot;: &quot;Mozilla/5.0&quot;,
+          &quot;Referer&quot;: url
+        },
+        onload: resolve,
+        onerror: reject
+      });
+    });
+    console.log('Streamtrooper: Received response from embed page.');
+    console.log('Streamtrooper: Response status:', response.status);
+    if (response.status &gt;=400 &amp;&amp; response.status &lt; 600) {   
+      console.warn(`Streamtrooper: Access forbidden or gone (status: ${response.status}).`);
+      console.warn(`Streamtrooper: We need to change the domain from ${badDomains.concat([domain])}.`);
+      return filterAdsAndOpen(opts, badDomains.concat([domain]));
+    }
+    if (response.status &gt;= 200 &amp;&amp; response.status &lt; 300) {
+      console.log('Streamtrooper: Response text:', response.responseText.substring(0, 200) + '...');
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(response.responseText, 'text/html');
+      const iframe = doc.querySelector('iframe');
+
+      if (iframe &amp;&amp; iframe.src) {
+        // The iframe src might be a relative URL, so resolve it against the original URL.
+        const iframeUrl = new URL(iframe.src, url).href;
+        launchUrlInNewTab(iframeUrl);
+      } else {
+        console.warn('Streamtrooper: No iframe found on the page, opening original URL.');
+        launchUrlInNewTab(url);
+      }
+    } else {
+      console.error(`Streamtrooper: Failed to fetch embed page. Status: ${response.status}. Opening original URL.`);
+      launchUrlInNewTab(url);
+    }
+  } catch (error) {
+    console.error('Streamtrooper: Error in filterAds function:', error);
+    launchUrlInNewTab(url); // Fallback to original URL on error
+  }
+}
+
+function launchUrlInNewTab(url) {
+  GM_openInTab(url, { active: true, insert: true });
+}
+
+// Function to create VidSrc button
+/**
+ * Creates a VidSrc button for movies or episodes.
+ * @param {Object} opts - Options object
+ * @param {string} opts.movie - IMDb or TMDb ID
+ * @param {string} [opts.type] - 'movie' or 'tv'
+ * @param {number} [opts.season] - Season number (for TV)
+ * @param {number} [opts.episode] - Episode number (for TV)
+ * @param {string} [opts.source] - 'imdb' or 'tmdb'
+ * @param {string} text - Button text
+ */
+function createVidsrcButton(opts, text) {
+  const button = document.createElement('button');
+  button.className = 'vidsrc-button';
+  button.textContent = text;
+  button.onclick = () =&gt; filterAdsAndOpen(opts);
+  return button;
+}
+
+// Function to add VidSrc links to IMDb pages
+/**
+ * Adds IMDb-based video source links to the current page as a floating container.
+ * 
+ * Retrieves the IMDb ID from the current page and creates appropriate video links
+ * based on content type (movie or TV series). 
+ * 
+ * @async
+ * @function addImdbLinks
+ * @returns {Promise&lt;void&gt;} Resolves when the floating container is added to the page
+ * 
+ * @description
+ * - Removes any existing floating button before creating a new one
+ * - Creates a fixed-position floating container in the top-right corner
+ * - For movies: immediately adds a direct watch link
+ * - For TV series: delays 5 seconds before adding episode links to allow page elements to load
+ * - Container includes styling for visibility and user experience
+ */
+async function addImdbLinks() {
+  const imdbId = getImdbId();
+  if (!imdbId) return;
+
+  const contentType = getContentType();
+
+  // Remove any existing floating button
+  const existingButton = document.querySelector('.vidsrc-floating-container');
+  if (existingButton) {
+    existingButton.remove();
+  }
+
+  const container = document.createElement('div');
+  container.className = 'vidsrc-floating-container';
+  container.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    padding: 10px;
+  `;
+  countryCode = await getCountryCode();
+  container.appendChild(document.createTextNode(`Your Country: ${countryCode.toUpperCase()}`));
+  document.body.appendChild(container);
+  
+
+  if (contentType === 'movie') {
+    container.appendChild(document.createElement('br'));
+    container.appendChild(createVidsrcButton({ movie: imdbId, type: 'movie', source: 'imdb' }, 'Watch'));
+  }
+  else {
+    setTimeout(() =&gt; {
+      addEpisodeLinks(container);
+    }, 5000); // Delay to allow episode elements to load
+  }
+
+  document.body.appendChild(container);
+}
+
+// Function to add VidSrc links to TMDb pages
+async function addTmdbLinks() {
+  const tmdbId = getTmdbId();
+  if (!tmdbId) return;
+
+  const contentType = getContentType();
+
+  // Remove any existing floating button
+  const existingButton = document.querySelector('.vidsrc-floating-container');
+  if (existingButton) {
+    existingButton.remove();
+  }
+
+  const container = document.createElement('div');
+  container.className = 'vidsrc-floating-container';
+  container.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    padding: 10px;
+  `;
+
+  countryCode = await getCountryCode();
+  container.appendChild(document.createTextNode(`Your Country: ${countryCode.toUpperCase()}`));
+  document.body.appendChild(container);
+    
+  
+
+  if (contentType === 'movie') {
+    container.appendChild(document.createElement('br'));
+    container.appendChild(createVidsrcButton({ movie: tmdbId, type: 'movie', source: 'tmdb' }, 'Watch'));
+  }
+  else {
+    addTmdbEpisodeLinks();
+  }
+
+  document.body.appendChild(container);
+}
+
+// Main execution
+function init() {
+  if (window.location.hostname.includes('imdb.com')) {
+    addImdbLinks();
+  }
+  else if (window.location.hostname.includes('themoviedb.org')) {
+    addTmdbLinks();
+  }
+}
+
+// Run on page load and handle dynamic content
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+}
+else {
+  init();
+}
+
+// Handle navigation changes (for single-page applications)
+let lastUrl = location.href;
+new MutationObserver(() =&gt; {
+  const url = location.href;
+  if (url !== lastUrl) {
+    lastUrl = url;
+    setTimeout(init, 1000); // Delay to allow page to load
+  }
+}).observe(document, {
+  subtree: true,
+  childList: true
+});
+
+async function addEpisodeLinks(container) {
+  const imdbId = getImdbId();
+  if (!imdbId) return;
+  // We search for all dives like:&lt;div class=&quot;ipc-title__text ipc-title__text--reduced&quot;&gt;S3.E5 ∙ A Tale of Two Topas&lt;/div&gt;
+  const episodeElements = document.querySelectorAll('div.ipc-title__text.ipc-title__text--reduced');
+  if (episodeElements.length === 0) return;
+
+  episodeElements.forEach(async (element, index) =&gt; {
+    const episodeText = element.textContent.trim();
+    const [season, episode] = episodeText.match(/S(\d+)\.E(\d+)/).slice(1);
+    element.appendChild(createVidsrcButton({ movie: imdbId, type: 'tv', season: season, episode: episode, source: 'imdb' }, `Watch ${episodeText}`));
+  });
+}
+
+async function addTmdbEpisodeLinks() {
+  // Episode pages are of the form https://www.themoviedb.org/tv/&lt;id&gt;/season/&lt;s&gt;
+  // We search for all a like this and relace the href with the VidSrc link
+  // &lt;a class=&quot;no_click open&quot; data-episode-id=&quot;66ab5088c1afc0fa87c007f2&quot; data-episode-number=&quot;3&quot; data-season-number=&quot;2&quot; href=&quot;/tv/93405/season/2/episode/3&quot; title=&quot;Squid Game: Season 2 (2024): Episode 3 - 001&quot;&gt; &lt;img src=&quot;/assets/2/v4/static_cache/down_arrow_silver-caf7b40a340dbc2be34990af9cc5ecaf479f81e59b37ff57f1d6241fe26c026d.svg&quot;&gt; Expand &lt;/a&gt;
+  const tmdbId = getTmdbId();
+  if (!tmdbId) return;
+  const episodeLinks = document.querySelectorAll('a.no_click.open');
+  episodeLinks.forEach(async link =&gt; {
+    const seasonNumber = link.getAttribute('data-season-number');
+    const episodeNumber = link.getAttribute('data-episode-number');
+    if (seasonNumber &amp;&amp; episodeNumber &amp;&amp; link.textContent.includes('Expand')) {
+      const button = createVidsrcButton({ movie: tmdbId, type: 'tv', season: seasonNumber, episode: episodeNumber, source: 'tmdb' }, `Watch S${seasonNumber}.E${episodeNumber}`);
+      // replace the link with the button
+      link.replaceWith(button);
+    }
+  });
+
+}
+
+
+function showCheckingDomainMessage(domain) {
+  const existingMessage = document.querySelector('.vidsrc-domain-checking-message');
+  if (existingMessage) {
+    existingMessage.textContent = `Checking domain: ${domain}...`;
+    if (domain === '')  existingMessage.remove();
+    return;
+  }
+  const message = document.createElement('div');
+  message.className = 'vidsrc-domain-checking-message';
+  message.style.cssText = `
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 9999;
+    background: #ffeb3b;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    padding: 10px;
+    font-weight: bold;
+  `;
+  message.textContent = `Checking domain: ${domain}...`;
+  document.body.appendChild(message);
+} 
+ 
+
+async function getVidsrcDomain(opts,badDomains=[]) {
+   for (const domain of availableDomains) {
+    console.log(`Streamtrooper: Trying domain ${domain}...`);
+    if (badDomains.includes(domain)  ) continue;
+    try {
+      showCheckingDomainMessage(domain);
+      const response = await new Promise((resolve, reject) =&gt; {
+        GM_xmlhttpRequest({
+          method: 'GET',
+          url: makeURLPath(domain, opts),
+          onload: function (response) {
+            if (response.status === 200) {
+              resolve(response);
+            } else {
+              reject(new Error('Non-200 status'));
+            }
+          },
+          onerror: function (error) {
+            reject(error);
+          }
+        });
+      });
+      console.log(`Streamtrooper: Domain ${domain} is reachable.`);
+      vidsrcDomain = domain;
+      GM_setValue('vidsrcDomain', vidsrcDomain);
+      GM_setValue('domainLastCheckedTime', Date.now());
+      return domain;  
+      break;
+    } catch (error) {
+      console.warn(`Domain ${domain} is not reachable.`);
+      badDomains.push(domain);
+    }
+  }
+  showCheckingDomainMessage('');
+  return '';
+}
+    
+
+async function getCountryCode() {
+  return new Promise((resolve, reject) =&gt; {
+    GM_xmlhttpRequest({
+      method: 'GET',
+      url: 'https://ipapi.co/json/',
+      onload: function (response) {
+        if (response.status === 200) {
+        const data = JSON.parse(response.responseText);
+        resolve(data.country_code.toLowerCase());
+        }
+        else {
+        console.error('Failed to fetch country code:', response.statusText);
+        resolve('Unknown'); 
+        }
+      },
+      onerror: function (error) {
+        console.error('Error fetching country code:', error);
+        resolve('Unknown'); 
+      }
+    });
+  });
+}
+</pre>
+        
+        
+          <div class="btn-toolbar">
+            <button class="btn btn-sm btn-success" type="button" id="wrap" disabled="disabled">Wrap</button>
+            <button class="btn btn-sm btn-success" type="button" id="beautify" disabled="disabled">Beautify</button>
+          </div>
+        
+      </div>
+      
+    </div>
+  </div>
+  <footer id="footer">
+  <nav role="navigation" class="navbar navbar-inverse navbar-static-top">
+    <div class="container-fluid">
+      <div class="navbar-header">
+        <button type="button" data-toggle="collapse" data-target=".navbar-collapse-bottom" class="navbar-toggle" onclick="$('html, body').animate({scrollTop: $(document).height()}, 'slow')"><i class="fa fa-bars"></i></button>
+        <a rel="bookmark" referrerpolicy="same-origin" href="#" data-toggle="modal" data-target="#donateSiteModal" class="btn btn-donate" title="Monetary donations for this site">
+          <i class="fa fa-fw fa-money"></i><span class=""> Donate</span>
+        </a>
+        <a href="https://github.com/OpenUserJs" class="navbar-brand">&copy; 2013+ OpenUserJS</a>
+      </div>
+      <div class="navbar-collapse navbar-collapse-bottom collapse">
+        <ul class="nav navbar-nav navbar-right">
+          <li><a href="/about">About</a></li>
+          <li><a href="/about/Terms-of-Service">Terms of Service</a></li>
+          <li><a href="/about/Privacy-Policy">Privacy Policy</a></li>
+          <li><a href="/about/Digital-Millenium-Copyright-Act" title="Digital Millennium Copyright Act">DMCA</a></li>
+          <li><a href="https://github.com/OpenUserJs/OpenUserJS.org">Development</a></li>
+          <li><a href="https://github.com/orgs/OpenUserJs/people">Collaborators</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+</footer>
+
+<!-- JS -->
+<script type="text/javascript" charset="UTF-8" src="/redist/npm/jquery/dist/jquery.js"></script>
+<script type="text/javascript" charset="UTF-8" src="/redist/npm/bootstrap/dist/js/bootstrap.js"></script>
+
+<div class="modal fade" id="donateSiteModal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        <h4 class="modal-title"><i class="fa fa-fw fa-money"></i> Donate for the site OpenUserJS</h4>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to go to an external site to donate a monetary value?</p>
+        <div class="alert alert-warning" role="alert">
+          <i class="fa fa-fw fa-exclamation-triangle"></i> WARNING: Some countries laws may supersede the payment processors policy such as the GDPR and PayPal. While it is highly appreciated to donate, please check with your countries privacy and identity laws regarding privacy of information first. Use at your utmost discretion.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal"><i class="fa fa-fw fa-close"></i> Cancel</button>
+        <a rel="external noreferrer noopener nofollow sponsored" referrerpolicy="same-origin" href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=F359CDZSR6L7W" class="btn btn-danger" role="button" title="Send a monetary Thank You!">Donate</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script type="text/javascript">
+  (function () {
+
+    var events = 'focus resize scroll';
+    var handler = null;
+    var didCallback = false;
+
+    function callback(aEl) {
+      if (!didCallback) {
+        didCallback = true;
+
+        setTimeout(function () {
+          $('.reminders .alert-autodismissible .close').each(function () {
+            this.click();
+          });
+        }, 10000);
+      }
+    }
+
+    function isElementInViewport(aEl) {
+  var rect = null;
+
+  if (aEl instanceof jQuery) {
+    aEl = aEl[0];
+  }
+
+  rect = aEl.getBoundingClientRect();
+
+  return (
+    rect.top >= 0 &&
+    rect.left >= 0 &&
+    rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) && // or $(window).height()
+    rect.right <= (window.innerWidth || document.documentElement.clientWidth) // or $(window).width()
+  );
+}
+
+
+    function fireIfElementVisible(aEl, aCallback) {
+      return function () {
+        if (isElementInViewport(aEl)) {
+          $(window).off(events, handler);
+
+          aCallback(aEl);
+        }
+      }
+    }
+
+    handler = fireIfElementVisible($('.reminders'), callback);
+    $(window).on(events, handler);
+
+  })();
+</script>
+
+
+  <script type="text/javascript">
+  (function () {
+    'use strict';
+
+    function onShow(aImg) {
+      aImg.classList.remove('translucent-icon');
+      aImg.classList.add('opaque-icon');
+    }
+
+    function onError(aEv) {
+      var img = aEv.target;
+      var container = img.parentNode;
+
+      container.removeChild(img);
+    }
+
+    function onLoad(aEv) {
+      var img = aEv.target;
+      var container = img.parentNode;
+
+      var node = container.querySelector('i');
+
+      container.removeChild(node);
+      img.classList.remove('hide-icon');
+
+      setTimeout(onShow, 250, img);
+    }
+
+    function onTimeout() {
+      var nodes = document.querySelectorAll('[data-icon-src]');
+      var i = null;
+      var container = null;
+      var dataIconSrc = null;
+      var node = null;
+      var img = null;
+
+      for (i = 0; container = nodes[i]; i++) {
+        dataIconSrc = container.getAttribute('data-icon-src');
+
+        node = container.querySelector('i');
+
+        img = new Image();
+
+        img.addEventListener('load', onLoad);
+        img.addEventListener('error', onError);
+
+        img.classList.add('hide-icon');
+        img.classList.add('fade-icon');
+        img.classList.add('translucent-icon');
+
+        img.referrerPolicy = 'same-origin';
+        img.src = dataIconSrc;
+
+        container.appendChild(img);
+      }
+    }
+
+    function onDOMContentLoaded(aEv) {
+      window.setTimeout(onTimeout, 13);
+    }
+
+    document.addEventListener('DOMContentLoaded', onDOMContentLoaded);
+
+  })();
+</script>
+
+  <script type="text/javascript" charset="UTF-8" src="/redist/npm/ace-builds/src/ace.js"></script>
+<script type="text/javascript" charset="UTF-8" src="/redist/npm/js-beautify/js/lib/beautify.js"></script>
+<script type="text/javascript" charset="UTF-8" src="/redist/npm/diff/dist/diff.js"></script>
+<script type="text/javascript">
+  (function () {
+    'use strict';
+
+    if (typeof Object.assign !== 'function') {
+  // Must be writable: true, enumerable: false, configurable: true
+  Object.defineProperty(Object, "assign", {
+    value: function assign(aTarget, aVarArgs) { // .length of function is 2
+      'use strict';
+      if (aTarget === null || aTarget === undefined) {
+        throw new TypeError('Cannot convert undefined or null to object');
+      }
+
+      var to = Object(aTarget);
+
+      for (var index = 1; index < arguments.length; index++) {
+        var nextSource = arguments[index];
+
+        if (nextSource !== null && nextSource !== undefined) {
+          for (var nextKey in nextSource) {
+            // Avoid bugs when hasOwnProperty is shadowed
+            if (Object.prototype.hasOwnProperty.call(nextSource, nextKey)) {
+              to[nextKey] = nextSource[nextKey];
+            }
+          }
+        }
+      }
+      return to;
+    },
+    writable: true,
+    configurable: true
+  });
+}
+
+
+    $(document).ready(function () {
+      var editor = null;
+      var wrap = $('#wrap');
+      var beautify = $('#beautify');
+      var diff = $('#diff');
+      var rawSource = null;
+      var modSource = null;
+      var isBlocking = null;
+      var hasChanged = false;
+      var placeholder = null;
+      var username = '' || 'username';
+      var isLib = false;
+      var isUpdateURLCheck = false;
+      var now = new Date();
+      var year = now.getFullYear();
+
+      //
+      function hasRelative(aPrefix) {
+        var hasCalc = null;
+        var hasUnitV = null;
+
+        aPrefix = aPrefix || "";
+        hasCalc = document.createElement("div");
+        hasCalc.style.setProperty(aPrefix + "width", "calc(1px)", "");
+
+        if (!!hasCalc.style.length) {
+          hasUnitV = document.createElement("div");
+          hasUnitV.style.setProperty(aPrefix + "width", "calc(5vw + 5vw)", "");
+        }
+
+        return !!hasCalc.style.length && !!hasUnitV.style.length;
+      }
+
+      function hasOurRelative() {
+        return hasRelative("-moz-") || hasRelative("-ms-") || hasRelative("-o-") ||
+          hasRelative("-webkit-") || hasRelative();
+      }
+
+      function calcHeight() {
+        return window.innerHeight - 302;
+      }
+
+      function onresize() {
+        $("#editor").height(calcHeight);
+        editor.resize(true);
+      }
+
+      function oninput() {
+        var shouldShow = !editor.session.getValue().length;
+        var node = editor.renderer.emptyMessageNode;
+        if (!shouldShow && node) {
+          editor.renderer.scroller.removeChild(editor.renderer.emptyMessageNode);
+          editor.renderer.emptyMessageNode = null;
+        } else if (shouldShow && !node) {
+          node = editor.renderer.emptyMessageNode = document.createElement("div");
+          node.textContent = placeholder;
+          node.className = "ace_invisible ace_emptyMessage";
+          node.style.padding = "0 0.75em";
+          editor.renderer.scroller.appendChild(node);
+        }
+      }
+
+      function onwrap(aEv) {
+        if (editor.getSession().getUseWrapMode()) {
+          editor.getSession().setUseWrapMode(false);
+          aEv.target.classList.remove('active');
+        } else {
+          editor.getSession().setUseWrapMode(true);
+          aEv.target.classList.add('active');
+        }
+        aEv.target.blur();
+      }
+
+      function onchange(aEv) {
+        if (isBlocking) {
+          return;
+        }
+
+        if (!hasChanged) {
+          hasChanged = true;
+
+          $('button#submit_code').removeClass('btn-success').addClass('btn-warning');
+          $('.ace_gutter-layer').addClass('btn-warning');
+          $('#diff').removeAttr('disabled');
+        }
+
+        $('#beautify').removeClass('active');
+      }
+
+      function beautifyThis(aString) {
+        return js_beautify(aString.replace(/\t/g, '  '), {
+
+          indent_size: 2,
+          indent_char: ' ',
+          max_preserve_newlines: 2,
+          brace_style: 'end-expand',
+          unescape_strings: true,
+          space_after_anon_function: true
+        }) + '\n';
+      }
+
+      function onbeautify(aEv) {
+        if (aEv.target.classList.contains('active') && !hasChanged) {
+          isBlocking = true;
+          editor.getSession().setValue(rawSource);
+          aEv.target.classList.remove('active');
+          isBlocking = false;
+
+          $('button#submit_code').addClass('btn-success').removeClass('btn-warning');
+          $('.ace_gutter-layer').removeClass('btn-warning');
+
+          $('#diff').attr('disabled', 'disabled');
+
+        } else {
+          isBlocking = true;
+          if (!hasChanged) {
+            aEv.target.classList.add('active');
+          }
+
+          $('#diff').removeAttr('disabled');
+
+          editor.getSession().setValue(
+            beautifyThis(hasChanged ? editor.getSession().getValue() : rawSource));
+          isBlocking = false;
+
+          $('button#submit_code').removeClass('btn-success').addClass('btn-warning');
+          $('.ace_gutter-layer').addClass('btn-warning');
+          onhashchange(null);
+        }
+
+        aEv.target.blur();
+      }
+
+      function onhashchange(aEv) {
+        var hash = null;
+        var line = null;
+        var lines = editor.getSession().getValue().split('\n').length;
+        var matches = window.location.hash.match(/^\#H([0-9a-fA-F]{128})L(\d+)$/);
+
+        // Scroll into
+        if ( !$('#beautify').hasClass('active')) {
+          if (matches) {
+            hash = matches[1];
+            line = parseInt(matches[2]);
+
+            if ('309b16b82589a336b2d751dc72092c24d820fce34e4e0798c7b45bfc88d2a17f42ac354a40c2ee93b2f693c847d6bb27d7187851dcbec21168bef60b4ad9868f' === hash) {
+              if (line > 0 && line <= lines) {
+                editor.resize(true);
+                editor.gotoLine(line, 0, true);
+                editor.scrollToLine(line - 1, false, true, function () {});
+                return;
+              }
+            }
+          }
+        }
+
+        // No matches... reset to defaults
+        if (!$('#beautify').hasClass('active')) {
+          editor.resize(true);
+          editor.gotoLine(1, 0, true);
+          editor.scrollToLine(0, false, true, function () {});
+        }
+        window.location.hash = '';
+      }
+
+      function ondiff(aEv) {
+        isBlocking = true;
+        if (aEv.target.classList.contains('active')) {
+          aEv.target.classList.remove('active');
+
+          $('#beautify').removeAttr('disabled');
+          $('#submit_code').removeAttr('disabled');
+
+          editor.setReadOnly(false);
+          editor.getSession().setMode("ace/mode/javascript");
+          editor.renderer.setShowGutter(true);
+          editor.getSession().setValue(modSource);
+
+          modSource = null; // Free up mem
+
+        } else {
+          aEv.target.classList.add('active');
+          $('#beautify').attr('disabled', 'disabled');
+          $('#submit_code').attr('disabled', 'disabled');
+
+          modSource = editor.getSession().getValue();
+          editor.setReadOnly(true);
+          editor.getSession().setMode("ace/mode/diff");
+          editor.renderer.setShowGutter(false);
+
+          editor.getSession().setValue(
+            Diff.createTwoFilesPatch(
+            '/scripts/amit/Streamtrooper/source'
+              + '@V1.0.0+309b16b',
+            '/scripts/amit/Streamtrooper/source',
+            rawSource,
+            modSource,
+            undefined, // NOTE: Required
+            undefined, // NOTE: Required
+            {
+              context: 3 // Show n lines before and after a diff
+            }
+          ).split('\n').slice(1).join('\n'));
+        }
+        isBlocking = false;
+
+        aEv.target.blur();
+      }
+
+      //
+      if (typeof ace !== 'undefined') {
+        placeholder = (
+          isLib
+            ? [
+              '// ==UserScript==',
+              '// @namespace     https://openuserjs.org/users/' + username,
+              '// @exclude       *',
+              '',
+              '// ==UserLibrary==',
+              '// @name          Getting Started with a User Library',
+              '// @description   ' +
+                'Showing the current basic and recommended format for a Library script.',
+              '// @copyright     ' + year + ', ' +  username
+                + ' (https://openuserjs.org/users/' + username + ')',
+              '// @license       OSI-SPDX-Short-Identifier',
+              '// @version       0.0.0',
+              '',
+              '// ==/UserScript==',
+              '',
+              '// ==/UserLibrary==',
+              '',
+              '// ==OpenUserJS==',
+              '// @author ' + username,
+              '// ==/OpenUserJS==',
+              '',
+              '/**',
+              '  *',
+              '  * Please begin typing or paste your User Library now.',
+              '  *',
+              '  */'
+            ] : [
+              '// ==UserScript==',
+              '// @namespace     https://openuserjs.org/users/' + username,
+              '// @name          Getting Started with a User Script',
+              '// @description   ' +
+                'Showing the current basic and recommended format for a User script.',
+              '// @copyright     ' + year + ', ' +  username
+                + ' (https://openuserjs.org/users/' + username + ')',
+              '// @license       OSI-SPDX-Short-Identifier',
+              '// @version       0.0.0',
+              '// @include       https://www.example.com/*',
+              '// @grant none',
+              (isUpdateURLCheck
+                ? '// @updateURL     https://openuserjs.org/meta/' + username + '/Getting_Started_with_a_User_Script.meta.js\n// ==/UserScript=='
+                : '// ==/UserScript=='),
+              '',
+              '// ==OpenUserJS==',
+              '// @author ' + username,
+              '// ==/OpenUserJS==',
+              '',
+              '/**',
+              '  *',
+              '  * Please begin typing or paste your User script now.',
+              '  *',
+              '  * NOTE: It is still strongly recommended to use the Author Tools panel to',
+              '  *       add your `@updateURL` even if we are not in lockdown.',
+              '  *',
+              '  */'
+            ]
+        ).join('\n');
+
+        editor = ace.edit("editor");
+        rawSource = editor.getSession().getValue();
+
+        editor.$blockScrolling = Infinity;
+        wrap.removeAttr('disabled');
+        beautify.removeAttr('disabled');
+
+        $('#submit_code').removeAttr('disabled');
+
+        editor.getSession().on('changeMode', function (aEv, aSession) {
+          var globals = {};
+          if (editor.getSession().getMode().$id === "ace/mode/javascript") {
+            if (!!editor.getSession().$worker) {
+
+              Object.assign(globals,
+                // GM3- See https://sourceforge.net/p/greasemonkey/wiki/Greasemonkey_Manual:API/
+                {
+                  'GM_addStyle': true,
+                  'GM_deleteValue': true,
+                  'GM_getResourceText': true,
+                  'GM_getResourceURL': true,
+                  'GM_getValue': true,
+                  'GM_listValues': true,
+                  'GM_log': true,
+                  'GM_openInTab': true,
+                  'GM_setClipboard': true,
+                  'GM_setValue': true,
+                  'GM_registerMenuCommand': true,
+                  'GM_xmlhttpRequest': true,
+                  'unsafeWindow': true
+                },
+                // GM4 See https://wiki.greasespot.net/Greasemonkey_Manual:API
+                {
+                  'GM': true,
+                  'unsafeWindow': true
+                },
+                // Tampermonkey See https://www.tampermonkey.net/documentation.php
+                {
+                  'GM_addStyle': true,
+                  'GM_addValueChangeListener': true,
+                  'GM_deleteValue': true,
+                  'GM_download': true,
+                  'GM_getResourceText': true,
+                  'GM_getResourceURL': true,
+                  'GM_getTab': true,
+                  'GM_getTabs': true,
+                  'GM_getValue': true,
+                  'GM_info': true,
+                  'GM_listValues': true,
+                  'GM_log': true,
+                  'GM_notification': true,
+                  'GM_openInTab': true,
+                  'GM_registerMenuCommand': true,
+                  'GM_removeValueChangeListener': true,
+                  'GM_saveTab': true,
+                  'GM_setClipboard': true,
+                  'GM_setValue': true,
+                  'GM_unregisterMenuCommand': true,
+                  'GM_xmlhttpRequest': true,
+                  'unsafeWindow': true
+                },
+                // Violentmonkey See https://violentmonkey.github.io/api/
+                {
+                  'GM_addStyle': true,
+                  'GM_deleteValue': true,
+                  'GM_download': true,
+                  'GM_getResourceText': true,
+                  'GM_getResourceURL': true,
+                  'GM_getValue': true,
+                  'GM_info': true,
+                  'GM_listValues': true,
+                  'GM_notification': true,
+                  'GM_openInTab': true,
+                  'GM_registerMenuCommand': true,
+                  'GM_setClipboard': true,
+                  'GM_setValue': true,
+                  'GM_unregisterMenuCommand': true,
+                  'GM_xmlhttpRequest': true,
+                  'unsafeWindow': true
+                }
+              );
+
+              editor.getSession().$worker.send('setOptions', [{
+                // See https://jshint.com/docs/options/
+                'maxerr': 1000,
+                'globals': globals,
+                '-I003': true, // "ES5 option is now set per default" ... NOTE: KEEP ALWAYS
+                'moz': true,   // ES5.1 (JavaScript 1.7+)
+                'strict': 'implied', // Useful for finding missing `globals` for Authors to add such as jQuery
+                '-W034': true, // "Unnecessary directive \"{a}\".", e.g. `'use strict'`
+                'devel': true,
+                'browser': true,
+                'laxcomma': true, // NOTE: deprecated but in use with Ace current
+                'laxbreak': true, // NOTE: deprecated but in use with Ace current
+                'multistr': true, // NOTE: deprecated but in use with Ace current
+                'newcap': false,  // NOTE: deprecated but in use with Ace current
+                'sub': true,      // NOTE: deprecated but in use with Ace current
+                'eqnull': true,
+                '-W014': true // "Bad line breaking before '{a}'."
+              }]);
+            }
+          }
+        });
+
+        editor.setTheme("ace/theme/dawn");
+        editor.getSession().setMode("ace/mode/javascript");
+        editor.container.style.fontFamily = "monospace";
+
+        
+        ['showSettingsMenu', 'overwrite'].forEach(function (aE, aI, aA) {
+          editor.commands.removeCommand(aE);
+        });
+        editor.setReadOnly(true);
+        
+        
+
+        // Some older and newer browser JavaScript work-around for #136
+        if (!hasOurRelative()) {
+          $("#editor").height(calcHeight());
+
+          if (window.addEventListener) {
+            window.addEventListener('resize', onresize, false);
+          } else if (window.attachEvent) {
+            window.attachEvent('resize', onresize);
+          }
+        }
+
+        editor.on('input', oninput);
+        editor.on('change', onchange);
+        wrap.on('click', onwrap);
+        diff.on('click', ondiff);
+        beautify.on('click', onbeautify);
+        setTimeout(oninput, 250);
+
+        if (window.location.hash) {
+          onhashchange(null);
+        }
+
+        $(window).on('hashchange', onhashchange);
+
+        editor.on("gutterclick", function (aEv) {
+          var gotoLine = aEv.getDocumentPosition().row + 1;
+          if (gotoLine) {
+            window.location.hash = window.location.hash =
+              'H' + '309b16b82589a336b2d751dc72092c24d820fce34e4e0798c7b45bfc88d2a17f42ac354a40c2ee93b2f693c847d6bb27d7187851dcbec21168bef60b4ad9868f' + 'L' + gotoLine;
+          }
+        });
+      }
+    });
+
+  })();
+</script>
+
+  <script type="text/javascript" charset="UTF-8" src="/redist/npm/clipboard/dist/clipboard.js"></script>
+<script type="text/javascript">
+  (function () {
+
+    var clipboard = null;
+    var rMin = /\.min\.js$/;
+
+    
+    var regenerateId = '#regenerate';
+    
+
+    var allowedIds = [
+      '#copyright-raw',
+      '#downloadurl-raw',
+      '#groupid-raw',
+      '#groupid-urn',
+      '#license-raw',
+      '#require-min',
+      '#require-raw',
+      '#scriptid-raw',
+      '#scriptid-urn',
+      '#updateurl-raw',
+      '#userid-raw',
+      '#userid-urn'
+    ];
+
+    function unsupported() {
+      allowedIds.forEach(function (aElement, aIndex, aArray) {
+        $(aElement).prop('disabled', true);
+      });
+    }
+
+    
+    // TODO: Should keep in sync with all peg.js upmixes eventually
+    function parseMeta(aString) {
+      aString = aString.toString();
+      var re = /\/\/ @(\S+)(?:\s+(.*))?/;
+      var headers = {};
+      var name = null;
+      var prefix = null;
+      var header = null;
+      var key = null;
+      var value = null;
+      var lines = aString.split(/[\r\n]+/).filter(function (aE, aI, aA) {
+        return (aE.match(re));
+      });
+      var line = null;
+
+      for (line in lines) {
+        [, name, value] = lines[line].replace(/\s+$/, "").match(re);
+        switch (name) {
+          case "licence":
+            name = "license";
+            break;
+        }
+        [key, prefix] = name.split(/:/).reverse();
+        if (key) {
+          if (prefix) {
+            if (!headers[prefix])
+              headers[prefix] = new Object;
+            header = headers[prefix];
+          }
+          else
+            header = headers;
+
+          if (header[key]) {
+            if (!(header[key] instanceof Array))
+              header[key] = new Array(header[key]);
+            header[key].push(value || "");
+          }
+          else
+            header[key] = value || "";
+        }
+      }
+      if (headers["license"])
+        headers["licence"] = headers["license"];
+
+      return (JSON.stringify(headers) != "{}") ? headers : undefined;
+    }
+
+    // NOTE: Keep in sync with helpers.js
+    cleanFilename = function (aFilename, aDefaultName) {
+      // Blacklist problem characters (slashes, colons, etc.).
+      var cleanName = (aFilename || '').replace(/[\\\/:*?\'\"<>|#;@=&]/g, '')
+
+      // Make whitespace readable.
+      .replace(/(\s|%20)+/g, '_');
+
+      return cleanName || aDefaultName;
+    };
+    
+
+    //
+    if (ClipboardJS.isSupported()) {
+      clipboard = new ClipboardJS(allowedIds.join(', '));
+
+      clipboard.on('success', function(aE) {
+        if (rMin.test(aE.text)) {
+          // TODO: Flash tooltip saying copied and then restore it
+        } else {
+          // TODO: Flash tooltip saying copied and then restore it
+        }
+      });
+
+      clipboard.on('error', unsupported);
+
+    } else {
+      unsupported();
+    }
+
+    
+    editor = ace.edit("editor");
+
+    $(regenerateId).on('click', function () {
+      var rawSource = editor.getSession().getValue();
+      var parser = 'UserScript';
+      var block = null;
+      var rHeaderContent = new RegExp(
+        '^(?:\\uFEFF)?\/\/ ==' + parser + '==([\\s\\S]*?)^\/\/ ==\/'+ parser + '==', 'm'
+      );
+
+      var username = '';
+      var names = null;
+      var name = null;
+      var tryURL = null;
+      var updateURL = null;
+      var downloadURL = [];
+      var activeIdx = 0; // Default if new
+      var origin = window.location.origin;
+
+      var headerContent = rHeaderContent.exec(rawSource);
+      if (headerContent) {
+        block = parseMeta(headerContent);
+
+        if (block['name']) {
+          names = block['name'].reverse();
+          name = cleanFilename(names[0]);
+          if (name) {
+            try {
+              tryURL = new URL('../' + name, origin);
+
+              if (decodeURIComponent(tryURL.toString()) !== origin + '/' + name) {
+                name = encodeURIComponent(name);
+              }
+            } catch (aE) {
+              name = encodeURIComponent(name);
+            }
+
+            updateURL = origin + '/meta/' + username + '/' + name + '.meta.js';
+
+            downloadURL.push(origin + '/install/' + username + '/' + name + '.user.js');
+            downloadURL.push(origin + '/install/' + username + '/' + name + '.min.user.js');
+            downloadURL.push(origin + '/src/scripts/' + username + '/' + name + '.user.js');
+            downloadURL.push(origin + '/src/scripts/' + username + '/' + name + '.min.user.js');
+
+            // Find current active
+            $('#install-targets li').each(function (aIdx) {
+              if ($(this).hasClass('active')) {
+                activeIdx = aIdx;
+              }
+            });
+
+            if( $('#install-targets li').length === 0) {
+              // Add DOM html
+              $('#install-targets')
+                .append('<li class="active"><a href="#" title="">Normal</a></li>');
+              $('#install-targets')
+                .append('<li><a href="#" title="">Minified</a></li>');
+              $('#install-targets')
+                .append('<li><a href="#" title="">Normal with counter skip</a></li>');
+              $('#install-targets')
+                .append('<li><a href="#" title="">Minified with counter skip</a></li>');
+
+              // Add event listeners for new scripts
+              $('#install-targets li').each(function (aIdx) {
+                $(this).on('click', function (aEv) {
+                  // NOTE: Keep in sync with selectIntall.html onClick
+                  var containerNode = $(aEv.target).closest('li');
+
+                  $('#downloadurl').val(aEv.target.title);
+                  $('#downloadurl-raw').attr(
+                    'data-clipboard-text', '// @downloadURL ' + aEv.target.title
+                  );
+
+                  // Clear all actives
+                  $('#install-targets li').each(function (aIdx) {
+                    $(this).removeClass('active');
+                  });
+
+                  // Set this active
+                  containerNode.addClass('active');
+                })
+              });
+            }
+
+            // Modify title attributes
+            $('#install-targets li a').each(function (aIdx) {
+              $(this).attr('title', downloadURL[aIdx]);
+            });
+
+            // Simulate trigger click (actual doesn't appear to coexist well with *bootstrap*)
+            $('#updateurl').val(updateURL);
+            $('#updateurl-raw').attr('data-clipboard-text', '// @updateURL ' + updateURL);
+
+            $('#downloadurl').val(downloadURL[activeIdx]);
+            $('#downloadurl-raw').attr(
+              'data-clipboard-text', '// @downloadURL ' + downloadURL[activeIdx]);
+
+            // Always enable the button here
+            $('#alt-install-target-btn').removeAttr('disabled');
+
+            return;
+          }
+        }
+      }
+
+      // Default
+        /* Leave existing li element(s) available for future mod */
+
+      $('#updateurl').val('');
+      $('#updateurl-raw').attr('data-clipboard-text', '// @updateURL ');
+      $('#downloadurl').val('');
+      $('#downloadurl-raw').attr('data-clipboard-text', '// @downloadURL ');
+
+      $('#alt-install-target-btn').attr('disabled', 'disabled');
+    });
+    
+
+  })();
+</script>
+
+  
+</body>
+</html>

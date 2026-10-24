@@ -1,9 +1,46 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { handleRequest } from "./server/index.js";
+
+function streamPlayBackendPlugin() {
+  return {
+    name: "streamplay-backend",
+    configureServer(server: any) {
+      server.middlewares.use((req: any, res: any, next: any) => {
+        const url = req.url || "";
+        if (url.startsWith("/stream") || url.startsWith("/proxy") || url.startsWith("/health")) {
+          handleRequest(req, res).catch((err: any) => {
+            if (!res.headersSent) {
+              res.statusCode = 500;
+              res.end(JSON.stringify({ error: String(err?.message || err) }));
+            }
+          });
+        } else {
+          next();
+        }
+      });
+    },
+    configurePreviewServer(server: any) {
+      server.middlewares.use((req: any, res: any, next: any) => {
+        const url = req.url || "";
+        if (url.startsWith("/stream") || url.startsWith("/proxy") || url.startsWith("/health")) {
+          handleRequest(req, res).catch((err: any) => {
+            if (!res.headersSent) {
+              res.statusCode = 500;
+              res.end(JSON.stringify({ error: String(err?.message || err) }));
+            }
+          });
+        } else {
+          next();
+        }
+      });
+    }
+  };
+}
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), streamPlayBackendPlugin()],
   server: {
     port: 1420,
     proxy: {

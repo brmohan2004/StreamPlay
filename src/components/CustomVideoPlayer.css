@@ -488,6 +488,16 @@
   gap: 0.85rem;
 }
 
+/* Rail-anchored dropdown: position near left rail buttons */
+.player-menu-modal.rail-dropdown {
+  left: 60px;
+  right: auto;
+  bottom: auto;
+  top: 74px;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+}
+
 .player-menu-modal.health-modal {
   top: 72px;
   bottom: auto;
@@ -497,16 +507,8 @@
 .menu-modal-header {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  padding-bottom: 0.65rem;
-}
-
-.menu-modal-header h4 {
-  font-family: var(--font-display, 'Outfit', sans-serif);
-  font-size: 0.95rem;
-  font-weight: 700;
-  flex: 1;
+  justify-content: flex-end;
+  padding-bottom: 0.35rem;
 }
 
 .menu-close-x {
@@ -665,6 +667,13 @@
     width: auto;
     max-width: calc(100vw - 20px);
     bottom: 65px;
+  }
+  .player-menu-modal.rail-dropdown {
+    left: 55px;
+    right: auto;
+    bottom: auto;
+    top: 60px;
+    width: 280px;
   }
   .player-menu-modal.health-modal {
     top: 55px;
@@ -947,4 +956,72 @@
   font-weight: 800;
 }
 
+
+/* Left vertical control rail */
+.player-left-control-rail {
+  position: absolute;
+  top: 74px;
+  left: 14px;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.player-left-control-rail.hidden {
+  opacity: 0;
+  transform: translateX(-12px);
+  pointer-events: none;
+}
+
+.player-left-control-rail.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Transparent glass button — icon-only, no background, no border */
+.player-ctrl-glass-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  padding: 0;
+}
+
+.player-ctrl-glass-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(1.1);
+}
+
+.player-ctrl-glass-btn:active {
+  transform: scale(0.92);
+}
+
+.player-ctrl-glass-btn.active {
+  color: #00d2ff;
+  background: rgba(0, 210, 255, 0.12);
+}
+
+.player-ctrl-glass-btn.lime {
+  color: #c8ff00;
+}
+
+.player-ctrl-glass-btn.lime:hover {
+  background: rgba(200, 255, 0, 0.15);
+  color: #c8ff00;
+}
+
+/* Wrapper for rail buttons that have dropdowns */
+.rail-btn-with-dropdown {
+  position: relative;
+}
 

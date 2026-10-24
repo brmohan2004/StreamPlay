@@ -803,7 +803,7 @@ export async function fetchMovieDetails(id: string, type: 'movie' | 'series'): P
   }
 }
 
-// === Complete 30-Server Video Engine Registry ===
+// === Complete 12-Server Video Engine Registry ===
 export interface StreamingServerMeta {
   id: number;
   name: string;
@@ -813,20 +813,9 @@ export interface StreamingServerMeta {
 }
 
 export const STREAMING_SERVERS: StreamingServerMeta[] = [
-  // 1. VidLink Pro (Modern 4K HTML5 Player — Next.js Clean Player, Zero Popunders, Multi-Subtitles)
+  // 1. VidSrc PM (Fast Origin Cluster — Zero Black Screen, Instant Playback)
   {
     id: 0,
-    name: 'VidLink Pro (Fast & CC)',
-    isNoAds: true,
-    specialty: 'Modern Next.js HTML5 player with multi-subtitles, multi-audio & instant 1080p/4K',
-    getUrl: (id, _, type, s, e) =>
-      type === 'series'
-        ? `https://vidlink.pro/tv/${id}/${s}/${e}`
-        : `https://vidlink.pro/movie/${id}`
-  },
-  // 2. VidSrc PM (Fast Origin Cluster — Verified 200 OK, Zero Black Screen, Instant Playback)
-  {
-    id: 1,
     name: 'VidSrc PM (Fast Origin)',
     isNoAds: true,
     specialty: 'High-speed origin cluster with instant playback and zero black screen',
@@ -835,52 +824,104 @@ export const STREAMING_SERVERS: StreamingServerMeta[] = [
         ? `https://vidsrc.pm/embed/tv/${id}/${s}/${e}`
         : `https://vidsrc.pm/embed/movie/${id}`
   },
-  // 3. 2Embed CC (Multi-Language & Audio Tracks — High Compatibility)
+  // 2. VidLink Pro (Modern 4K HTML5 Player — Fast & Clean)
+  {
+    id: 1,
+    name: 'VidLink Pro (Fast & CC)',
+    isNoAds: true,
+    specialty: 'Modern Next.js HTML5 player with multi-subtitles, multi-audio & instant 1080p/4K',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://vidlink.pro/tv/${id}/${s}/${e}`
+        : `https://vidlink.pro/movie/${id}`
+  },
+  // 3. VidBinge (Fast HTML5 Player — Multi-Audio & Subtitles)
   {
     id: 2,
+    name: 'VidBinge (Fast Player)',
+    isNoAds: true,
+    specialty: 'Fast HTML5 player with multi-audio & subtitle support',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://vidbinge.dev/embed/tv/${id}/${s}/${e}`
+        : `https://vidbinge.dev/embed/movie/${id}`
+  },
+  // 4. 2Embed CC (Multi-Language & Audio Tracks — Sanitized via Proxy)
+  {
+    id: 3,
     name: '2Embed CC (Multi-Audio)',
     isNoAds: true,
-    specialty: 'High compatibility multi-audio & CC subtitles',
+    specialty: 'High compatibility multi-audio & CC subtitles (ad-sanitized)',
     getUrl: (id, _, type, s, e) =>
       type === 'series'
         ? `https://www.2embed.cc/embedtv/${id}&s=${s}&e=${e}`
         : `https://www.2embed.cc/embed/${id}`
   },
-  // 4. AutoEmbed CO (Ultra-Fast Adaptive CDN)
-  {
-    id: 3,
-    name: 'AutoEmbed CO (Fast CDN)',
-    isNoAds: true,
-    specialty: 'Ultra-fast adaptive streaming with multi-resolution support',
-    getUrl: (id, _, type, s, e) => {
-      const isImdb = id.startsWith('tt');
-      const prefix = isImdb ? 'imdb/' : 'tmdb/';
-      return type === 'series'
-        ? `https://autoembed.co/tv/${prefix}${id}-${s}-${e}`
-        : `https://autoembed.co/movie/${prefix}${id}`;
-    }
-  },
-  // 5. VidSrc Net (Direct Origin Mirror)
+  // 5. VidSrc NL (Player Mirror — Clean Playback)
   {
     id: 4,
-    name: 'VidSrc Net (Direct Mirror)',
+    name: 'VidSrc NL (Player Mirror)',
     isNoAds: true,
-    specialty: 'Direct origin cluster mirror with multi-language subs',
+    specialty: 'Clean player mirror with stable playback',
     getUrl: (id, _, type, s, e) =>
       type === 'series'
-        ? `https://vidsrc.net/embed/tv/${id}/${s}/${e}`
-        : `https://vidsrc.net/embed/movie/${id}`
+        ? `https://player.vidsrc.nl/embed/tv/${id}/${s}/${e}`
+        : `https://player.vidsrc.nl/embed/movie/${id}`
   },
-  // 6. VidSrc IN (Backup Origin Cluster)
+  // 6. 111Movies (Community Mirror)
   {
     id: 5,
-    name: 'VidSrc IN (High Availability)',
-    isNoAds: true,
-    specialty: 'Direct origin cluster with resilient playback',
+    name: '111Movies (Community Mirror)',
+    isNoAds: false,
+    specialty: 'Community mirror with broad catalog coverage',
     getUrl: (id, _, type, s, e) =>
       type === 'series'
-        ? `https://vidsrc.in/embed/tv/${id}/${s}/${e}`
-        : `https://vidsrc.in/embed/movie/${id}`
+        ? `https://111movies.com/tv/${id}/${s}/${e}`
+        : `https://111movies.com/movie/${id}`
+  },
+  // 7. VidSrc CC (Official v2 Embed)
+  {
+    id: 6,
+    name: 'VidSrc CC (Official v2)',
+    isNoAds: true,
+    specialty: 'Official v2 embed with reliable playback',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://vidsrc.cc/v2/embed/tv/${id}/${s}/${e}`
+        : `https://vidsrc.cc/v2/embed/movie/${id}`
+  },
+  // 8. SmashyStream (Multi-Source Player)
+  {
+    id: 7,
+    name: 'SmashyStream (Multi-Source)',
+    isNoAds: true,
+    specialty: 'Multi-source player with broad format support',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://embed.smashystream.com/playere.php?imdb=${id}&s=${s}&e=${e}`
+        : `https://embed.smashystream.com/playere.php?imdb=${id}`
+  },
+  // 9. MoviesAPI (Club Mirror)
+  {
+    id: 8,
+    name: 'MoviesAPI (Club Mirror)',
+    isNoAds: true,
+    specialty: 'Club mirror with multi-language support',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://moviesapi.club/tv/${id}/${s}/${e}`
+        : `https://moviesapi.club/movie/${id}`
+  },
+  // 10. MultiEmbed (Aggregated Sources)
+  {
+    id: 9,
+    name: 'MultiEmbed (Aggregated)',
+    isNoAds: true,
+    specialty: 'Aggregated sources with automatic fallback',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://multiembed.mov/embed/${id}/${s}/${e}`
+        : `https://multiembed.mov/embed/${id}`
   }
 ];
 
@@ -891,10 +932,87 @@ export function getStreamEmbedUrl(
   season = 1,
   episode = 1
 ): string {
-  const cleanId = id.trim();
-  const rawId = cleanId.replace('tt', '');
+  const cleanId = String(id || '').trim();
+  if (!cleanId) return '';
 
-  const serverIndex = Math.abs(providerIndex) % STREAMING_SERVERS.length;
-  const server = STREAMING_SERVERS[serverIndex];
-  return server.getUrl(cleanId, rawId, type, season, episode);
+  // Defensive normalization: prevents malformed provider paths and traversal-like input.
+  const safeSeason = Math.max(1, Math.trunc(Number(season) || 1));
+  const safeEpisode = Math.max(1, Math.trunc(Number(episode) || 1));
+  const rawId = cleanId.replace(/^tt/i, '');
+  if (!cleanId || (!/^tt\d{5,12}$/.test(cleanId) && !/^\d{1,12}$/.test(cleanId))) {
+    return '';
+  }
+
+  const total = STREAMING_SERVERS.length;
+  const normalizedIndex = total > 0 ? ((Math.trunc(providerIndex) % total) + total) % total : 0;
+  const server = STREAMING_SERVERS[normalizedIndex];
+  if (!server) return '';
+  return server.getUrl(cleanId, rawId, type, safeSeason, safeEpisode);
+}
+
+
+// === Provider Health Tracking (sessionStorage-backed) ===
+const PROVIDER_HEALTH_KEY = 'streamplay_provider_health';
+
+function readProviderHealth(): Record<number, { success: number; failure: number; lastFailure?: number }> {
+  try {
+    const raw = sessionStorage.getItem(PROVIDER_HEALTH_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {
+    // ignore
+  }
+  return {};
+}
+
+function writeProviderHealth(state: Record<number, { success: number; failure: number; lastFailure?: number }>) {
+  try {
+    sessionStorage.setItem(PROVIDER_HEALTH_KEY, JSON.stringify(state));
+  } catch {
+    // ignore
+  }
+}
+
+export function markProviderHealthy(index: number) {
+  const state = readProviderHealth();
+  state[index] = {
+    success: (state[index]?.success || 0) + 1,
+    failure: state[index]?.failure || 0,
+    lastFailure: state[index]?.lastFailure
+  };
+  writeProviderHealth(state);
+}
+
+export function markProviderUnhealthy(index: number) {
+  const state = readProviderHealth();
+  state[index] = {
+    success: state[index]?.success || 0,
+    failure: (state[index]?.failure || 0) + 1,
+    lastFailure: Date.now()
+  };
+  writeProviderHealth(state);
+}
+
+export function isProviderHealthy(index: number): boolean {
+  const state = readProviderHealth();
+  const entry = state[index];
+  if (!entry) return true;
+  if (entry.failure >= 2 && entry.lastFailure && Date.now() - entry.lastFailure < 10 * 60 * 1000) {
+    return false;
+  }
+  return true;
+}
+
+export function getFirstHealthyProviderIndex(total: number): number {
+  for (let idx = 0; idx < total; idx++) {
+    if (isProviderHealthy(idx)) return idx;
+  }
+  return 0;
+}
+
+export function getNextHealthyProviderIndex(start: number, total: number): number {
+  for (let offset = 1; offset <= total; offset++) {
+    const idx = (start + offset) % total;
+    if (isProviderHealthy(idx)) return idx;
+  }
+  return (start + 1) % total;
 }

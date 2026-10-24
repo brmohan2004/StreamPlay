@@ -128,6 +128,13 @@ const POPULAR_TRAILERS: Record<string, string> = {
   'tt1160419': 'Way9Dexny3w'  // Dune
 };
 
+function isEpisodeReleased(ep: { released?: string }): boolean {
+  if (!ep?.released) return true;
+  const releasedAt = Date.parse(ep.released);
+  if (Number.isNaN(releasedAt)) return true;
+  return releasedAt <= Date.now();
+}
+
 export const MovieDetailsScreen: React.FC = () => {
   const {
     selectedMovie,
@@ -626,8 +633,12 @@ export const MovieDetailsScreen: React.FC = () => {
               {currentEpisodes.map((ep, idx) => (
                 <div
                   key={`${ep.season}-${ep.number}-${ep.id || idx}`}
-                  className="episode-card-item"
-                  onClick={() => openMoviePlayer(movieData, ep.season, ep.number)}
+                  className={`episode-card-item ${isEpisodeReleased(ep) ? '' : 'episode-locked'}`}
+                  onClick={() => {
+                    if (!isEpisodeReleased(ep)) return;
+                    openMoviePlayer(movieData, ep.season, ep.number);
+                  }}
+                  style={{ opacity: isEpisodeReleased(ep) ? 1 : 0.55, cursor: isEpisodeReleased(ep) ? 'pointer' : 'not-allowed' }}
                 >
                   <div className="episode-thumb-wrap">
                     <img

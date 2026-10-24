@@ -21,10 +21,12 @@ import {
   Play,
   Pause,
   Gauge,
+  Shield,
   Sparkles
 } from 'lucide-react';
 import { useMedia } from '../context/MediaContext';
-import { getStreamEmbedUrl, STREAMING_SERVERS, fetchMovieDetails } from '../services/movieService';
+import { getStreamEmbedUrl, STREAMING_SERVERS, fetchMovieDetails, markProviderHealthy, markProviderUnhealthy, isProviderHealthy, getFirstHealthyProviderIndex, getNextHealthyProviderIndex } from '../services/movieService';
+import { activateAdBlocker, deactivateAdBlocker } from '../services/adBlocker';
 import { EpisodeItem } from '../types/media';
 
 export const CustomVideoPlayer: React.FC = () => {
@@ -46,15 +48,22 @@ export const CustomVideoPlayer: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const hlsRef = useRef<Hls | null>(null);
   const [nativeAudioTracks, setNativeAudioTracks] = useState<{ id: number; name: string; lang: string }[]>([]);
+  const [nativeSubtitleTracks, setNativeSubtitleTracks] = useState<{ id: number; name: string; lang: string }[]>([]);
 
   // Player UI states
   const [isPlaying, setIsPlaying] = useState(true);
+  const autoplayAttemptsRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [isLocked, setIsLocked] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [hasPlayerCrashed, setHasPlayerCrashed] = useState(false);
+  const [directStreamFailed, setDirectStreamFailed] = useState(false);
+
+  useEffect(() => {
+    setDirectStreamFailed(false);
+  }, [activeMovie?.id, activeSeason, activeEpisode]);
   const [serverToast, setServerToast] = useState<string | null>(null);
   const [showSlowNotice, setShowSlowNotice] = useState(false);
   const [aspectRatioToast, setAspectRatioToast] = useState<string | null>(null);
@@ -65,16 +74,23 @@ export const CustomVideoPlayer: React.FC = () => {
 
   const handleSwitchServer = useCallback((nextIdx: number) => {
     const safeIdx = Math.abs(nextIdx) % STREAMING_SERVERS.length;
-    const targetServer = STREAMING_SERVERS[safeIdx];
     setVideoProviderIndex(safeIdx);
     setIsLoading(true);
     setHasPlayerCrashed(false);
     setShowSlowNotice(false);
-    setServerToast(`Switched to Mirror: ${targetServer?.name || 'Server'}`);
+    setServerToast(`Switched to ${STREAMING_SERVERS[safeIdx]?.name || 'mirror'}`);
     setTimeout(() => {
       setServerToast(null);
     }, 2800);
   }, [setVideoProviderIndex]);
+
+  // Start on a healthy mirror instead of auto-cycling mirrors.
+  useEffect(() => {
+    if (!isVideoModalOpen) return;
+    if (!isProviderHealthy(videoProviderIndex)) {
+      setVideoProviderIndex(getFirstHealthyProviderIndex(STREAMING_SERVERS.length));
+    }
+  }, [isVideoModalOpen, videoProviderIndex, setVideoProviderIndex]);
 
   // Loading curtain auto-dismiss & slow stream watchdog
   useEffect(() => {
@@ -82,10 +98,10 @@ export const CustomVideoPlayer: React.FC = () => {
     setIsLoading(true);
     setShowSlowNotice(false);
 
-    // Auto-dismiss loading curtain after 2.5s so iframe controls are instantly visible & responsive
+    // Auto-dismiss loading curtain after 1.2s so iframe controls are instantly visible & responsive
     const dismissTimer = setTimeout(() => {
       setIsLoading(false);
-    }, 2500);
+    }, 1200);
 
     // Watchdog: If server buffer or connection is slow after 4.5s, suggest next mirror server
     const slowTimer = setTimeout(() => {
@@ -98,31 +114,20 @@ export const CustomVideoPlayer: React.FC = () => {
     };
   }, [isVideoModalOpen, videoProviderIndex, activeMovie?.id, activeSeason, activeEpisode]);
 
-  // Popup Guard: Prevent external embed ads from opening new Chrome tabs/windows
-  // Returns a mock Window proxy so embedded players pass anti-sandbox/popup capability checks without opening external tabs
+  // Ad blocker (src/services/adBlocker.ts) now handles popup/redirect suppression.
+
+  // Ad Blocker: activate when player is open to neutralize redirect-to-new-tab ads
   useEffect(() => {
-    if (!isVideoModalOpen) return;
-    const prevOpen = window.open;
-    try {
-      window.open = function (...args: any[]) {
-        console.warn('[StreamPlay Guard] Handled popup ad request without breakout:', args[0]);
-        return {
-          closed: false,
-          focus: () => {},
-          blur: () => {},
-          close: () => {},
-          postMessage: () => {},
-          location: { href: args[0] || '' }
-        } as any;
-      };
-    } catch {
-      // ignore
+    if (!isVideoModalOpen) {
+      deactivateAdBlocker();
+      return;
     }
+    const cleanup = activateAdBlocker();
     return () => {
-      window.open = prevOpen;
+      if (typeof cleanup === 'function') cleanup();
+      deactivateAdBlocker();
     };
   }, [isVideoModalOpen]);
-
   // Menus & Modals
   const [showQualityMenu, setShowQualityMenu] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
@@ -312,6 +317,8 @@ export const CustomVideoPlayer: React.FC = () => {
     const video = videoRef.current;
     let hls: Hls | null = null;
     setIsLoading(true);
+    setNativeAudioTracks([]);
+    setNativeSubtitleTracks([]);
 
     if (Hls.isSupported()) {
       hls = new Hls({
@@ -331,7 +338,7 @@ export const CustomVideoPlayer: React.FC = () => {
         if (hls && hls.audioTracks && hls.audioTracks.length > 0) {
           const tracks = hls.audioTracks.map((t, idx) => ({
             id: idx,
-            name: t.name || `Audio Track ${idx + 1}`,
+            name: t.name || t.lang || `Audio Track ${idx + 1}`,
             lang: t.lang || 'default'
           }));
           setNativeAudioTracks(tracks);
@@ -339,12 +346,42 @@ export const CustomVideoPlayer: React.FC = () => {
             setSelectedAudioLang(tracks[0].name);
           }
         }
+
+        if (hls && hls.subtitleTracks && hls.subtitleTracks.length > 0) {
+          const tracks = hls.subtitleTracks.map((t, idx) => ({
+            id: idx,
+            name: t.name || t.lang || `Subtitle ${idx + 1}`,
+            lang: t.lang || 'default'
+          }));
+          setNativeSubtitleTracks(tracks);
+        }
       });
 
       hls.on(Hls.Events.AUDIO_TRACK_SWITCHED, (_, data) => {
         const currentTrack = hls?.audioTracks[data.id];
         if (currentTrack) {
           setSelectedAudioLang(currentTrack.name || currentTrack.lang || `Track ${data.id + 1}`);
+        }
+      });
+
+      hls.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, () => {
+        if (!hls || !hls.subtitleTracks) return;
+        const tracks = hls.subtitleTracks.map((t, idx) => ({
+          id: idx,
+          name: t.name || t.lang || `Subtitle ${idx + 1}`,
+          lang: t.lang || 'default'
+        }));
+        setNativeSubtitleTracks(tracks);
+      });
+
+      hls.on(Hls.Events.SUBTITLE_TRACK_SWITCH, (_, data) => {
+        if (data.id === -1) {
+          setSelectedSubtitles('Off');
+        } else {
+          const currentTrack = hls?.subtitleTracks[data.id];
+          if (currentTrack) {
+            setSelectedSubtitles(currentTrack.name || currentTrack.lang || `Subtitle ${data.id + 1}`);
+          }
         }
       });
 
@@ -359,6 +396,7 @@ export const CustomVideoPlayer: React.FC = () => {
               break;
             default:
               hls?.destroy();
+              setDirectStreamFailed(true);
               break;
           }
         }
@@ -408,6 +446,54 @@ export const CustomVideoPlayer: React.FC = () => {
       )
     : '';
 
+  const backendBase = (import.meta as any).env?.VITE_DIRECT_STREAM_BASE;
+  // Automatically sanitize providers known to inject transparent ad overlays (e.g. 2embed.cc) via the local proxy
+  const shouldSanitizeViaProxy = useMemo(() => {
+    if (!currentEmbedUrl) return false;
+    const lower = currentEmbedUrl.toLowerCase();
+    return lower.includes('2embed.cc') || lower.includes('111movies.com');
+  }, [currentEmbedUrl]);
+
+  const iframeSrc = useMemo(() => {
+    if (!currentEmbedUrl) return '';
+    if (backendBase) {
+      return `${String(backendBase).replace(/\/$/, '')}/proxy?url=${encodeURIComponent(currentEmbedUrl)}`;
+    }
+    if (shouldSanitizeViaProxy) {
+      return `/proxy?url=${encodeURIComponent(currentEmbedUrl)}`;
+    }
+    return currentEmbedUrl;
+  }, [currentEmbedUrl, backendBase, shouldSanitizeViaProxy]);
+
+
+  // Preconnect to the active provider origin for lower startup latency.
+  useEffect(() => {
+    if (!isVideoModalOpen || !currentEmbedUrl) return;
+    try {
+      const origin = new URL(currentEmbedUrl).origin;
+      const selector = `link[rel="preconnect"][data-streamplay-provider="${origin}"]`;
+      if (!document.querySelector(selector)) {
+        const link = document.createElement('link');
+        link.rel = 'preconnect';
+        link.href = origin;
+        link.crossOrigin = 'anonymous';
+        link.setAttribute('data-streamplay-provider', origin);
+        document.head.appendChild(link);
+      }
+    } catch {
+      // Ignore malformed provider URLs.
+    }
+  }, [currentEmbedUrl, isVideoModalOpen]);
+
+  // Auto-failover to the next healthy provider when the embedded player crashes.
+  useEffect(() => {
+    if (!isVideoModalOpen || !hasPlayerCrashed) return;
+    const timer = setTimeout(() => {
+      handleSwitchServer(getNextHealthyProviderIndex(videoProviderIndex, STREAMING_SERVERS.length));
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [hasPlayerCrashed, isVideoModalOpen, videoProviderIndex, handleSwitchServer]);
+
   // Playback rate synchronization for native video
   useEffect(() => {
     if (videoRef.current) {
@@ -436,7 +522,7 @@ export const CustomVideoPlayer: React.FC = () => {
         toggleMute();
       } else if (e.key === 's' || e.key === 'S') {
         e.preventDefault();
-        handleSwitchServer(videoProviderIndex + 1);
+        handleSwitchServer(getNextHealthyProviderIndex(videoProviderIndex, STREAMING_SERVERS.length));
       } else if (e.key === 'a' || e.key === 'A') {
         e.preventDefault();
         cycleAspectRatio();
@@ -531,6 +617,53 @@ export const CustomVideoPlayer: React.FC = () => {
         <X size={22} />
       </button>
 
+      {/* Left Vertical Control Rail — Icon-only transparent buttons */}
+      <div className={`player-left-control-rail ${showControls || isLocked ? 'visible' : 'hidden'}`}>
+        {!isLocked && activeMovie.streamUrl && (
+          <button className="player-ctrl-glass-btn" onClick={togglePlayPause} aria-label="Play or Pause">
+            {isPlaying ? <Pause size={17} /> : <Play size={17} fill="#ffffff" />}
+          </button>
+        )}
+        {!isLocked && (
+          <>
+            <button className="player-ctrl-glass-btn" onClick={toggleMute} aria-label="Mute">
+              {isMuted ? <VolumeX size={17} /> : <Volume2 size={17} />}
+            </button>
+            <button className="player-ctrl-glass-btn" onClick={cycleAspectRatio} aria-label="Screen Size">
+              <Layers size={17} />
+            </button>
+            <div className="rail-btn-with-dropdown">
+              <button className={`player-ctrl-glass-btn ${showQualityMenu ? 'active' : ''}`} onClick={() => { setShowQualityMenu(prev => !prev); setShowLangMenu(false); setShowHealthModal(false); setShowEpisodeDrawer(false); }} aria-label="Settings">
+                <Settings size={17} />
+              </button>
+            </div>
+            <div className="rail-btn-with-dropdown">
+              <button className={`player-ctrl-glass-btn ${showLangMenu ? 'active' : ''}`} onClick={() => { setShowLangMenu(prev => !prev); setShowQualityMenu(false); setShowHealthModal(false); setShowEpisodeDrawer(false); }} aria-label="Audio & Subtitles">
+                <Languages size={17} />
+              </button>
+            </div>
+            {activeMovie.type === 'series' && (
+              <>
+                <div className="rail-btn-with-dropdown">
+                  <button className={`player-ctrl-glass-btn ${showEpisodeDrawer ? 'active' : ''}`} onClick={() => { setShowEpisodeDrawer(prev => !prev); setShowQualityMenu(false); setShowLangMenu(false); setShowHealthModal(false); }} aria-label="All Episodes">
+                    <List size={17} />
+                  </button>
+                </div>
+                <button className="player-ctrl-glass-btn lime" onClick={playNextEpisode} aria-label="Next Episode">
+                  <ChevronRight size={17} />
+                </button>
+              </>
+            )}
+            <button className="player-ctrl-glass-btn" onClick={toggleFullscreen} aria-label="Fullscreen">
+              {isFullscreen ? <Minimize2 size={17} /> : <Maximize2 size={17} />}
+            </button>
+          </>
+        )}
+        <button className="player-ctrl-glass-btn" onClick={() => setIsLocked(prev => !prev)} aria-label="Lock Screen">
+          <Lock size={17} />
+        </button>
+      </div>
+
       {/* Aspect Ratio HUD Overlay Notification */}
       <AnimatePresence>
         {aspectRatioToast && (
@@ -566,9 +699,9 @@ export const CustomVideoPlayer: React.FC = () => {
             <div className="crash-actions">
               <button
                 className="crash-action-btn primary"
-                onClick={() => handleSwitchServer(videoProviderIndex + 1)}
+                onClick={() => handleSwitchServer(getNextHealthyProviderIndex(videoProviderIndex, STREAMING_SERVERS.length))}
               >
-                Switch to Next Server ({STREAMING_SERVERS[(videoProviderIndex + 1) % STREAMING_SERVERS.length]?.name || 'Next'})
+                Switch to Next Mirror
               </button>
               <button className="crash-action-btn secondary" onClick={closeMoviePlayer}>
                 Exit Player
@@ -585,11 +718,11 @@ export const CustomVideoPlayer: React.FC = () => {
               initial={{ opacity: 0, y: -10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.95 }}
-              onClick={() => handleSwitchServer(videoProviderIndex + 1)}
+              onClick={() => handleSwitchServer(getNextHealthyProviderIndex(videoProviderIndex, STREAMING_SERVERS.length))}
               title="Click to switch to next fast mirror server"
             >
               <Zap size={14} color="#c8ff00" />
-              <span>Slow or blocked stream? Tap to switch to Mirror ({STREAMING_SERVERS[(videoProviderIndex + 1) % STREAMING_SERVERS.length]?.name.split(' ')[0]}) ⚡</span>
+              <span>Slow or blocked stream? Tap to switch to next mirror ⚡</span>
             </motion.div>
           )}
         </AnimatePresence>
@@ -609,7 +742,7 @@ export const CustomVideoPlayer: React.FC = () => {
           )}
         </AnimatePresence>
 
-        {activeMovie.streamUrl ? (
+        {activeMovie.streamUrl && !directStreamFailed ? (
           <video
             ref={videoRef}
             className="custom-stream-video"
@@ -626,17 +759,97 @@ export const CustomVideoPlayer: React.FC = () => {
           <iframe
             ref={iframeRef}
             key={`${activeMovie.id}-${videoProviderIndex}-${activeSeason}-${activeEpisode}`}
-            src={currentEmbedUrl}
+            src={iframeSrc}
             className="custom-stream-iframe"
             title={activeMovie.name}
             allowFullScreen
-            sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
+            loading="eager"
             referrerPolicy="origin"
             allow="autoplay *; encrypted-media *; fullscreen *; clipboard-write *; screen-wake-lock *"
             onLoad={() => {
               setIsLoading(false);
+              setHasPlayerCrashed(false);
+              setIsPlaying(true);
+              markProviderHealthy(videoProviderIndex);
+
+              // Auto-play: attempt to click play inside the iframe via postMessage
+              // and by directly interacting with the iframe document (same-origin only)
+              if (autoplayAttemptsRef.current) {
+                clearInterval(autoplayAttemptsRef.current);
+              }
+              let attempts = 0;
+              autoplayAttemptsRef.current = setInterval(() => {
+                attempts++;
+                if (attempts > 15) {
+                  if (autoplayAttemptsRef.current) clearInterval(autoplayAttemptsRef.current);
+                  return;
+                }
+                try {
+                  const iframe = iframeRef.current;
+                  if (!iframe) return;
+
+                  // Method 1: postMessage autoplay signal
+                  iframe.contentWindow?.postMessage({ event: 'command', func: 'playVideo', args: [] }, '*');
+                  iframe.contentWindow?.postMessage({ type: 'play' }, '*');
+                  iframe.contentWindow?.postMessage('play', '*');
+
+                  // Method 2: Try direct DOM access (works for same-origin/proxy)
+                  const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+                  if (iframeDoc) {
+                    // Strip any lingering ad anchor overlays (e.g. interlinecustomroofingllc)
+                    const adAnchors = iframeDoc.querySelectorAll(
+                      'a[href*="interline" i], a[href*="tagivi" i], a[href*="adplox" i], ' +
+                      'a[target="_blank"], a[href^="http"]:not([href*="' + window.location.host + '"]):not([href*="vidsrc"])'
+                    );
+                    adAnchors.forEach(a => a.remove());
+
+                    // Dismiss any sandbox warning overlay
+                    const sbxErr = iframeDoc.getElementById('sbxErr');
+                    if (sbxErr) sbxErr.remove();
+
+                    // If 2embed wrapper play button exists, trigger it
+                    const wrapperPlayBtn = iframeDoc.querySelector('.playbtnx') as HTMLElement | null;
+                    if (wrapperPlayBtn && wrapperPlayBtn.style.display !== 'none') {
+                      wrapperPlayBtn.click();
+                    }
+
+                    // Click any visible play button
+                    const playBtns = iframeDoc.querySelectorAll(
+                      'button[aria-label*="play" i], button[aria-label*="Play" i], ' +
+                      'button[title*="play" i], button[title*="Play" i], ' +
+                      '.play-button, .vjs-big-play-button, ' +
+                      '[class*="play-btn"], [class*="playBtn"], [class*="play_button"], ' +
+                      '.jw-icon-display, .plyr__control--overlaid, ' +
+                      'div[class*="play"] svg, button svg'
+                    );
+                    playBtns.forEach(btn => {
+                      (btn as HTMLElement).click();
+                    });
+
+                    // Also try triggering play on any video element
+                    const videos = iframeDoc.querySelectorAll('video');
+                    videos.forEach(v => {
+                      if (v.paused) {
+                        v.muted = false;
+                        v.play().catch(() => {});
+                      }
+                    });
+
+                    // If a video is already playing, stop retrying
+                    if (videos.length > 0) {
+                      const anyPlaying = Array.from(videos).some(v => !v.paused);
+                      if (anyPlaying && autoplayAttemptsRef.current) {
+                        clearInterval(autoplayAttemptsRef.current);
+                      }
+                    }
+                  }
+                } catch {
+                  // Cross-origin restriction, postMessage is the only option
+                }
+              }, 800);
             }}
             onError={() => {
+              markProviderUnhealthy(videoProviderIndex);
               setHasPlayerCrashed(true);
             }}
           />
@@ -659,24 +872,6 @@ export const CustomVideoPlayer: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* 3. Screen Locked Floating Unlock Button */}
-      <AnimatePresence>
-        {isLocked && (
-          <motion.button
-            className="player-locked-floating-pill"
-            initial={{ scale: 0.85, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.85, opacity: 0 }}
-            onClick={() => setIsLocked(false)}
-            title="Screen Locked — Tap to Unlock"
-            aria-label="Unlock Screen"
-          >
-            <Lock size={18} />
-            <span>Screen Locked (Tap to Unlock)</span>
-          </motion.button>
-        )}
-      </AnimatePresence>
-
       {/* 4. Top Header Overlay Bar — Only Title and Connection Health */}
       <div className={`player-header-bar ${showControls && !isLocked ? 'visible' : 'hidden'}`}>
         <div className="header-left-meta">
@@ -695,14 +890,22 @@ export const CustomVideoPlayer: React.FC = () => {
 
         {/* Top Right: Quick Server Switcher + Connection Health Pill */}
         <div className="header-right-tools">
+          <span
+            className="connection-health-pill-btn"
+            title="Ad Blocker Active"
+            style={{ cursor: 'default', color: '#c8ff00' }}
+          >
+            <Shield size={13} style={{ color: '#c8ff00' }} />
+            <span className="health-ping-text">AdBlock</span>
+          </span>
           <button
             className="connection-health-pill-btn server-pill-btn"
-            onClick={() => handleSwitchServer(videoProviderIndex + 1)}
-            title={`Current Server: ${STREAMING_SERVERS[videoProviderIndex % STREAMING_SERVERS.length]?.name}. Click to switch server`}
+            onClick={() => handleSwitchServer(getNextHealthyProviderIndex(videoProviderIndex, STREAMING_SERVERS.length))}
+            title={`Current mirror. Click to switch mirror`}
             aria-label="Switch Server"
           >
             <Server size={13} style={{ color: '#c8ff00' }} />
-            <span className="health-ping-text">{STREAMING_SERVERS[videoProviderIndex % STREAMING_SERVERS.length]?.name.split(' ')[0] || 'Server'}</span>
+            <span className="health-ping-text">{STREAMING_SERVERS[videoProviderIndex]?.name || 'Mirror'}</span>
           </button>
 
           <button
@@ -718,140 +921,18 @@ export const CustomVideoPlayer: React.FC = () => {
         </div>
       </div>
 
-      {/* 5. Bottom Controls Bar — ALL OPTIONS IN BOTTOM BAR (LOGO ONLY) */}
-      <div className={`player-bottom-bar ${showControls && !isLocked ? 'visible' : 'hidden'}`}>
-        <div className="bottom-left-controls">
-          {/* Play/Pause toggle (Native Video) — logo only */}
-          {activeMovie.streamUrl && (
-            <button
-              className="player-ctrl-round-btn small"
-              onClick={togglePlayPause}
-              title={isPlaying ? 'Pause' : 'Play'}
-              aria-label="Play or Pause"
-            >
-              {isPlaying ? <Pause size={18} /> : <Play size={18} fill="#ffffff" />}
-            </button>
-          )}
-
-          {/* Mute toggle — logo only */}
-          <button
-            className="player-ctrl-round-btn small"
-            onClick={toggleMute}
-            title={isMuted ? 'Unmute' : 'Mute'}
-            aria-label="Mute"
-          >
-            {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
-          </button>
-
-          {/* Aspect Ratio Screen Size — logo only */}
-          <button
-            className="player-ctrl-round-btn small"
-            onClick={cycleAspectRatio}
-            title={`Screen Size: ${aspectRatioMode.toUpperCase()}`}
-            aria-label="Screen Size"
-          >
-            <Layers size={18} />
-          </button>
-        </div>
-
-        {/* Right Bottom Controls — ALL LOGO ONLY */}
-        <div className="bottom-right-controls">
-          {/* Server & Quality Selector — logo only */}
-          <button
-            className={`player-ctrl-round-btn small ${showQualityMenu ? 'active' : ''}`}
-            onClick={() => {
-              setShowQualityMenu(prev => !prev);
-              setShowLangMenu(false);
-              setShowHealthModal(false);
-              setShowEpisodeDrawer(false);
-            }}
-            title="Video Quality & Server"
-            aria-label="Video Quality & Server"
-          >
-            <Settings size={18} />
-          </button>
-
-          {/* Language / Audio & Subtitles — logo only */}
-          <button
-            className={`player-ctrl-round-btn small ${showLangMenu ? 'active' : ''}`}
-            onClick={() => {
-              setShowLangMenu(prev => !prev);
-              setShowQualityMenu(false);
-              setShowHealthModal(false);
-              setShowEpisodeDrawer(false);
-            }}
-            title="Audio & Subtitles"
-            aria-label="Audio & Subtitles"
-          >
-            <Languages size={18} />
-          </button>
-
-          {/* Screen Lock — logo only */}
-          <button
-            className="player-ctrl-round-btn small"
-            onClick={() => setIsLocked(true)}
-            title="Lock Screen"
-            aria-label="Lock Screen"
-          >
-            <Lock size={18} />
-          </button>
-
-          {/* Episodes Drawer (Series only) — logo only */}
-          {activeMovie.type === 'series' && (
-            <>
-              <button
-                className={`player-ctrl-round-btn small ${showEpisodeDrawer ? 'active' : ''}`}
-                onClick={() => {
-                  setShowEpisodeDrawer(prev => !prev);
-                  setShowQualityMenu(false);
-                  setShowLangMenu(false);
-                  setShowHealthModal(false);
-                }}
-                title="All Episodes"
-                aria-label="All Episodes"
-              >
-                <List size={18} />
-              </button>
-
-              <motion.button
-                className="player-ctrl-round-btn small text-lime-btn"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={playNextEpisode}
-                title={`Next Episode (S${activeSeason}:E${activeEpisode + 1})`}
-                aria-label="Next Episode"
-              >
-                <ChevronRight size={18} />
-              </motion.button>
-            </>
-          )}
-
-          {/* Fullscreen Toggle — logo only */}
-          <button
-            className="player-ctrl-round-btn small"
-            onClick={toggleFullscreen}
-            title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
-            aria-label="Fullscreen"
-          >
-            {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
-          </button>
-        </div>
-      </div>
-
       {/* 6. POPUP MODALS */}
 
       {/* Quality & Server Selection Popup */}
       <AnimatePresence>
         {showQualityMenu && (
           <motion.div
-            className="player-menu-modal quality-menu"
-            initial={{ opacity: 0, scale: 0.95, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            className="player-menu-modal quality-menu rail-dropdown"
+            initial={{ opacity: 0, scale: 0.92, x: -10 }}
+            animate={{ opacity: 1, scale: 1, x: 0 }}
+            exit={{ opacity: 0, scale: 0.92, x: -10 }}
           >
             <div className="menu-modal-header">
-              <Settings size={18} className="text-cyan" />
-              <h4>Playback & Servers</h4>
               <button className="menu-close-x" onClick={() => setShowQualityMenu(false)}>✕</button>
             </div>
             <div className="menu-options-list">
@@ -926,14 +1007,12 @@ export const CustomVideoPlayer: React.FC = () => {
       <AnimatePresence>
         {showLangMenu && (
           <motion.div
-            className="player-menu-modal lang-menu"
-            initial={{ opacity: 0, scale: 0.95, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            className="player-menu-modal lang-menu rail-dropdown"
+            initial={{ opacity: 0, scale: 0.92, x: -10 }}
+            animate={{ opacity: 1, scale: 1, x: 0 }}
+            exit={{ opacity: 0, scale: 0.92, x: -10 }}
           >
             <div className="menu-modal-header">
-              <Languages size={18} className="text-lime" />
-              <h4>Audio & Subtitles</h4>
               <button className="menu-close-x" onClick={() => setShowLangMenu(false)}>✕</button>
             </div>
             {!activeMovie.streamUrl && (
@@ -951,16 +1030,6 @@ export const CustomVideoPlayer: React.FC = () => {
                       className={`multi-audio-server-badge-btn ${videoProviderIndex === 0 ? 'active' : ''}`}
                       onClick={() => {
                         handleSwitchServer(0);
-                        setShowLangMenu(false);
-                      }}
-                    >
-                      <Server size={12} />
-                      <span>AutoEmbed (Multi-Audio)</span>
-                    </button>
-                    <button
-                      className={`multi-audio-server-badge-btn ${videoProviderIndex === 1 ? 'active' : ''}`}
-                      onClick={() => {
-                        handleSwitchServer(1);
                         setShowLangMenu(false);
                       }}
                     >
@@ -1015,16 +1084,48 @@ export const CustomVideoPlayer: React.FC = () => {
               <div className="lang-col">
                 <span className="lang-col-title">Subtitles</span>
                 <div className="menu-options-list compact">
-                  {SUBTITLES.map((sub, idx) => (
-                    <div
-                      key={idx}
-                      className={`menu-option-item ${selectedSubtitles === sub ? 'active' : ''}`}
-                      onClick={() => setSelectedSubtitles(sub)}
-                    >
-                      <span className="option-title">{sub}</span>
-                      {selectedSubtitles === sub && <Check size={16} color="#00d2ff" />}
-                    </div>
-                  ))}
+                  {nativeSubtitleTracks.length > 0 ? (
+                    <>
+                      <div
+                        className={`menu-option-item ${selectedSubtitles === 'Off' ? 'active' : ''}`}
+                        onClick={() => {
+                          setSelectedSubtitles('Off');
+                          if (hlsRef.current) {
+                            hlsRef.current.subtitleTrack = -1;
+                          }
+                        }}
+                      >
+                        <span className="option-title">Off</span>
+                        {selectedSubtitles === 'Off' && <Check size={16} color="#00d2ff" />}
+                      </div>
+                      {nativeSubtitleTracks.map(track => (
+                        <div
+                          key={track.id}
+                          className={`menu-option-item ${selectedSubtitles === track.name ? 'active' : ''}`}
+                          onClick={() => {
+                            setSelectedSubtitles(track.name);
+                            if (hlsRef.current) {
+                              hlsRef.current.subtitleTrack = track.id;
+                            }
+                          }}
+                        >
+                          <span className="option-title">{track.name}</span>
+                          {selectedSubtitles === track.name && <Check size={16} color="#00d2ff" />}
+                        </div>
+                      ))}
+                    </>
+                  ) : (
+                    SUBTITLES.map((sub, idx) => (
+                      <div
+                        key={idx}
+                        className={`menu-option-item ${selectedSubtitles === sub ? 'active' : ''}`}
+                        onClick={() => setSelectedSubtitles(sub)}
+                      >
+                        <span className="option-title">{sub}</span>
+                        {selectedSubtitles === sub && <Check size={16} color="#00d2ff" />}
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </div>
@@ -1042,8 +1143,6 @@ export const CustomVideoPlayer: React.FC = () => {
             exit={{ opacity: 0, scale: 0.95, y: -10 }}
           >
             <div className="menu-modal-header">
-              <Activity size={18} className="text-lime" />
-              <h4>Connection Health Telemetry</h4>
               <button className="menu-close-x" onClick={() => setShowHealthModal(false)}>✕</button>
             </div>
 
@@ -1077,14 +1176,12 @@ export const CustomVideoPlayer: React.FC = () => {
       <AnimatePresence>
         {showEpisodeDrawer && activeMovie.type === 'series' && (
           <motion.div
-            className="player-menu-modal episodes-drawer-modal"
-            initial={{ opacity: 0, scale: 0.95, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            className="player-menu-modal episodes-drawer-modal rail-dropdown"
+            initial={{ opacity: 0, scale: 0.92, x: -10 }}
+            animate={{ opacity: 1, scale: 1, x: 0 }}
+            exit={{ opacity: 0, scale: 0.92, x: -10 }}
           >
             <div className="menu-modal-header">
-              <List size={18} className="text-lime" />
-              <h4>Episodes & Seasons</h4>
               <button className="menu-close-x" onClick={() => setShowEpisodeDrawer(false)}>✕</button>
             </div>
             {/* Season Selector Tabs */}

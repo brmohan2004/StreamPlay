@@ -1,5 +1,5 @@
-# 🔬 StreamPlay / Netmirror Architecture — Deep Reverse Engineering Report
-> **For Educational YouTube Channel Content — Complete Technical Breakdown**
+﻿﻿# ≡ƒö¼ StreamPlay / Netmirror Architecture ΓÇö Deep Reverse Engineering Report
+> **For Educational YouTube Channel Content ΓÇö Complete Technical Breakdown**
 > Analyzed via REA MCP + Source Code Inspection
 
 ---
@@ -8,7 +8,7 @@
 1. [How Content is Loaded Freely (Zero Cost)](#1-how-content-is-loaded-freely)
 2. [Complete Registry of Free 3rd-Party Servers & Video Hosts](#2-free-3rd-party-servers--video-hosts)
 3. [Custom Media Player Architecture](#3-custom-media-player-architecture)
-4. [Instant Play Button — How Content Loads Instantly](#4-instant-play-on-click)
+4. [Instant Play Button ΓÇö How Content Loads Instantly](#4-instant-play-on-click)
 5. [How to Integrate External Servers into Your Own Custom Player](#5-integration-guide-for-streamplay)
 6. [Full Architecture Diagram](#6-architecture-diagram)
 
@@ -18,7 +18,7 @@
 
 ### The "Free Content" Pipeline
 
-The entire content loading system uses **three free, open public APIs** — no paid subscriptions, no API keys, no authentication:
+The entire content loading system uses **three free, open public APIs** ΓÇö no paid subscriptions, no API keys, no authentication:
 
 ```mermaid
 graph LR
@@ -30,7 +30,7 @@ graph LR
     F --> G[User Watches Content]
 ```
 
-### Layer 1: Content Catalog — Cinemeta (Stremio's Public API)
+### Layer 1: Content Catalog ΓÇö Cinemeta (Stremio's Public API)
 
 **Base URL:** `https://v3-cinemeta.strem.io`
 
@@ -53,16 +53,16 @@ This is the **metadata backbone**. It provides:
 | `/meta/{type}/{imdbId}.json` | Full movie/series details |
 
 > [!IMPORTANT]
-> Cinemeta is **metadata only** — it provides titles, posters, descriptions. It does NOT provide video streams. The actual video streams come from the embed servers (Layer 2).
+> Cinemeta is **metadata only** ΓÇö it provides titles, posters, descriptions. It does NOT provide video streams. The actual video streams come from the embed servers (Layer 2).
 
-### Layer 2: Video Streams — Free Embed Servers
+### Layer 2: Video Streams ΓÇö Free Embed Servers
 
 When a user clicks "Play", the app constructs an **embed URL** using the IMDb ID from Cinemeta and loads it in an `<iframe>`. The embed servers handle:
 - Finding and serving the actual video file
 - Providing multiple audio tracks and subtitles
 - Adaptive bitrate streaming
 
-### Layer 3: Music Streams — JioSaavn API
+### Layer 3: Music Streams ΓÇö JioSaavn API
 
 **Base URL:** `https://www.jiosaavn.com/api.php`
 
@@ -77,22 +77,22 @@ For the music section, the app uses JioSaavn's internal API with DES decryption 
 
 ### Complete 12-Server Video Engine Registry
 
-Discovered in [`movieService.ts`](file:///C:/Users/mohan/Desktop/StreamPlay/src/services/movieService.ts#L822-L961) — the `STREAMING_SERVERS` array:
+Discovered in [`movieService.ts`](file:///C:/Users/mohan/Desktop/StreamPlay/src/services/movieService.ts#L822-L961) ΓÇö the `STREAMING_SERVERS` array:
 
 | # | Server Name | Domain | No Ads | Specialty |
 |---|------------|--------|--------|-----------|
-| 1 | **AutoEmbed (Multi-Audio & Subs)** | `autoembed.co` | ✅ | Multi-language audio & subtitles, zero sandbox blocks |
-| 2 | **2Embed CC (Multi-Audio)** | `www.2embed.cc` | ✅ | High compatibility multi-audio & CC subtitles |
-| 3 | **VidSrc PM (Origin Cluster)** | `vidsrc.pm` | ✅ | Fast origin cluster with zero popup breakout |
-| 4 | **VidBinge (Zero Ads & CC)** | `vidbinge.dev` | ✅ | Clean ad-free HTML5 stream player with subtitle selection |
-| 5 | **VidSrc NL (High Bitrate)** | `player.vidsrc.nl` | ✅ | Direct smooth stream with multi-resolution |
-| 6 | **AutoEmbed Mirror (TO)** | `autoembed.to` | ✅ | High-availability mirror for AutoEmbed |
-| 7 | **111Movies (Asian & Regional)** | `111movies.com` | ❌ | Regional Indian & Asian cinema catalog |
-| 8 | **VidLink Pro (Alternative)** | `vidlink.pro` | ❌ | High-speed 4K/1080p mirror |
-| 9 | **VidSrc CC (Clean 1080p)** | `vidsrc.cc` | ✅ | High-bitrate pristine 1080p with multi-audio |
-| 10 | **SmashyStream (Ultra Clean)** | `embed.smashystream.com` | ✅ | High-speed cluster with multiple audio & CC |
-| 11 | **MoviesAPI (No Ads)** | `moviesapi.club` | ✅ | Multi-resolution with adaptive bitrate |
-| 12 | **MultiEmbed (Universal Mirrors)** | `multiembed.mov` | ✅ | Dynamic multi-source selector with auto-fallback |
+| 1 | **AutoEmbed (Multi-Audio & Subs)** | `autoembed.co` | Γ£à | Multi-language audio & subtitles, zero sandbox blocks |
+| 2 | **2Embed CC (Multi-Audio)** | `www.2embed.cc` | Γ£à | High compatibility multi-audio & CC subtitles |
+| 3 | **VidSrc PM (Origin Cluster)** | `vidsrc.pm` | Γ£à | Fast origin cluster with zero popup breakout |
+| 4 | **VidBinge (Zero Ads & CC)** | `vidbinge.dev` | Γ£à | Clean ad-free HTML5 stream player with subtitle selection |
+| 5 | **VidSrc NL (High Bitrate)** | `player.vidsrc.nl` | Γ£à | Direct smooth stream with multi-resolution |
+| 6 | **AutoEmbed Mirror (TO)** | `autoembed.to` | Γ£à | High-availability mirror for AutoEmbed |
+| 7 | **111Movies (Asian & Regional)** | `111movies.com` | Γ¥î | Regional Indian & Asian cinema catalog |
+| 8 | **VidLink Pro (Alternative)** | `vidlink.pro` | Γ¥î | High-speed 4K/1080p mirror |
+| 9 | **VidSrc CC (Clean 1080p)** | `vidsrc.cc` | Γ£à | High-bitrate pristine 1080p with multi-audio |
+| 10 | **SmashyStream (Ultra Clean)** | `embed.smashystream.com` | Γ£à | High-speed cluster with multiple audio & CC |
+| 11 | **MoviesAPI (No Ads)** | `moviesapi.club` | Γ£à | Multi-resolution with adaptive bitrate |
+| 12 | **MultiEmbed (Universal Mirrors)** | `multiembed.mov` | Γ£à | Dynamic multi-source selector with auto-fallback |
 
 ### URL Pattern Analysis
 
@@ -156,7 +156,7 @@ When `activeMovie.streamUrl` exists (e.g., `.m3u8` HLS feed):
 - Error recovery: auto-retry on network/media errors
 
 #### Mode 2: Embed iframe Player (3rd-Party Servers)
-When no direct stream URL — this is the **primary mode**:
+When no direct stream URL ΓÇö this is the **primary mode**:
 - Loads the embed server in a sandboxed `<iframe>`
 - Custom overlay controls drawn **on top** of the iframe
 - Language/subtitle changes handled by the embed server's internal player
@@ -165,11 +165,11 @@ When no direct stream URL — this is the **primary mode**:
 
 | Feature | Implementation |
 |---------|---------------|
-| **Quality Selection** | 5 options (4K, 1080p, 720p, 480p, Auto) — visual only for iframe mode |
-| **Audio Language** | 7 languages (English, Hindi, Tamil, Telugu, Spanish, French, Korean) — uses HLS.js `audioTrack` for native, embed's internal CC for iframe |
+| **Quality Selection** | 5 options (4K, 1080p, 720p, 480p, Auto) ΓÇö visual only for iframe mode |
+| **Audio Language** | 7 languages (English, Hindi, Tamil, Telugu, Spanish, French, Korean) ΓÇö uses HLS.js `audioTrack` for native, embed's internal CC for iframe |
 | **Subtitles** | 7 options (Off, English CC, Hindi CC, Tamil CC, Telugu CC, Spanish, French) |
-| **Server Switching** | Cycles through 12 servers instantly — rebuilds iframe URL |
-| **Speed Control** | "Hold to 2X" gesture — hold down on video area for 300ms |
+| **Server Switching** | Cycles through 12 servers instantly ΓÇö rebuilds iframe URL |
+| **Speed Control** | "Hold to 2X" gesture ΓÇö hold down on video area for 300ms |
 | **Screen Lock** | Locks all touch controls, shows floating unlock button |
 | **Aspect Ratio** | 4 modes: Fit, Fill (1.08x), Zoom (1.28x), 16:9 |
 | **Fullscreen** | Uses Fullscreen API on the player container |
@@ -180,7 +180,7 @@ When no direct stream URL — this is the **primary mode**:
 | **Popup Guard** | Overrides `window.open` to block embed ad popups |
 | **Slow Stream Notice** | Auto-shows after loading delay, suggests server switch |
 
-### Popup Guard — The Anti-Ad Innovation
+### Popup Guard ΓÇö The Anti-Ad Innovation
 
 ```typescript
 // Lines 84-105: Prevents embed ads from opening new Chrome tabs
@@ -229,10 +229,10 @@ sequenceDiagram
     Player->>Player: Hide loading curtain
 ```
 
-### Why It Feels Instant — 5 Key Techniques:
+### Why It Feels Instant ΓÇö 5 Key Techniques:
 
 #### 1. **Pre-Computed URL (Zero Calculation Delay)**
-The embed URL is a simple string concatenation — no API call needed:
+The embed URL is a simple string concatenation ΓÇö no API call needed:
 ```typescript
 // Computed on render, no async wait
 const currentEmbedUrl = getStreamEmbedUrl(
@@ -245,14 +245,14 @@ const currentEmbedUrl = getStreamEmbedUrl(
 ```
 
 #### 2. **Synchronous State Updates**
-`openMoviePlayer` sets all state synchronously — no async operations:
+`openMoviePlayer` sets all state synchronously ΓÇö no async operations:
 ```typescript
 const openMoviePlayer = (movie: MovieItem, season = 1, episode = 1) => {
   setActiveMovie(movie);         // sync
   setActiveSeason(season);       // sync
   setActiveEpisode(episode);     // sync
   setVideoProviderIndex(0);      // sync
-  setIsVideoModalOpen(true);     // sync — triggers render
+  setIsVideoModalOpen(true);     // sync ΓÇö triggers render
   addToContinueWatching(movie);  // sync (localStorage)
 };
 ```
@@ -303,7 +303,7 @@ To add a new free embed server to StreamPlay, add an entry to the `STREAMING_SER
 }
 ```
 
-### Content Segregation — How Netmirror-Style OTT Filtering Works
+### Content Segregation ΓÇö How Netmirror-Style OTT Filtering Works
 
 The app segregates content by OTT platform using **search query mapping**:
 
@@ -334,22 +334,22 @@ Each OTT brand has `popularQueries` that are searched against Cinemeta, and resu
 The key architectural pattern for your custom player:
 
 ```
-┌─────────────────────────────────────────────────┐
-│  YOUR CUSTOM PLAYER (Full-Screen Overlay)       │
-│                                                 │
-│  ┌──────────────────────────────────────────┐   │
-│  │  <iframe src={embedUrl}>                 │   │
-│  │    (3rd party player handles video)      │   │
-│  │    (has its own CC/audio controls)       │   │
-│  └──────────────────────────────────────────┘   │
-│                                                 │
-│  ┌──────── YOUR OVERLAY CONTROLS ──────────┐   │
-│  │ [◀ Back] [Title]        [Server] [⚡ms]  │   │
-│  │                                          │   │
-│  │ [🔇] [📐] [⚙️ Quality] [🌐 Lang] [🔒]  │   │
-│  │ [📋 Episodes] [▶ Next] [⛶ Fullscreen]   │   │
-│  └──────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────┘
+ΓöîΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÉ
+Γöé  YOUR CUSTOM PLAYER (Full-Screen Overlay)       Γöé
+Γöé                                                 Γöé
+Γöé  ΓöîΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÉ   Γöé
+Γöé  Γöé  <iframe src={embedUrl}>                 Γöé   Γöé
+Γöé  Γöé    (3rd party player handles video)      Γöé   Γöé
+Γöé  Γöé    (has its own CC/audio controls)       Γöé   Γöé
+Γöé  ΓööΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÿ   Γöé
+Γöé                                                 Γöé
+Γöé  ΓöîΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ YOUR OVERLAY CONTROLS ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÉ   Γöé
+Γöé  Γöé [ΓùÇ Back] [Title]        [Server] [ΓÜíms]  Γöé   Γöé
+Γöé  Γöé                                          Γöé   Γöé
+Γöé  Γöé [≡ƒöç] [≡ƒôÉ] [ΓÜÖ∩╕Å Quality] [≡ƒîÉ Lang] [≡ƒöÆ]  Γöé   Γöé
+Γöé  Γöé [≡ƒôï Episodes] [Γû╢ Next] [Γ¢╢ Fullscreen]   Γöé   Γöé
+Γöé  ΓööΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÿ   Γöé
+ΓööΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÿ
 ```
 
 ---
@@ -439,3 +439,4 @@ graph TB
 
 > [!NOTE]
 > **REA MCP Status:** The `inspect_android_package` and `decode_android_resources` tools require JADX and apktool to be installed and configured (via `REA_JADX_MCP_JAR` and `REA_APKTOOL_COMMAND` environment variables). Since StreamPlay is a Capacitor/web hybrid app, all core logic lives in TypeScript source rather than native Android code, so the source analysis was fully comprehensive without needing APK decompilation.
+

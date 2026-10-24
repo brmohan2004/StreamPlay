@@ -1,0 +1,1087 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>WatchNow IMDb TMDB - Source code</title>
+  <meta name="description" value="Source code for WatchNow IMDb TMDB">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+  <script src="/vite/assets/application-BVbcWZzu.js" crossorigin="" type="module"></script><link rel="stylesheet" crossorigin="" href="/vite/assets/application-BUQg-itE.css" />
+    <meta name="csrf-param" content="authenticity_token" />
+<meta name="csrf-token" content="TN-omutYzncnKBddT6-jBkGTx8fc2UDgERmNHYXVueAtm-iEGrl7uCvIx7aDQykqoQx6040XdrgZmtjk3_oh-Q" />
+    <meta name="clckd" content="bf6242cc3039bff31a7815dff8ee247b" />
+    <meta name="lhverifycode" content="32dc01246faccb7f5b3cad5016dd5033" />
+  <link rel="canonical" href="https://greasyfork.org/en/scripts/520196-watchnow-imdb-tmdb/code">
+  <link rel="icon" href="/vite/assets/blacklogo16-DftkYuVe.png">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans&amp;display=swap" media="print" onload="this.media='all'; this.onload=null;">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans&amp;display=swap"></noscript>
+
+    <link rel="alternate" hreflang="x-default" href="/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="ar" href="/ar/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="be" href="/be/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="bg" href="/bg/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="ckb" href="/ckb/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="cs" href="/cs/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="da" href="/da/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="de" href="/de/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="el" href="/el/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="en" href="/en/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="eo" href="/eo/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="es" href="/es/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="es-419" href="/es-419/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="fi" href="/fi/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="fil" href="/fil/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="fr" href="/fr/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="fr-CA" href="/fr-CA/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="he" href="/he/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="hr" href="/hr/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="hu" href="/hu/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="id" href="/id/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="it" href="/it/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="ja" href="/ja/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="ka" href="/ka/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="ko" href="/ko/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="mr" href="/mr/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="nb" href="/nb/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="ne" href="/ne/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="nl" href="/nl/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="pl" href="/pl/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="pt" href="/pt/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="pt-BR" href="/pt-BR/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="ro" href="/ro/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="ru" href="/ru/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="sk" href="/sk/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="sr" href="/sr/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="sv" href="/sv/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="th" href="/th/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="tr" href="/tr/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="uk" href="/uk/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="ug" href="/ug/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="vi" href="/vi/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="zh-CN" href="/zh-CN/scripts/520196-watchnow-imdb-tmdb/code">
+      <link rel="alternate" hreflang="zh-TW" href="/zh-TW/scripts/520196-watchnow-imdb-tmdb/code">
+
+
+  <link rel="search" href="/en/opensearch.xml" type="application/opensearchdescription+xml" title="Greasy Fork search" hreflang="en">
+
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-7NMRNRYW7C"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-7NMRNRYW7C', {
+        'ad_method': 'ea',
+        'ad_method_variant': '',
+        'action': 'scripts/show_code'
+      });
+    </script>
+
+    <script async src="https://media.ethicalads.io/media/client/ethicalads.min.js" onerror="if (typeof gtag !== 'undefined') { gtag('event', 'EthicalAds placement', { 'ea_campaign_type': '(error)' })};switchToEaFallback()"></script>
+
+    <meta name="twitter:card" content="summary">
+  <meta property="og:title" content="WatchNow IMDb TMDB">
+  <meta property="og:url" content="https://greasyfork.org/scripts/520196-watchnow-imdb-tmdb">
+  <meta property="og:description" content="Quickly redirect IMDb and TMDB titles to vidbinge.dev with custom settings.">
+
+</head>
+<body>
+
+  <header id="main-header">
+    <div class="width-constraint">
+      <div id="site-name">
+        <a href="/en"><img alt="" width="96" height="96" src="/vite/assets/blacklogo96-CxYTSM_T.png" /></a>
+        <div id="site-name-text">
+          <h1><a href="/en">Greasy Fork</a></h1>
+        </div>
+      </div>
+      <div id="site-nav">
+        <div id="nav-user-info">
+            <span class="sign-in-link"><a rel="nofollow" href="/en/users/sign_in?return_to=%2Fen%2Fscripts%2F520196-watchnow-imdb-tmdb%2Fcode">Sign in</a></span>
+
+                      <form class="language-selector" action="/scripts/520196-watchnow-imdb-tmdb/code">
+              <select class="language-selector-locale" name="locale" data-translate-url="https://github.com/greasyfork-org/greasyfork/wiki/Translating-Greasy-Fork">
+                    <option data-language-url="/ar/scripts/520196-watchnow-imdb-tmdb/code" value="ar">
+                      Arabic (ar)
+                    </option>
+                    <option data-language-url="/be/scripts/520196-watchnow-imdb-tmdb/code" value="be">
+                      Belarusian (be)
+                    </option>
+                    <option data-language-url="/nb/scripts/520196-watchnow-imdb-tmdb/code" value="nb">
+                      Bokmål (nb)
+                    </option>
+                    <option data-language-url="/bg/scripts/520196-watchnow-imdb-tmdb/code" value="bg">
+                      Bulgarian (bg)
+                    </option>
+                    <option data-language-url="/ckb/scripts/520196-watchnow-imdb-tmdb/code" value="ckb">
+                      Central Kurdish (ckb)
+                    </option>
+                    <option data-language-url="/zh-CN/scripts/520196-watchnow-imdb-tmdb/code" value="zh-CN">
+                      Chinese (China) (zh-CN)
+                    </option>
+                    <option data-language-url="/zh-TW/scripts/520196-watchnow-imdb-tmdb/code" value="zh-TW">
+                      Chinese (Taiwan) (zh-TW)
+                    </option>
+                    <option data-language-url="/hr/scripts/520196-watchnow-imdb-tmdb/code" value="hr">
+                      Croatian (hr)
+                    </option>
+                    <option data-language-url="/cs/scripts/520196-watchnow-imdb-tmdb/code" value="cs">
+                      Czech (cs)
+                    </option>
+                    <option data-language-url="/da/scripts/520196-watchnow-imdb-tmdb/code" value="da">
+                      Danish (da)
+                    </option>
+                    <option data-language-url="/nl/scripts/520196-watchnow-imdb-tmdb/code" value="nl">
+                      Dutch (nl)
+                    </option>
+                    <option data-language-url="/en/scripts/520196-watchnow-imdb-tmdb/code" value="en" selected>
+                      English (en)
+                    </option>
+                    <option data-language-url="/eo/scripts/520196-watchnow-imdb-tmdb/code" value="eo">
+                      Esperanto (eo)
+                    </option>
+                    <option data-language-url="/fil/scripts/520196-watchnow-imdb-tmdb/code" value="fil">
+                      Filipino (fil)
+                    </option>
+                    <option data-language-url="/fi/scripts/520196-watchnow-imdb-tmdb/code" value="fi">
+                      Finnish (fi)
+                    </option>
+                    <option data-language-url="/fr/scripts/520196-watchnow-imdb-tmdb/code" value="fr">
+                      French (fr)
+                    </option>
+                    <option data-language-url="/fr-CA/scripts/520196-watchnow-imdb-tmdb/code" value="fr-CA">
+                      French (Canada) (fr-CA)
+                    </option>
+                    <option data-language-url="/ka/scripts/520196-watchnow-imdb-tmdb/code" value="ka">
+                      Georgian (ka)
+                    </option>
+                    <option data-language-url="/de/scripts/520196-watchnow-imdb-tmdb/code" value="de">
+                      German (de)
+                    </option>
+                    <option data-language-url="/el/scripts/520196-watchnow-imdb-tmdb/code" value="el">
+                      Greek (el)
+                    </option>
+                    <option data-language-url="/he/scripts/520196-watchnow-imdb-tmdb/code" value="he">
+                      Hebrew (he)
+                    </option>
+                    <option data-language-url="/hu/scripts/520196-watchnow-imdb-tmdb/code" value="hu">
+                      Hungarian (hu)
+                    </option>
+                    <option data-language-url="/id/scripts/520196-watchnow-imdb-tmdb/code" value="id">
+                      Indonesian (id)
+                    </option>
+                    <option data-language-url="/it/scripts/520196-watchnow-imdb-tmdb/code" value="it">
+                      Italian (it)
+                    </option>
+                    <option data-language-url="/ja/scripts/520196-watchnow-imdb-tmdb/code" value="ja">
+                      Japanese (ja)
+                    </option>
+                    <option data-language-url="/ko/scripts/520196-watchnow-imdb-tmdb/code" value="ko">
+                      Korean (ko)
+                    </option>
+                    <option data-language-url="/mr/scripts/520196-watchnow-imdb-tmdb/code" value="mr">
+                      Marathi (mr)
+                    </option>
+                    <option data-language-url="/ne/scripts/520196-watchnow-imdb-tmdb/code" value="ne">
+                      Nepali (ne)
+                    </option>
+                    <option data-language-url="/pl/scripts/520196-watchnow-imdb-tmdb/code" value="pl">
+                      Polish (pl)
+                    </option>
+                    <option data-language-url="/pt/scripts/520196-watchnow-imdb-tmdb/code" value="pt">
+                      Portuguese (pt)
+                    </option>
+                    <option data-language-url="/pt-BR/scripts/520196-watchnow-imdb-tmdb/code" value="pt-BR">
+                      Portuguese (Brazil) (pt-BR)
+                    </option>
+                    <option data-language-url="/ro/scripts/520196-watchnow-imdb-tmdb/code" value="ro">
+                      Romanian (ro)
+                    </option>
+                    <option data-language-url="/ru/scripts/520196-watchnow-imdb-tmdb/code" value="ru">
+                      Russian (ru)
+                    </option>
+                    <option data-language-url="/sr/scripts/520196-watchnow-imdb-tmdb/code" value="sr">
+                      Serbian (sr)
+                    </option>
+                    <option data-language-url="/sk/scripts/520196-watchnow-imdb-tmdb/code" value="sk">
+                      Slovak (sk)
+                    </option>
+                    <option data-language-url="/es/scripts/520196-watchnow-imdb-tmdb/code" value="es">
+                      Spanish (es)
+                    </option>
+                    <option data-language-url="/es-419/scripts/520196-watchnow-imdb-tmdb/code" value="es-419">
+                      Spanish (es-419)
+                    </option>
+                    <option data-language-url="/sv/scripts/520196-watchnow-imdb-tmdb/code" value="sv">
+                      Swedish (sv)
+                    </option>
+                    <option data-language-url="/th/scripts/520196-watchnow-imdb-tmdb/code" value="th">
+                      Thai (th)
+                    </option>
+                    <option data-language-url="/tr/scripts/520196-watchnow-imdb-tmdb/code" value="tr">
+                      Turkish (tr)
+                    </option>
+                    <option data-language-url="/ug/scripts/520196-watchnow-imdb-tmdb/code" value="ug">
+                      Uighur (ug)
+                    </option>
+                    <option data-language-url="/uk/scripts/520196-watchnow-imdb-tmdb/code" value="uk">
+                      Ukrainian (uk)
+                    </option>
+                    <option data-language-url="/vi/scripts/520196-watchnow-imdb-tmdb/code" value="vi">
+                      Vietnamese (vi)
+                    </option>
+                <option value="help">Help us translate!</option>
+              </select><input class="language-selector-submit" type="submit" value="→">
+            </form>
+
+        </div>
+        <nav>
+          <li class="scripts-index-link"><a href="/en/scripts">Scripts</a></li>
+          <li class="forum-link"><a href="/en/discussions">Forum</a></li>
+          <li class="help-link"><a href="/en/help">Help</a></li>
+          <li class="with-submenu">
+            <a href="#" onclick="return false">More</a>
+            <nav>
+              <li><a href="/en/search">Advanced search</a></li>
+              <li><a href="/en/users">User list</a></li>
+              <li><a href="/en/scripts/libraries">Libraries</a></li>
+              <li><a href="/en/moderator_actions">Moderator log</a></li>
+              <li><a href="/en/help/privacy">Privacy policy</a></li>
+            </nav>
+          </li>
+        </nav>
+      </div>
+
+      <div id="mobile-nav">
+        <div class="mobile-nav-opener">☰</div>
+        <nav class="collapsed">
+          <li class="scripts-index-link"><a href="/en/scripts">Scripts</a></li>
+          <li class="forum-link"><a href="/en/discussions">Forum</a></li>
+          <li class="help-link"><a href="/en/help">Help</a></li>
+          <li><a href="/en/search">Advanced search</a></li>
+          <li><a href="/en/users">User list</a></li>
+          <li><a href="/en/scripts/libraries">Libraries</a></li>
+          <li><a href="/en/moderator_actions">Moderator log</a></li>
+          <li><a href="/en/help/privacy">Privacy policy</a></li>
+            <li class="multi-link-nav">
+              <span class="sign-in-link"><a rel="nofollow" href="/en/users/sign_in?return_to=%2Fen%2Fscripts%2F520196-watchnow-imdb-tmdb%2Fcode">Sign in</a></span>
+            </li>
+          <li>            <form class="language-selector" action="/scripts/520196-watchnow-imdb-tmdb/code">
+              <select class="language-selector-locale" name="locale" data-translate-url="https://github.com/greasyfork-org/greasyfork/wiki/Translating-Greasy-Fork">
+                    <option data-language-url="/ar/scripts/520196-watchnow-imdb-tmdb/code" value="ar">
+                      Arabic (ar)
+                    </option>
+                    <option data-language-url="/be/scripts/520196-watchnow-imdb-tmdb/code" value="be">
+                      Belarusian (be)
+                    </option>
+                    <option data-language-url="/nb/scripts/520196-watchnow-imdb-tmdb/code" value="nb">
+                      Bokmål (nb)
+                    </option>
+                    <option data-language-url="/bg/scripts/520196-watchnow-imdb-tmdb/code" value="bg">
+                      Bulgarian (bg)
+                    </option>
+                    <option data-language-url="/ckb/scripts/520196-watchnow-imdb-tmdb/code" value="ckb">
+                      Central Kurdish (ckb)
+                    </option>
+                    <option data-language-url="/zh-CN/scripts/520196-watchnow-imdb-tmdb/code" value="zh-CN">
+                      Chinese (China) (zh-CN)
+                    </option>
+                    <option data-language-url="/zh-TW/scripts/520196-watchnow-imdb-tmdb/code" value="zh-TW">
+                      Chinese (Taiwan) (zh-TW)
+                    </option>
+                    <option data-language-url="/hr/scripts/520196-watchnow-imdb-tmdb/code" value="hr">
+                      Croatian (hr)
+                    </option>
+                    <option data-language-url="/cs/scripts/520196-watchnow-imdb-tmdb/code" value="cs">
+                      Czech (cs)
+                    </option>
+                    <option data-language-url="/da/scripts/520196-watchnow-imdb-tmdb/code" value="da">
+                      Danish (da)
+                    </option>
+                    <option data-language-url="/nl/scripts/520196-watchnow-imdb-tmdb/code" value="nl">
+                      Dutch (nl)
+                    </option>
+                    <option data-language-url="/en/scripts/520196-watchnow-imdb-tmdb/code" value="en" selected>
+                      English (en)
+                    </option>
+                    <option data-language-url="/eo/scripts/520196-watchnow-imdb-tmdb/code" value="eo">
+                      Esperanto (eo)
+                    </option>
+                    <option data-language-url="/fil/scripts/520196-watchnow-imdb-tmdb/code" value="fil">
+                      Filipino (fil)
+                    </option>
+                    <option data-language-url="/fi/scripts/520196-watchnow-imdb-tmdb/code" value="fi">
+                      Finnish (fi)
+                    </option>
+                    <option data-language-url="/fr/scripts/520196-watchnow-imdb-tmdb/code" value="fr">
+                      French (fr)
+                    </option>
+                    <option data-language-url="/fr-CA/scripts/520196-watchnow-imdb-tmdb/code" value="fr-CA">
+                      French (Canada) (fr-CA)
+                    </option>
+                    <option data-language-url="/ka/scripts/520196-watchnow-imdb-tmdb/code" value="ka">
+                      Georgian (ka)
+                    </option>
+                    <option data-language-url="/de/scripts/520196-watchnow-imdb-tmdb/code" value="de">
+                      German (de)
+                    </option>
+                    <option data-language-url="/el/scripts/520196-watchnow-imdb-tmdb/code" value="el">
+                      Greek (el)
+                    </option>
+                    <option data-language-url="/he/scripts/520196-watchnow-imdb-tmdb/code" value="he">
+                      Hebrew (he)
+                    </option>
+                    <option data-language-url="/hu/scripts/520196-watchnow-imdb-tmdb/code" value="hu">
+                      Hungarian (hu)
+                    </option>
+                    <option data-language-url="/id/scripts/520196-watchnow-imdb-tmdb/code" value="id">
+                      Indonesian (id)
+                    </option>
+                    <option data-language-url="/it/scripts/520196-watchnow-imdb-tmdb/code" value="it">
+                      Italian (it)
+                    </option>
+                    <option data-language-url="/ja/scripts/520196-watchnow-imdb-tmdb/code" value="ja">
+                      Japanese (ja)
+                    </option>
+                    <option data-language-url="/ko/scripts/520196-watchnow-imdb-tmdb/code" value="ko">
+                      Korean (ko)
+                    </option>
+                    <option data-language-url="/mr/scripts/520196-watchnow-imdb-tmdb/code" value="mr">
+                      Marathi (mr)
+                    </option>
+                    <option data-language-url="/ne/scripts/520196-watchnow-imdb-tmdb/code" value="ne">
+                      Nepali (ne)
+                    </option>
+                    <option data-language-url="/pl/scripts/520196-watchnow-imdb-tmdb/code" value="pl">
+                      Polish (pl)
+                    </option>
+                    <option data-language-url="/pt/scripts/520196-watchnow-imdb-tmdb/code" value="pt">
+                      Portuguese (pt)
+                    </option>
+                    <option data-language-url="/pt-BR/scripts/520196-watchnow-imdb-tmdb/code" value="pt-BR">
+                      Portuguese (Brazil) (pt-BR)
+                    </option>
+                    <option data-language-url="/ro/scripts/520196-watchnow-imdb-tmdb/code" value="ro">
+                      Romanian (ro)
+                    </option>
+                    <option data-language-url="/ru/scripts/520196-watchnow-imdb-tmdb/code" value="ru">
+                      Russian (ru)
+                    </option>
+                    <option data-language-url="/sr/scripts/520196-watchnow-imdb-tmdb/code" value="sr">
+                      Serbian (sr)
+                    </option>
+                    <option data-language-url="/sk/scripts/520196-watchnow-imdb-tmdb/code" value="sk">
+                      Slovak (sk)
+                    </option>
+                    <option data-language-url="/es/scripts/520196-watchnow-imdb-tmdb/code" value="es">
+                      Spanish (es)
+                    </option>
+                    <option data-language-url="/es-419/scripts/520196-watchnow-imdb-tmdb/code" value="es-419">
+                      Spanish (es-419)
+                    </option>
+                    <option data-language-url="/sv/scripts/520196-watchnow-imdb-tmdb/code" value="sv">
+                      Swedish (sv)
+                    </option>
+                    <option data-language-url="/th/scripts/520196-watchnow-imdb-tmdb/code" value="th">
+                      Thai (th)
+                    </option>
+                    <option data-language-url="/tr/scripts/520196-watchnow-imdb-tmdb/code" value="tr">
+                      Turkish (tr)
+                    </option>
+                    <option data-language-url="/ug/scripts/520196-watchnow-imdb-tmdb/code" value="ug">
+                      Uighur (ug)
+                    </option>
+                    <option data-language-url="/uk/scripts/520196-watchnow-imdb-tmdb/code" value="uk">
+                      Ukrainian (uk)
+                    </option>
+                    <option data-language-url="/vi/scripts/520196-watchnow-imdb-tmdb/code" value="vi">
+                      Vietnamese (vi)
+                    </option>
+                <option value="help">Help us translate!</option>
+              </select><input class="language-selector-submit" type="submit" value="→">
+            </form>
+</li>
+        </nav>
+      </div>
+
+      <script>
+        /* submit is handled by js if enabled */
+        document.querySelectorAll(".language-selector-submit").forEach((lss) => { lss.style.display = "none" })
+      </script>
+    </div>
+  </header>
+
+  <div class="width-constraint">
+
+      <section id="script-info">
+    <ul id="script-links" class="tabs">
+      <li><a href="/en/scripts/520196-watchnow-imdb-tmdb"><span>Info</span></a></li>
+      <li class="current" aria-current="page"><span>Code</span></li>
+      <li><a href="/en/scripts/520196-watchnow-imdb-tmdb/versions"><span>History</span></a></li>
+        <li><a href="/en/scripts/520196-watchnow-imdb-tmdb/feedback"><span>Feedback (1)</span></a></li>
+        <li><a href="/en/scripts/520196-watchnow-imdb-tmdb/stats"><span>Stats</span></a></li>
+    </ul>
+    <header>
+      <h2>WatchNow IMDb TMDB</h2>
+      <p id="script-description" class="script-description">Quickly redirect IMDb and TMDB titles to vidbinge.dev with custom settings.</p>
+    </header>
+    <div id="script-content">
+      
+
+      <div id="install-area">
+          
+<a class="install-link" data-install-format="js" data-ping-url="/scripts/520196/install-ping" data-post-install-url="https://greasyfork.org/en/scripts/520196-watchnow-imdb-tmdb/post-install" data-ip-address="2409:40f4:40de:d7a8:c919:da4e:79e1:6ff2" data-script-id="520196" data-ping-key="1890076bc4bef8aef6d143599e7ceacc691295a1" data-is-previous-version="false" data-previous-version-warning="This is not the latest version of this script. If you install it, you will never be updated to a newer version. Install anyway?" rel="nofollow" data-script-name="WatchNow IMDb TMDB" data-script-namespace="http://tampermonkey.net/" data-script-version="1.0" data-update-label="Update to version 1.0" data-downgrade-label="Downgrade to version 1.0" data-reinstall-label="Reinstall version 1.0" href="https://update.greasyfork.org/scripts/520196/WatchNow%20IMDb%20TMDB.user.js">Install this script</a><a class="install-help-link" title="How to install" rel="nofollow" href="/en/help/installing-user-scripts">?</a>
+      </div>
+
+
+
+<dialog id="installation-instructions-modal-js" class="modal" closedby="any">
+  <header class="modal__header" aria-labelledby="installation-instructions-modal-title">
+    <h3 class="modal__title" id="installation-instructions-modal-title">
+      How to install
+    </h3>
+    <button class="modal__close modal__cancel" aria-label="Close modal"></button>
+  </header>
+  <main class="modal__content" id="installation-instructions-modal-content">
+    <p class="installation-instructions-modal-content-firefox">
+      You will need to install an extension such as <a target="tampermonkey" href="https://addons.mozilla.org/firefox/addon/tampermonkey/">Tampermonkey</a>, <a target="greasemonkey" href="https://addons.mozilla.org/firefox/addon/greasemonkey/">Greasemonkey</a> or <a target="violentmonkey" href="https://addons.mozilla.org/firefox/addon/violentmonkey/">Violentmonkey</a> to install this script.
+    </p>
+    <p class="installation-instructions-modal-content-chrome">
+      You will need to install an extension such as <a target="tampermonkey" href="https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo">Tampermonkey</a> or <a target="violentmonkey" href="https://chrome.google.com/webstore/detail/violent-monkey/jinjaccalgkegednnccohejagnlnfdag">Violentmonkey</a> to install this script.
+    </p>
+    <p class="installation-instructions-modal-content-opera">
+      You will need to install an extension such as <a target="tampermonkey" href="https://addons.opera.com/extensions/details/tampermonkey-beta/">Tampermonkey</a> or <a target="violentmonkey" href="https://violentmonkey.github.io/get-it/">Violentmonkey</a> to install this script.
+    </p>
+    <p class="installation-instructions-modal-content-safari">
+      You will need to install an extension such as <a target="tampermonkey" href="https://www.tampermonkey.net/?browser=safari">Tampermonkey</a> or <a target="Userscripts" href="https://apps.apple.com/app/userscripts/id1463298887">Userscripts</a> to install this script.
+    </p>
+    <p class="installation-instructions-modal-content-edge">
+      You will need to install an extension such as <a target="tampermonkey" href="https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd">Tampermonkey</a> to install this script.
+    </p>
+    <p class="installation-instructions-modal-content-other">
+      You will need to install a user script manager extension to install this script.
+    </p>
+    <p class="installation-instructions-modal-content-bypass">
+      <a href="#">(I already have a user script manager, let me install it!)</a>
+    </p>
+  </main>
+  <footer class="modal__footer">
+    <button class="modal__btn modal__cancel">
+      OK
+    </button>
+  </footer>
+</dialog>
+
+<dialog id="installation-instructions-modal-css" class="modal" closedby="any">
+  <header class="modal__header" aria-labelledby="installation-instructions-modal-title">
+    <h3 class="modal__title" id="installation-instructions-modal-title">
+      How to install
+    </h3>
+    <button class="modal__close modal__cancel" aria-label="Close modal"></button>
+  </header>
+  <main class="modal__content" id="installation-instructions-modal-content">
+    <p class="installation-instructions-modal-content-firefox">
+      You will need to install an extension such as <a target="stylus" href="https://addons.mozilla.org/firefox/addon/styl-us/">Stylus</a> to install this style.
+    </p>
+    <p class="installation-instructions-modal-content-chrome">
+      You will need to install an extension such as <a target="stylus" href="https://chrome.google.com/webstore/detail/stylus/clngdbkpkpeebahjckkjfobafhncgmne">Stylus</a> to install this style.
+    </p>
+    <p class="installation-instructions-modal-content-opera">
+      You will need to install an extension such as <a target="stylus" href="https://addons.opera.com/extensions/details/stylus/">Stylus</a> to install this style.
+    </p>
+    <p class="installation-instructions-modal-content-safari">
+      You will need to install a user style manager extension to install this style.
+    </p>
+    <p class="installation-instructions-modal-content-edge">
+      You will need to install a user style manager extension to install this style.
+    </p>
+    <p class="installation-instructions-modal-content-other">
+      You will need to install a user style manager extension to install this style.
+    </p>
+    <p class="installation-instructions-modal-content-bypass">
+      <a href="#">(I already have a user style manager, let me install it!)</a>
+    </p>
+  </main>
+  <footer class="modal__footer">
+    <button class="modal__btn modal__cancel">
+      OK
+    </button>
+  </footer>
+</dialog>
+
+
+
+<div id="script-feedback-suggestion">
+    <a rel="nofollow" href="/en/scripts/520196-watchnow-imdb-tmdb/feedback#post-discussion">Ask a question, post a review</a>, or <a rel="nofollow" href="/en/reports/new?item_class=script&amp;item_id=520196">report the script</a>.
+</div>
+
+
+
+  <div class="ad ad-ea" id="script-show-code-ad">
+    <div class="ad-content">
+        <div id="script-show-code-ea_image" class="flat ethical-ads adaptive" data-ea-publisher="greasyfork" data-ea-type="image" data-ea-priority="1"></div>
+        <div id="script-show-code-ea_large" class="flat ethical-ads adaptive" data-ea-publisher="greasyfork" data-ea-type="logo-large-v1" data-ea-priority="10"></div>
+    </div>
+  </div>
+
+
+
+<script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js?lang=css"></script>
+
+<div>
+  <input type="checkbox" id="wrap-lines" checked value="1"><label for="wrap-lines" class="checkbox-label">Wrap lines</label>
+</div>
+<div class="code-container">
+  <pre class="prettyprint linenums wrap lang-js">// ==UserScript==
+// @name         WatchNow IMDb TMDB
+// @namespace    http://tampermonkey.net/
+// @version      1.0
+// @description  Quickly redirect IMDb and TMDB titles to vidbinge.dev with custom settings.
+// @author       Bitgineer https://github.com/bitgineer
+// @match        https://www.imdb.com/title/tt*/*
+// @match        https://www.themoviedb.org/*/*/*/*
+// @grant        GM_setValue
+// @grant        GM_getValue
+// @grant        GM_addStyle
+// @run-at       document-end
+// @license MIT
+// ==/UserScript==
+
+(function() {
+    &#39;use strict&#39;;
+
+    /*************** Styles Injection ***************/
+    const styles = `
+    /* WatchNow Styles */
+    #WatchNow-container {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 350px;
+        background-color: #ffffff;
+        border: 1px solid #cccccc;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        z-index: 10000;
+        font-family: &#39;Roboto&#39;, sans-serif;
+        padding: 20px;
+        box-sizing: border-box;
+    }
+
+    #WatchNow-container h2 {
+        font-size: 1.4rem;
+        margin-bottom: 20px;
+        text-align: center;
+        color: #6200ea;
+    }
+
+    .wn-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 12px 16px;
+        font-size: 1rem;
+        background-color: #6200ea;
+        color: #ffffff;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.3s, box-shadow 0.3s;
+        width: 100%;
+        margin-bottom: 15px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .wn-button:hover {
+        background-color: #3700b3;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    .wn-toggle-container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 15px;
+    }
+
+    .wn-toggle-label {
+        font-size: 1rem;
+        flex: 1;
+        margin-right: 10px;
+    }
+
+    .wn-toggle-switch {
+        position: relative;
+        width: 50px;
+        height: 24px;
+        flex-shrink: 0;
+    }
+
+    .wn-toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .wn-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: 0.4s;
+        border-radius: 24px;
+    }
+
+    .wn-slider:before {
+        position: absolute;
+        content: &quot;&quot;;
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: 0.4s;
+        border-radius: 50%;
+    }
+
+    .wn-toggle-switch input:checked + .wn-slider {
+        background-color: #6200ea;
+    }
+
+    .wn-toggle-switch input:checked + .wn-slider:before {
+        transform: translateX(26px);
+    }
+
+    .wn-section {
+        margin-bottom: 15px;
+        display: none;
+    }
+
+    .wn-section.active {
+        display: block;
+    }
+
+    .wn-section label {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 0.95rem;
+    }
+
+    .wn-radio-group {
+        display: flex;
+        justify-content: space-around;
+        margin-bottom: 15px;
+        flex-wrap: wrap;
+    }
+
+    .wn-radio-group label {
+        display: flex;
+        align-items: center;
+        font-size: 0.95rem;
+        cursor: pointer;
+        margin-bottom: 8px;
+        width: 45%;
+    }
+
+    .wn-radio-group input {
+        margin-right: 6px;
+        flex-shrink: 0;
+    }
+
+    .wn-input-group {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .wn-input-group label {
+        font-size: 0.95rem;
+    }
+
+    .wn-input-group input {
+        padding: 8px 12px;
+        font-size: 1rem;
+        border: 1px solid #cccccc;
+        border-radius: 4px;
+        outline: none;
+        transition: border-color 0.3s;
+        width: 100%;
+    }
+
+    .wn-input-group input:focus {
+        border-color: #6200ea;
+    }
+
+    .wn-footer {
+        font-size: 0.85rem;
+        color: #777777;
+        text-align: center;
+    }
+
+    /* Snackbar Styles */
+    #wn-snackbar {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: #333333;
+        color: #ffffff;
+        padding: 10px 20px;
+        border-radius: 4px;
+        opacity: 0;
+        transition: opacity 0.5s ease, bottom 0.5s ease;
+        z-index: 10001;
+        font-size: 0.9rem;
+        max-width: 80%;
+        text-align: center;
+        pointer-events: none;
+    }
+
+    #wn-snackbar.show {
+        opacity: 1;
+        bottom: 30px;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 400px) {
+        #WatchNow-container {
+            width: 90%;
+            right: 5%;
+            bottom: 10px;
+            padding: 15px;
+        }
+
+        #WatchNow-container h2 {
+            font-size: 1.2rem;
+        }
+
+        .wn-button {
+            font-size: 0.95rem;
+            padding: 10px 12px;
+        }
+
+        .wn-toggle-label, .wn-section label, .wn-radio-group label, .wn-input-group label {
+            font-size: 0.85rem;
+        }
+    }
+    `;
+
+    GM_addStyle(styles);
+
+    /*************** UI Injection ***************/
+    const container = document.createElement(&#39;div&#39;);
+    container.id = &#39;WatchNow-container&#39;;
+    container.innerHTML = `
+        &lt;h2&gt;WatchNow&lt;/h2&gt;
+
+        &lt;button id=&quot;wn-redirectButton&quot; class=&quot;wn-button&quot;&gt;
+            ▶️ Watch Now!
+        &lt;/button&gt;
+
+        &lt;div class=&quot;wn-toggle-container&quot;&gt;
+            &lt;span class=&quot;wn-toggle-label&quot;&gt;Enable Redirect&lt;/span&gt;
+            &lt;label class=&quot;wn-toggle-switch&quot;&gt;
+                &lt;input type=&quot;checkbox&quot; id=&quot;wn-redirectCheckbox&quot;&gt;
+                &lt;span class=&quot;wn-slider&quot;&gt;&lt;/span&gt;
+            &lt;/label&gt;
+        &lt;/div&gt;
+
+        &lt;!-- Redirect Options Section --&gt;
+        &lt;div id=&quot;wn-redirectOptions&quot; class=&quot;wn-section&quot;&gt;
+            &lt;label&gt;Open Redirect:&lt;/label&gt;
+            &lt;div class=&quot;wn-radio-group&quot;&gt;
+                &lt;label&gt;
+                    &lt;input type=&quot;radio&quot; name=&quot;wn-redirectTarget&quot; value=&quot;same&quot; id=&quot;wn-redirectSame&quot;&gt;
+                    Same Tab
+                &lt;/label&gt;
+                &lt;label&gt;
+                    &lt;input type=&quot;radio&quot; name=&quot;wn-redirectTarget&quot; value=&quot;new&quot; id=&quot;wn-redirectNew&quot;&gt;
+                    New Tab
+                &lt;/label&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+
+        &lt;!-- Season and Episode Inputs --&gt;
+        &lt;div id=&quot;wn-seasonEpisodeOptions&quot; class=&quot;wn-section&quot;&gt;
+            &lt;div class=&quot;wn-input-group&quot;&gt;
+                &lt;label for=&quot;wn-seasonInput&quot;&gt;Season:&lt;/label&gt;
+                &lt;input type=&quot;number&quot; id=&quot;wn-seasonInput&quot; min=&quot;1&quot; value=&quot;1&quot;&gt;
+            &lt;/div&gt;
+            &lt;div class=&quot;wn-input-group&quot;&gt;
+                &lt;label for=&quot;wn-episodeInput&quot;&gt;Episode:&lt;/label&gt;
+                &lt;input type=&quot;number&quot; id=&quot;wn-episodeInput&quot; min=&quot;1&quot; value=&quot;1&quot;&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+
+        &lt;div class=&quot;wn-footer&quot;&gt;
+            &lt;p&gt;Stream effortlessly with WatchNow.&lt;/p&gt;
+        &lt;/div&gt;
+    `;
+    document.body.appendChild(container);
+
+    // Snackbar Element
+    const snackbar = document.createElement(&#39;div&#39;);
+    snackbar.id = &#39;wn-snackbar&#39;;
+    document.body.appendChild(snackbar);
+
+    /*************** Utility Functions ***************/
+    // Function to show snackbar messages
+    function showSnackbar(message) {
+        snackbar.textContent = message;
+        snackbar.classList.add(&#39;show&#39;);
+        setTimeout(() =&gt; {
+            snackbar.classList.remove(&#39;show&#39;);
+        }, 3000);
+    }
+
+    // Function to toggle visibility of sections
+    function toggleSections(show) {
+        const redirectOptions = document.getElementById(&#39;wn-redirectOptions&#39;);
+        const seasonEpisodeOptions = document.getElementById(&#39;wn-seasonEpisodeOptions&#39;);
+        if (show) {
+            redirectOptions.classList.add(&#39;active&#39;);
+            seasonEpisodeOptions.classList.add(&#39;active&#39;);
+        } else {
+            redirectOptions.classList.remove(&#39;active&#39;);
+            seasonEpisodeOptions.classList.remove(&#39;active&#39;);
+        }
+    }
+
+    // Function to extract IMDb ID using a robust regex
+    function getImdbId(url) {
+        const regex = /\/title\/(tt\d{7,8})/; // IMDb IDs typically have 7 or 8 digits
+        const match = url.match(regex);
+        return match ? match[1] : null;
+    }
+
+    // Function to determine the title type on IMDb by inspecting specific list items
+    function determineImdbTitleType() {
+        const listItems = document.querySelectorAll(&#39;ul.ipc-inline-list.ipc-inline-list--show-dividers li.ipc-inline-list__item&#39;);
+        for (const item of listItems) {
+            const text = item.textContent.trim().toLowerCase();
+            if (text.includes(&#39;tv series&#39;) || text.includes(&#39;tv mini-series&#39;)) {
+                return &#39;tv&#39;;
+            }
+            // You can add more conditions here for other types if needed
+        }
+        return &#39;movie&#39;; // Default to &#39;movie&#39; if no TV indicators are found
+    }
+
+    // Function to extract TMDB ID and type from the URL
+    function getTmdbInfo(url) {
+        const regex = /https:\/\/www\.themoviedb\.org\/(movie|tv)\/(\d+)/;
+        const match = url.match(regex);
+        if (match) {
+            return { type: match[1], id: match[2] };
+        }
+        return null;
+    }
+
+    // Function to build the redirect URL with optional season and episode for TV
+    function buildRedirectUrl(titleType, id, season, episode) {
+        let url = `https://vidbinge.dev/embed/${titleType}/${id}`;
+        if (titleType === &#39;tv&#39; &amp;&amp; season &amp;&amp; episode) {
+            url += `/${season}/${episode}`;
+        }
+        return url;
+    }
+
+    /*************** Settings Management ***************/
+    // Load existing settings
+    let redirectEnabled = GM_getValue(&#39;redirectEnabled&#39;, false);
+    let redirectTarget = GM_getValue(&#39;redirectTarget&#39;, &#39;same&#39;);
+    let season = GM_getValue(&#39;season&#39;, 1);
+    let episode = GM_getValue(&#39;episode&#39;, 1);
+
+    // Initialize UI with settings
+    const redirectCheckbox = document.getElementById(&#39;wn-redirectCheckbox&#39;);
+    const redirectSame = document.getElementById(&#39;wn-redirectSame&#39;);
+    const redirectNew = document.getElementById(&#39;wn-redirectNew&#39;);
+    const seasonInput = document.getElementById(&#39;wn-seasonInput&#39;);
+    const episodeInput = document.getElementById(&#39;wn-episodeInput&#39;);
+
+    redirectCheckbox.checked = redirectEnabled;
+    toggleSections(redirectEnabled);
+
+    if (redirectTarget === &#39;same&#39;) {
+        redirectSame.checked = true;
+    } else {
+        redirectNew.checked = true;
+    }
+
+    seasonInput.value = season;
+    episodeInput.value = episode;
+
+    /*************** Event Listeners ***************/
+    // Event listener for the redirect checkbox
+    redirectCheckbox.addEventListener(&#39;change&#39;, function() {
+        const isEnabled = redirectCheckbox.checked;
+        GM_setValue(&#39;redirectEnabled&#39;, isEnabled);
+        toggleSections(isEnabled);
+    });
+
+    // Event listeners for radio buttons
+    redirectSame.addEventListener(&#39;change&#39;, function() {
+        if (this.checked) {
+            GM_setValue(&#39;redirectTarget&#39;, &#39;same&#39;);
+        }
+    });
+
+    redirectNew.addEventListener(&#39;change&#39;, function() {
+        if (this.checked) {
+            GM_setValue(&#39;redirectTarget&#39;, &#39;new&#39;);
+        }
+    });
+
+    // Event listeners for Season and Episode inputs
+    seasonInput.addEventListener(&#39;input&#39;, function() {
+        let val = parseInt(seasonInput.value, 10);
+        if (isNaN(val) || val &lt; 1) {
+            val = 1;
+            seasonInput.value = val;
+        }
+        GM_setValue(&#39;season&#39;, val);
+    });
+
+    episodeInput.addEventListener(&#39;input&#39;, function() {
+        let val = parseInt(episodeInput.value, 10);
+        if (isNaN(val) || val &lt; 1) {
+            val = 1;
+            episodeInput.value = val;
+        }
+        GM_setValue(&#39;episode&#39;, val);
+    });
+
+    // Event listener for the redirect button
+    document.getElementById(&#39;wn-redirectButton&#39;).addEventListener(&#39;click&#39;, function() {
+        const url = window.location.href;
+
+        // Check if URL is IMDb
+        const imdbId = getImdbId(url);
+        if (imdbId) {
+            const titleType = determineImdbTitleType();
+
+            if (titleType === &#39;tv&#39;) {
+                const currentSeason = GM_getValue(&#39;season&#39;, 1);
+                const currentEpisode = GM_getValue(&#39;episode&#39;, 1);
+                const redirectUrl = buildRedirectUrl(titleType, imdbId, currentSeason, currentEpisode);
+                performRedirect(redirectUrl);
+            } else {
+                // For movies, no season and episode
+                const redirectUrl = buildRedirectUrl(titleType, imdbId);
+                performRedirect(redirectUrl);
+            }
+            return;
+        }
+
+        // Check if URL is TMDB
+        const tmdbInfo = getTmdbInfo(url);
+        if (tmdbInfo) {
+            const { type, id } = tmdbInfo;
+            if (type === &#39;tv&#39;) {
+                const currentSeason = GM_getValue(&#39;season&#39;, 1);
+                const currentEpisode = GM_getValue(&#39;episode&#39;, 1);
+                const redirectUrl = buildRedirectUrl(type, id, currentSeason, currentEpisode);
+                performRedirect(redirectUrl);
+            } else {
+                // For movies, no season and episode
+                const redirectUrl = buildRedirectUrl(type, id);
+                performRedirect(redirectUrl);
+            }
+            return;
+        }
+
+        showSnackbar(&#39;This is not a supported title page.&#39;);
+    });
+
+    /*************** Redirection Function ***************/
+    function performRedirect(url) {
+        if (!GM_getValue(&#39;redirectEnabled&#39;, false)) {
+            showSnackbar(&#39;Redirect is disabled in settings.&#39;);
+            return;
+        }
+
+        const target = GM_getValue(&#39;redirectTarget&#39;, &#39;same&#39;);
+        if (target === &#39;same&#39;) {
+            window.location.href = url;
+            showSnackbar(&#39;Redirecting...&#39;);
+        } else if (target === &#39;new&#39;) {
+            window.open(url, &#39;_blank&#39;);
+            showSnackbar(&#39;Redirecting to new tab...&#39;);
+        } else {
+            showSnackbar(&#39;Invalid redirect target.&#39;);
+        }
+    }
+
+    /*************** Optional: Auto Redirect ***************/
+    // Uncomment the following block if you want to auto redirect when enabled
+    /*
+    if (redirectEnabled) {
+        const url = window.location.href;
+
+        // Check if URL is IMDb
+        const imdbId = getImdbId(url);
+        if (imdbId) {
+            const titleType = determineImdbTitleType();
+
+            if (titleType === &#39;tv&#39;) {
+                const currentSeason = GM_getValue(&#39;season&#39;, 1);
+                const currentEpisode = GM_getValue(&#39;episode&#39;, 1);
+                const redirectUrl = buildRedirectUrl(titleType, imdbId, currentSeason, currentEpisode);
+                performRedirect(redirectUrl);
+            } else {
+                // For movies, no season and episode
+                const redirectUrl = buildRedirectUrl(titleType, imdbId);
+                performRedirect(redirectUrl);
+            }
+            return;
+        }
+
+        // Check if URL is TMDB
+        const tmdbInfo = getTmdbInfo(url);
+        if (tmdbInfo) {
+            const { type, id } = tmdbInfo;
+            if (type === &#39;tv&#39;) {
+                const currentSeason = GM_getValue(&#39;season&#39;, 1);
+                const currentEpisode = GM_getValue(&#39;episode&#39;, 1);
+                const redirectUrl = buildRedirectUrl(type, id, currentSeason, currentEpisode);
+                performRedirect(redirectUrl);
+            } else {
+                // For movies, no season and episode
+                const redirectUrl = buildRedirectUrl(type, id);
+                performRedirect(redirectUrl);
+            }
+            return;
+        }
+
+        console.error(&#39;This is not a valid IMDb or TMDB title page.&#39;);
+    }
+    */
+
+})();</pre>
+</div>
+
+    </div>
+  </section>
+
+  </div>
+
+    <script>
+      (function (d) {
+      window.rum = {key: '29razx6j'};
+      var script = d.createElement('script');
+      script.src = 'https://cdn.perfops.net/rom3/rom3.min.js';
+      script.type = 'text/javascript';
+      script.defer = true;
+      script.async = true;
+      d.getElementsByTagName('head')[0].appendChild(script);
+      })(document);
+    </script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" data-cf-beacon='{"version":"2024.11.0","token":"3b2c78865ea34bf4ad258da879f720f8","r":1,"spa":2}' crossorigin="anonymous"></script>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4f994296e4ff6a5',t:'MTc5Mjg1MTE3MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
+
