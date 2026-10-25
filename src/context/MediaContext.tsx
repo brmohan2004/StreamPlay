@@ -12,7 +12,7 @@ import {
   enableAudioPipelineKeepAlive
 } from '../services/nativeBackgroundAudio';
 import { getUserLocation, setUserLocation, UserLocation } from '../services/locationService';
-import { resolveDirectStream } from '../services/directStreamService';
+import { resolveSecureStream } from '../services/directStreamService';
 import { STREAMING_SERVERS, getFirstHealthyProviderIndex } from '../services/movieService';
 
 // Helper: fire a custom event so RecommendationContext knows to refresh
@@ -791,19 +791,18 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setIsVideoModalOpen(true);
     audioEnhancer.warmUp();
 
-    // NetMirror-style path: try to resolve a direct HLS/MP4 URL from a backend.
-    // If available, the custom player renders native video instead of an iframe.
+    // Secure stream path: resolve an encrypted bundle from /api/stream/:id.
     if (!movie.streamUrl) {
-      resolveDirectStream(movie.id, movie.type, season, episode)
-        .then((url) => {
-          if (url) {
+      resolveSecureStream(movie.id, movie.type, season, episode)
+        .then((result) => {
+          if (result && result.url) {
             setActiveMovie((prev) =>
-              prev && prev.id === movie.id ? { ...prev, streamUrl: url } : prev
+              prev && prev.id === movie.id ? { ...prev, streamUrl: result.url, streamBundle: result.bundle } : prev
             );
           }
         })
         .catch(() => {
-          // Fall back to provider iframes.
+          // Keep provider fallback.
         });
     }
 

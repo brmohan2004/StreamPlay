@@ -1,0 +1,3 @@
+- Never use `iframe` embeds for video playback in StreamPlay; always use `StreamPlayer` with `useHlsPlayer`.
+- All upstream `.m3u8`, `.ts`, `.m4s`, and `.vtt` URLs must pass through `/api/proxy/hls` using HMAC-SHA256 signed tokens from `lib/streamCrypto.ts`.
+- Never expose raw `?url=` proxy parameters or wildcard CORS headers on `/api/proxy/hls`.

@@ -8,7 +8,7 @@ function streamPlayBackendPlugin() {
     configureServer(server: any) {
       server.middlewares.use((req: any, res: any, next: any) => {
         const url = req.url || "";
-        if (url.startsWith("/stream") || url.startsWith("/proxy") || url.startsWith("/health")) {
+        if (url.startsWith("/stream") || url.startsWith("/proxy") || url.startsWith("/health") || url.startsWith("/playback") || url.startsWith("/segment") || url.startsWith("/api/stream") || url.startsWith("/api/proxy") || url.startsWith("/api/health")) {
           handleRequest(req, res).catch((err: any) => {
             if (!res.headersSent) {
               res.statusCode = 500;
@@ -23,7 +23,7 @@ function streamPlayBackendPlugin() {
     configurePreviewServer(server: any) {
       server.middlewares.use((req: any, res: any, next: any) => {
         const url = req.url || "";
-        if (url.startsWith("/stream") || url.startsWith("/proxy") || url.startsWith("/health")) {
+        if (url.startsWith("/stream") || url.startsWith("/proxy") || url.startsWith("/health") || url.startsWith("/playback") || url.startsWith("/segment") || url.startsWith("/api/stream") || url.startsWith("/api/proxy") || url.startsWith("/api/health")) {
           handleRequest(req, res).catch((err: any) => {
             if (!res.headersSent) {
               res.statusCode = 500;

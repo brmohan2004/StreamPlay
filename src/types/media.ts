@@ -1,3 +1,6 @@
+import { SecureStreamBundle } from './stream';
+
+
 export interface EpisodeItem {
   id: string; // e.g. tt0903747:1:1
   name: string;
@@ -28,6 +31,7 @@ export interface MovieItem {
   isTheaterPrint?: boolean;
   theaterPrint?: string;
   streamUrl?: string; // Direct HLS .m3u8 stream URL if available
+  streamBundle?: SecureStreamBundle; // Encrypted stream bundle with mirrors/subtitles
   language?: string;
   released?: string; // ISO date string of theatrical/digital premiere
 }

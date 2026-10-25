@@ -24,7 +24,7 @@ import {
   MoreVertical
 } from 'lucide-react';
 import { useMedia } from '../context/MediaContext';
-import { getStreamEmbedUrl, STREAMING_SERVERS, fetchMovieDetails, markProviderHealthy, markProviderUnhealthy, isProviderHealthy, getFirstHealthyProviderIndex, getNextHealthyProviderIndex } from '../services/movieService';
+import { STREAMING_SERVERS, fetchMovieDetails, markProviderHealthy, markProviderUnhealthy, isProviderHealthy, getFirstHealthyProviderIndex, getNextHealthyProviderIndex } from '../services/movieService';
 import { activateMovieModeAdRecovery, deactivateMovieModeAdRecovery } from '../services/adRecovery';
 import { activateAdBlocker, deactivateAdBlocker } from '../services/adBlocker';
 import { audioEnhancer } from '../services/audioEnhancer';
@@ -45,7 +45,6 @@ export const CustomVideoPlayer: React.FC = () => {
 
   // Fullscreen container ref
   const playerContainerRef = useRef<HTMLDivElement | null>(null);
-  const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const hlsRef = useRef<Hls | null>(null);
   const [nativeAudioTracks, setNativeAudioTracks] = useState<{ id: number; name: string; lang: string }[]>([]);
@@ -54,8 +53,6 @@ export const CustomVideoPlayer: React.FC = () => {
   // Player UI states
   const [isPlaying, setIsPlaying] = useState(true);
   const [showMobileActions, setShowMobileActions] = useState(false);
-  const autoplayAttemptsRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
@@ -87,95 +84,7 @@ export const CustomVideoPlayer: React.FC = () => {
     setHasPlayerCrashed(false);
   }, [setVideoProviderIndex]);
 
-  // Automated Autoplay Driver for Embedded Streaming Servers
-  const triggerAutoPlay = useCallback(() => {
-    setIsPlaying(true);
-
-    try {
-      const iframe = iframeRef.current;
-      if (!iframe) return;
-
-      // 1. PostMessage autoplay signals across major web embed engines
-      const playSignals = [
-        { event: 'command', func: 'playVideo', args: [] },
-        { type: 'play' },
-        { type: 'player:play' },
-        { action: 'play' },
-        { method: 'play' },
-        { event: 'play' },
-        'play',
-        JSON.stringify({ event: 'command', func: 'playVideo' }),
-        JSON.stringify({ type: 'play' })
-      ];
-
-      playSignals.forEach(sig => {
-        try {
-          iframe.contentWindow?.postMessage(sig, '*');
-        } catch {}
-      });
-
-      // 2. Direct DOM access (works for proxied & same-origin mirrors)
-      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-      if (iframeDoc) {
-        // Detect 404 / Missing stream page inside mirror
-        const docText = (iframeDoc.body?.innerText || '').toLowerCase();
-        if (docText.includes('404') && (docText.includes('content not found') || docText.includes('not found') || docText.includes('no stream'))) {
-          console.warn('[StreamPlay] Detected 404 Content Not Found on mirror. Auto-switching to next mirror...');
-          markProviderUnhealthy(videoProviderIndex);
-          handleSwitchServer(getNextHealthyProviderIndex(videoProviderIndex, STREAMING_SERVERS.length));
-          return;
-        }
-
-        // Strip lingering ad anchors
-        const links = iframeDoc.querySelectorAll('a');
-        links.forEach(a => {
-          const href = a.getAttribute('href') || '';
-          if (href && !href.includes(window.location.host)) {
-            a.removeAttribute('href');
-            a.removeAttribute('target');
-            (a as HTMLElement).style.pointerEvents = 'none';
-          }
-        });
-
-        // Remove 2embed wrapper background & error screen
-        const bg = iframeDoc.getElementById('bgImage');
-        if (bg) bg.remove();
-        const sbxErr = iframeDoc.getElementById('sbxErr');
-        if (sbxErr) sbxErr.remove();
-
-        const playbtnx = iframeDoc.querySelector('.playbtnx') as HTMLElement | null;
-        if (playbtnx) {
-          playbtnx.click();
-          playbtnx.style.display = 'none';
-        }
-
-        const ifr = iframeDoc.getElementById('iframesrc') as HTMLIFrameElement | null;
-        if (ifr && ifr.getAttribute('data-src') && !ifr.src) {
-          ifr.src = ifr.getAttribute('data-src') || '';
-        }
-
-        // Click any player buttons or videos
-        iframeDoc.querySelectorAll('button[class*="play"], button[aria-label*="play" i], button[title*="play" i], .play-button, .vjs-big-play-button, video').forEach(el => {
-          if (el instanceof HTMLVideoElement && el.paused) {
-            el.muted = false;
-            el.play().catch(() => {});
-          } else if (el instanceof HTMLElement) {
-            el.click();
-          }
-        });
-      }
-    } catch {
-      // Cross-origin fallback handled by postMessage & allow="autoplay *"
-    }
-  }, [videoProviderIndex, handleSwitchServer]);
-
-  // Auto-play driver: repeatedly triggers play on modal open and for the first 3 seconds
-  useEffect(() => {
-    if (!isVideoModalOpen || !activeMovie) return;
-    triggerAutoPlay();
-    const timers = [150, 400, 800, 1400, 2400].map(ms => setTimeout(triggerAutoPlay, ms));
-    return () => timers.forEach(t => clearTimeout(t));
-  }, [isVideoModalOpen, activeMovie?.id, videoProviderIndex, activeSeason, activeEpisode, triggerAutoPlay]);
+  // Direct HLS playback has no iframe autoplay driver.
 
   // Listen for upstream 404 / playback signals
   useEffect(() => {
@@ -564,54 +473,8 @@ export const CustomVideoPlayer: React.FC = () => {
     setIsMuted(prev => !prev);
   };
 
-  const currentEmbedUrl = activeMovie
-    ? getStreamEmbedUrl(
-        activeMovie.id,
-        activeMovie.type,
-        videoProviderIndex,
-        activeSeason,
-        activeEpisode
-      )
-    : '';
+  // Direct-stream-only playback: no iframe embeds or provider proxies.
 
-  const backendBase = (import.meta as any).env?.VITE_DIRECT_STREAM_BASE;
-  // Automatically sanitize providers known to inject transparent ad overlays (e.g. 2embed.cc) via the local proxy
-  const shouldSanitizeViaProxy = useMemo(() => {
-    if (!currentEmbedUrl) return false;
-    const lower = currentEmbedUrl.toLowerCase();
-    return lower.includes('2embed.cc') || lower.includes('111movies.com');
-  }, [currentEmbedUrl]);
-
-  const iframeSrc = useMemo(() => {
-    if (!currentEmbedUrl) return '';
-    if (backendBase) {
-      return `${String(backendBase).replace(/\/$/, '')}/proxy?url=${encodeURIComponent(currentEmbedUrl)}`;
-    }
-    if (shouldSanitizeViaProxy) {
-      return `/proxy?url=${encodeURIComponent(currentEmbedUrl)}`;
-    }
-    return currentEmbedUrl;
-  }, [currentEmbedUrl, backendBase, shouldSanitizeViaProxy]);
-
-
-  // Preconnect to the active provider origin for lower startup latency.
-  useEffect(() => {
-    if (!isVideoModalOpen || !currentEmbedUrl) return;
-    try {
-      const origin = new URL(currentEmbedUrl).origin;
-      const selector = `link[rel="preconnect"][data-streamplay-provider="${origin}"]`;
-      if (!document.querySelector(selector)) {
-        const link = document.createElement('link');
-        link.rel = 'preconnect';
-        link.href = origin;
-        link.crossOrigin = 'anonymous';
-        link.setAttribute('data-streamplay-provider', origin);
-        document.head.appendChild(link);
-      }
-    } catch {
-      // Ignore malformed provider URLs.
-    }
-  }, [currentEmbedUrl, isVideoModalOpen]);
 
   // Auto-failover to the next healthy provider when the embedded player crashes.
   useEffect(() => {
@@ -1082,42 +945,12 @@ export const CustomVideoPlayer: React.FC = () => {
             }}
           />
         ) : (
-          <iframe
-            ref={iframeRef}
-            key={`${activeMovie.id}-${videoProviderIndex}-${activeSeason}-${activeEpisode}`}
-            src={iframeSrc}
-            className="custom-stream-iframe"
-            title={activeMovie.name}
-            allowFullScreen
-            loading="eager"
-            referrerPolicy="origin"
-            allow="autoplay *; encrypted-media *; fullscreen *; clipboard-write *; screen-wake-lock *"
-            onLoad={() => {
-              setIsLoading(false);
-              setHasPlayerCrashed(false);
-              setIsPlaying(true);
-              markProviderHealthy(videoProviderIndex);
-              triggerAutoPlay();
-
-              // Auto-play: repeatedly trigger playback inside the iframe via postMessage & DOM
-              if (autoplayAttemptsRef.current) {
-                clearInterval(autoplayAttemptsRef.current);
-              }
-              let attempts = 0;
-              autoplayAttemptsRef.current = setInterval(() => {
-                attempts++;
-                if (attempts > 12) {
-                  if (autoplayAttemptsRef.current) clearInterval(autoplayAttemptsRef.current);
-                  return;
-                }
-                triggerAutoPlay();
-              }, 400);
-            }}
-            onError={() => {
-              markProviderUnhealthy(videoProviderIndex);
-              setHasPlayerCrashed(true);
-            }}
-          />
+          <div className="direct-stream-unavailable" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', color: '#fff', textAlign: 'center', padding: '24px' }}>
+            <div>
+              <p style={{ fontSize: '1.1rem', marginBottom: '8px' }}>Direct stream unavailable</p>
+              <p style={{ opacity: 0.7, fontSize: '0.9rem' }}>This title could not be resolved to a playable HLS stream.</p>
+            </div>
+          </div>
         )}
       </div>
 
