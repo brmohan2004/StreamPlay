@@ -5,6 +5,7 @@ import { StreamMirror, StreamSubtitleTrack } from '../../types/stream';
 
 export interface StreamPlayerProps {
   src?: string | null;
+  headers?: Record<string, string>;
   mirrors?: StreamMirror[];
   subtitles?: StreamSubtitleTrack[];
   className?: string;
@@ -15,6 +16,7 @@ export interface StreamPlayerProps {
 
 export const StreamPlayer: React.FC<StreamPlayerProps> = ({
   src,
+  headers,
   mirrors,
   subtitles,
   className,
@@ -42,7 +44,7 @@ export const StreamPlayer: React.FC<StreamPlayerProps> = ({
     }
   }, [mirrorIndex, mirrorUrls, onError]);
 
-  useHlsPlayer(videoRef, { src: currentSrc, onError: handleError });
+  useHlsPlayer(videoRef, { src: currentSrc, headers, onError: handleError });
 
   useEffect(() => {
     const video = videoRef.current;

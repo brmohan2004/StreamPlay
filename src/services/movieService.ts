@@ -1,4 +1,5 @@
 import { MovieItem, OTTBrand, OTTMetadata } from '../types/media';
+import { DEFAULT_POSTER_FALLBACK } from '../config/mediaFallback';
 
 const CINEMETA_BASE = 'https://v3-cinemeta.strem.io';
 
@@ -487,7 +488,7 @@ function formatMovie(item: any, type: 'movie' | 'series'): MovieItem {
     id: item.id || '',
     name: item.name || 'Untitled',
     type,
-    poster: item.poster || 'https://images.metahub.space/poster/small/default/img',
+    poster: item.poster || DEFAULT_POSTER_FALLBACK,
     background: item.background || item.poster,
     description: item.description || 'Watch now in high quality on StreamPlay.',
     releaseInfo: item.releaseInfo || item.year || '',
@@ -727,7 +728,7 @@ export async function fetchMovieDetails(id: string, type: 'movie' | 'series'): P
         id,
         name: 'Untitled',
         type,
-        poster: 'https://images.metahub.space/poster/small/default/img'
+        poster: DEFAULT_POSTER_FALLBACK
       };
     }
     const m = data.meta;
@@ -735,7 +736,7 @@ export async function fetchMovieDetails(id: string, type: 'movie' | 'series'): P
       id: m.id || id,
       name: m.name || 'Untitled',
       type: (m.type as 'movie' | 'series') || type,
-      poster: m.poster || 'https://images.metahub.space/poster/small/default/img',
+      poster: m.poster || DEFAULT_POSTER_FALLBACK,
       background: m.background || m.poster,
       description: m.description || 'Watch now on StreamPlay in high quality.',
       releaseInfo: m.releaseInfo || m.year || '',
@@ -798,7 +799,7 @@ export async function fetchMovieDetails(id: string, type: 'movie' | 'series'): P
       id,
       name: 'Untitled',
       type,
-      poster: 'https://images.metahub.space/poster/small/default/img'
+      poster: DEFAULT_POSTER_FALLBACK
     };
   }
 }
@@ -812,7 +813,118 @@ export interface StreamingServerMeta {
   getUrl: (cleanId: string, rawId: string, type: 'movie' | 'series', season: number, episode: number) => string;
 }
 
-export const STREAMING_SERVERS: StreamingServerMeta[] = [];
+export const STREAMING_SERVERS: StreamingServerMeta[] = [
+  // 1. VidLink Pro (Modern 4K HTML5 Player — Fast & CC)
+  {
+    id: 0,
+    name: 'VidLink Pro (Fast & CC)',
+    isNoAds: true,
+    specialty: 'Modern Next.js HTML5 player with multi-subtitles, multi-audio & instant 1080p/4K',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://vidlink.pro/tv/${id}/${s}/${e}?autoplay=true`
+        : `https://vidlink.pro/movie/${id}?autoplay=true`
+  },
+  // 2. VidSrc PM (Fast Origin Cluster — Zero Black Screen, Instant Playback)
+  {
+    id: 1,
+    name: 'VidSrc PM (Fast Origin)',
+    isNoAds: true,
+    specialty: 'High-speed origin cluster with instant playback and zero black screen',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://vidsrc.pm/embed/tv/${id}/${s}/${e}?autoplay=1`
+        : `https://vidsrc.pm/embed/movie/${id}?autoplay=1`
+  },
+  // 3. AutoEmbed (Global & Regional — High Indian & International Catalog)
+  {
+    id: 2,
+    name: 'AutoEmbed (Global & Regional)',
+    isNoAds: true,
+    specialty: 'Ultra-fast multi-source engine with broad Indian, regional & global coverage',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://player.autoembed.cc/embed/tv/${id}/${s}/${e}?autoplay=1`
+        : `https://player.autoembed.cc/embed/movie/${id}?autoplay=1`
+  },
+  // 4. 2Embed CC (Multi-Audio & Dubs)
+  {
+    id: 3,
+    name: '2Embed CC (Multi-Audio)',
+    isNoAds: true,
+    specialty: 'High compatibility multi-audio & CC subtitles (ad-sanitized)',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://www.2embed.cc/embedtv/${id}&s=${s}&e=${e}`
+        : `https://www.2embed.cc/embed/${id}`
+  },
+  // 5. SmashyStream (Multi-Source Cluster)
+  {
+    id: 4,
+    name: 'SmashyStream (Multi-Source)',
+    isNoAds: true,
+    specialty: 'Multi-source player with broad format and regional Indian support',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://player.smashystream.com/tv/${id}?s=${s}&e=${e}`
+        : `https://player.smashystream.com/movie/${id}`
+  },
+  // 6. VidBinge (Fast Player)
+  {
+    id: 5,
+    name: 'VidBinge (Fast Player)',
+    isNoAds: true,
+    specialty: 'Fast HTML5 player with multi-audio & subtitle support',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://vidbinge.dev/embed/tv/${id}/${s}/${e}`
+        : `https://vidbinge.dev/embed/movie/${id}`
+  },
+  // 7. VidSrc NL (Player Mirror)
+  {
+    id: 6,
+    name: 'VidSrc NL (Player Mirror)',
+    isNoAds: true,
+    specialty: 'Clean player mirror with stable playback',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://vidsrc.nl/embed/tv/${id}/${s}/${e}`
+        : `https://vidsrc.nl/embed/movie/${id}`
+  },
+  // 8. VidSrc CC (Official v2)
+  {
+    id: 7,
+    name: 'VidSrc CC (Official v2)',
+    isNoAds: true,
+    specialty: 'Official v2 embed with reliable playback',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://vidsrc.cc/v2/embed/tv/${id}/${s}/${e}?autoPlay=true`
+        : `https://vidsrc.cc/v2/embed/movie/${id}?autoPlay=true`
+  },
+  // 9. MoviesAPI (Club Mirror)
+  {
+    id: 8,
+    name: 'MoviesAPI (Club Mirror)',
+    isNoAds: true,
+    specialty: 'Club mirror with multi-language support',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://moviesapi.club/tv/${id}-${s}-${e}`
+        : `https://moviesapi.club/movie/${id}`
+  },
+  // 10. MultiEmbed (Aggregated)
+  {
+    id: 9,
+    name: 'MultiEmbed (Aggregated)',
+    isNoAds: true,
+    specialty: 'Aggregated sources with automatic fallback',
+    getUrl: (id, _, type, s, e) =>
+      type === 'series'
+        ? `https://multiembed.mov/?video_id=${id}&s=${s}&e=${e}`
+        : `https://multiembed.mov/?video_id=${id}`
+  }
+];
 
 
 

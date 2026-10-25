@@ -7,7 +7,7 @@ export const FloatingReactionLayer: React.FC = () => {
   const { floatingReactions } = useParty();
 
   return (
-    <div className="floating-reaction-container" pointer-events="none">
+    <div className="floating-reaction-container">
       <AnimatePresence>
         {floatingReactions.map(item => (
           <motion.div

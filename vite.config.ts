@@ -44,6 +44,11 @@ export default defineConfig({
   server: {
     port: 1420,
     proxy: {
+      "/api/resolve-stream": {
+        target: "http://localhost:3002",
+        changeOrigin: true,
+        secure: false
+      },
       "/api/saavn": {
         target: "https://www.jiosaavn.com",
         changeOrigin: true,
@@ -69,6 +74,11 @@ export default defineConfig({
   preview: {
     port: 4173,
     proxy: {
+      "/api/resolve-stream": {
+        target: "http://localhost:3002",
+        changeOrigin: true,
+        secure: false
+      },
       "/api/saavn": {
         target: "https://www.jiosaavn.com",
         changeOrigin: true,

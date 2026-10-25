@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Play, Star, ArrowRight } from 'lucide-react'
 import { MovieItem } from '../types/media';
 import { useMedia } from '../context/MediaContext';
 import { useNavigation } from '../context/NavigationContext';
+import { handlePosterError, DEFAULT_BACKDROP_FALLBACK } from '../config/mediaFallback';
 import './MovieCardsDesign.css';
 
 // Re-export the standalone Trending Fanned Deck
@@ -43,10 +44,7 @@ export const MovieSpotlightCard: React.FC<MovieSpotlightCardProps> = ({ item, on
           alt={item.name}
           className="spotlight-poster-img"
           loading="lazy"
-          onError={e => {
-            (e.target as HTMLImageElement).src =
-              'https://images.metahub.space/poster/small/default/img';
-          }}
+          onError={handlePosterError}
         />
 
         <div className="spotlight-rating-pill">
@@ -107,10 +105,7 @@ export const MovieBackdropCard: React.FC<MovieBackdropCardProps> = ({ item, onCl
           alt={item.name}
           className="backdrop-media-img"
           loading="lazy"
-          onError={e => {
-            (e.target as HTMLImageElement).src =
-              'https://images.metahub.space/poster/small/default/img';
-          }}
+          onError={e => handlePosterError(e, DEFAULT_BACKDROP_FALLBACK)}
         />
         <div className="backdrop-play-circle">
           <div className="backdrop-play-btn-inner">
@@ -169,10 +164,7 @@ export const MovieRankedCard: React.FC<MovieRankedCardProps> = ({ item, rank, on
           alt={item.name}
           className="ranked-movie-img"
           loading="lazy"
-          onError={e => {
-            (e.target as HTMLImageElement).src =
-              'https://images.metahub.space/poster/small/default/img';
-          }}
+          onError={handlePosterError}
         />
 
         <div className={`ranked-movie-badge ${podiumClass}`}>#{rank}</div>
@@ -241,10 +233,7 @@ export const MovieTileCard: React.FC<MovieTileCardProps> = ({ item, onClick }) =
         alt={item.name}
         className="movie-tile-thumb"
         loading="lazy"
-        onError={e => {
-          (e.target as HTMLImageElement).src =
-            'https://images.metahub.space/poster/small/default/img';
-        }}
+        onError={handlePosterError}
       />
       <div className="movie-tile-meta">
         <h4 className="movie-tile-title" title={item.name}>
@@ -304,10 +293,7 @@ export const MoviePanoramaCard: React.FC<MoviePanoramaCardProps> = ({ item, onCl
           alt={item.name}
           className="panorama-img"
           loading="lazy"
-          onError={e => {
-            (e.target as HTMLImageElement).src =
-              'https://images.metahub.space/poster/small/default/img';
-          }}
+          onError={handlePosterError}
         />
       </div>
     </div>
@@ -349,10 +335,7 @@ export const MoviePosterCard: React.FC<MoviePosterCardProps> = ({ item, rank, on
           alt={item.name}
           className="movie-poster-img"
           loading="lazy"
-          onError={e => {
-            (e.target as HTMLImageElement).src =
-              'https://images.metahub.space/poster/small/default/img';
-          }}
+          onError={handlePosterError}
         />
 
         {rank !== undefined && <div className="movie-rank-badge">#{rank}</div>}

@@ -4,19 +4,30 @@ import Hls from 'hls.js';
 
 export interface UseHlsPlayerOptions {
   src: string | null;
+  headers?: Record<string, string>;
   onError?: (error: unknown) => void;
 }
 
 export function useHlsPlayer(videoRef: React.RefObject<HTMLVideoElement | null>, options: UseHlsPlayerOptions) {
   const hlsRef = useRef<Hls | null>(null);
-  const { src, onError } = options;
+  const { src, headers, onError } = options;
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !src) return;
 
     if (Hls.isSupported()) {
-      const hls = new Hls({ enableWorker: true, lowLatencyMode: true });
+      const hls = new Hls({
+        enableWorker: true,
+        lowLatencyMode: true,
+        xhrSetup: (xhr: XMLHttpRequest) => {
+          if (headers) {
+            Object.entries(headers).forEach(([key, value]) => {
+              try { xhr.setRequestHeader(key, String(value)); } catch {}
+            });
+          }
+        }
+      });
       hlsRef.current = hls;
       hls.loadSource(src);
       hls.attachMedia(video);
@@ -60,7 +71,7 @@ export function useHlsPlayer(videoRef: React.RefObject<HTMLVideoElement | null>,
 
     onError?.(new Error('HLS not supported'));
     return undefined;
-  }, [src, videoRef, onError]);
+  }, [src, headers, videoRef, onError]);
 
   return hlsRef;
 }

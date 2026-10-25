@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { MovieItem } from '../types/media';
 import { useMedia } from '../context/MediaContext';
 import { useNavigation } from '../context/NavigationContext';
+import { handlePosterError } from '../config/mediaFallback';
 
 /* Helper to format movie metadata e.g. "2008 • Action/Crime • 2h 32m" */
 export const formatMovieMetadata = (movie: MovieItem): string => {
@@ -140,10 +141,7 @@ export const MovieTrendingFannedDeck: React.FC<MovieTrendingFannedDeckProps> = (
                   alt={movie.name}
                   className="movie-fanned-poster"
                   loading="lazy"
-                  onError={e => {
-                    (e.target as HTMLImageElement).src =
-                      'https://images.metahub.space/poster/small/default/img';
-                  }}
+                  onError={handlePosterError}
                 />
 
                 <div className="movie-fanned-vignette" />

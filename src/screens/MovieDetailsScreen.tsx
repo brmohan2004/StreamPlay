@@ -20,6 +20,7 @@ import { useNavigation } from '../context/NavigationContext';
 import { MovieItem, EpisodeItem } from '../types/media';
 import { fetchMovieDetails, fetchGenreMovies } from '../services/movieService';
 import { SkeletonDetails, SkeletonRow } from '../components/SkeletonLoader';
+import { handlePosterError } from '../config/mediaFallback';
 
 /* Dynamic Movie Color Theme Generator */
 interface MovieColorTheme {
@@ -645,9 +646,7 @@ export const MovieDetailsScreen: React.FC = () => {
                       src={ep.thumbnail || movieData.poster}
                       alt={ep.name}
                       className="episode-thumb-img"
-                      onError={e => {
-                        (e.target as HTMLImageElement).src = movieData.poster;
-                      }}
+                      onError={e => handlePosterError(e, movieData.poster)}
                     />
                     <div className="episode-play-badge">
                       <Play size={16} fill="#ffffff" color="#ffffff" />
@@ -696,10 +695,7 @@ export const MovieDetailsScreen: React.FC = () => {
                       alt={item.name}
                       className="three-row-poster-img"
                       loading="lazy"
-                      onError={e => {
-                        (e.target as HTMLImageElement).src =
-                          'https://images.metahub.space/poster/small/default/img';
-                      }}
+                      onError={handlePosterError}
                     />
                     <div className="three-row-rating-badge">
                       <Star size={10} fill="#ffc107" color="#ffc107" />

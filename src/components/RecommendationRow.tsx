@@ -5,6 +5,7 @@ import { MovieItem, SongItem } from '../types/media';
 import { MediaCard } from './MediaCard';
 import { useMedia } from '../context/MediaContext';
 import { motion } from 'framer-motion';
+import { handleSongCoverError } from '../config/mediaFallback';
 
 export interface RecommendationRowProps {
   title: string;
@@ -75,10 +76,7 @@ export const RecommendationRow: React.FC<RecommendationRowProps> = ({
                     alt={song.title}
                     className="rec-song-art"
                     loading="lazy"
-                    onError={e => {
-                      (e.target as HTMLImageElement).src =
-                        'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&h=300&fit=crop';
-                    }}
+                    onError={handleSongCoverError}
                   />
                   <div className="rec-song-play-btn">
                     <Play size={18} fill="#000" color="#000" style={{ marginLeft: 2 }} />

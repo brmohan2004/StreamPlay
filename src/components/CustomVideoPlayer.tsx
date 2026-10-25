@@ -21,14 +21,18 @@ import {
   Pause,
   Gauge,
   Sparkles,
-  MoreVertical
+  MoreVertical,
+  RotateCcw,
+  RotateCw
 } from 'lucide-react';
 import { useMedia } from '../context/MediaContext';
-import { STREAMING_SERVERS, fetchMovieDetails, markProviderHealthy, markProviderUnhealthy, isProviderHealthy, getFirstHealthyProviderIndex, getNextHealthyProviderIndex } from '../services/movieService';
+import { STREAMING_SERVERS, getStreamEmbedUrl, fetchMovieDetails, markProviderHealthy, markProviderUnhealthy, isProviderHealthy, getFirstHealthyProviderIndex, getNextHealthyProviderIndex } from '../services/movieService';
 import { activateMovieModeAdRecovery, deactivateMovieModeAdRecovery } from '../services/adRecovery';
 import { activateAdBlocker, deactivateAdBlocker } from '../services/adBlocker';
 import { audioEnhancer } from '../services/audioEnhancer';
 import { EpisodeItem } from '../types/media';
+import { resolveScrapedStream, toProxySources } from '../services/scraperStreamService';
+import type { ScrapedStreamResult } from '../services/scraperStreamService';
 
 export const CustomVideoPlayer: React.FC = () => {
   const {
@@ -47,8 +51,26 @@ export const CustomVideoPlayer: React.FC = () => {
   const playerContainerRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const hlsRef = useRef<Hls | null>(null);
-  const [nativeAudioTracks, setNativeAudioTracks] = useState<{ id: number; name: string; lang: string }[]>([]);
-  const [nativeSubtitleTracks, setNativeSubtitleTracks] = useState<{ id: number; name: string; lang: string }[]>([]);
+  const [nativeAudioTracks, setNativeAudioTracks] = useState<{ id: number; name: string; lang: string; url?: string }[]>([]);
+  const [nativeSubtitleTracks, setNativeSubtitleTracks] = useState<{ id: number; name: string; lang: string; url?: string }[]>([]);
+  const [activeSubtitleUrl, setActiveSubtitleUrl] = useState<string | null>(null);
+  const [scrapedStream, setScrapedStream] = useState<ScrapedStreamResult | null>(null);
+  const [selectedQualityUrl, setSelectedQualityUrl] = useState<string | null>(null);
+  const currentStreamUrl = selectedQualityUrl || activeMovie?.streamUrl || scrapedStream?.videoSources?.[0]?.url || null;
+  const streamHeaders = scrapedStream?.headers || {};
+  const [videoTime, setVideoTime] = useState<number>(0);
+  const savedSeekTimeRef = useRef<number | null>(null);
+
+  const currentEmbedUrl = useMemo(() => {
+    if (!activeMovie) return '';
+    return getStreamEmbedUrl(
+      activeMovie.id,
+      (activeMovie.type || 'movie') as 'movie' | 'series',
+      videoProviderIndex,
+      activeSeason,
+      activeEpisode
+    );
+  }, [activeMovie, videoProviderIndex, activeSeason, activeEpisode]);
 
   // Player UI states
   const [isPlaying, setIsPlaying] = useState(true);
@@ -336,33 +358,89 @@ export const CustomVideoPlayer: React.FC = () => {
     isFullscreen
   ]);
 
-  // Native HLS Video Stream Mounting Lifecycle
+  // Resolve scraped streams (CloudStream/Stremio-style) and proxy them.
   useEffect(() => {
-    if (!isVideoModalOpen || !activeMovie?.streamUrl || !videoRef.current) return;
+    if (!isVideoModalOpen || !activeMovie) return;
+    let cancelled = false;
+    setIsLoading(true);
+    setScrapedStream(null);
+    setSelectedQualityUrl(null);
+    setActiveSubtitleUrl(null);
+    setNativeAudioTracks([]);
+    setNativeSubtitleTracks([]);
+
+    const yearMatch = String(activeMovie.releaseInfo || '').match(/(19|20)\d{2}/);
+    const imdbId = (activeMovie as any).imdb_id || (activeMovie as any).imdbId || (/^tt\d+$/.test(activeMovie.id) ? activeMovie.id : undefined);
+    resolveScrapedStream({
+      title: activeMovie.name,
+      year: yearMatch ? yearMatch[0] : undefined,
+      type: activeMovie.type,
+      season: activeSeason,
+      episode: activeEpisode,
+      imdbId
+    }).then(async (result) => {
+      if (cancelled) return;
+      if (!result || !result.success || !result.videoSources?.length) {
+        if (!activeMovie.streamUrl) setIsLoading(false);
+        return;
+      }
+      const proxied = await toProxySources(result);
+      if (cancelled) return;
+      setScrapedStream(proxied);
+      if (proxied.videoSources.length > 0) {
+        setSelectedQuality(proxied.videoSources[0].quality);
+        setSelectedQualityUrl(proxied.videoSources[0].url);
+      }
+      if (proxied.audioTracks.length > 0) {
+        setNativeAudioTracks(proxied.audioTracks.map((t, idx) => ({ id: idx, name: t.name, lang: t.lang, url: t.url })));
+        if (proxied.audioTracks[0]) setSelectedAudioLang(proxied.audioTracks[0].name);
+      }
+      if (proxied.subtitles.length > 0) {
+        setNativeSubtitleTracks(proxied.subtitles.map((t, idx) => ({ id: idx, name: t.lang, lang: t.lang, url: t.url })));
+      }
+    }).catch(() => {
+      if (!activeMovie.streamUrl) setIsLoading(false);
+    });
+
+    return () => { cancelled = true; };
+  }, [isVideoModalOpen, activeMovie?.id, activeSeason, activeEpisode]);
+
+
+  useEffect(() => {
+    if (!isVideoModalOpen || !currentStreamUrl || !videoRef.current) return;
 
     const video = videoRef.current;
     let hls: Hls | null = null;
     setIsLoading(true);
-    setNativeAudioTracks([]);
-    setNativeSubtitleTracks([]);
 
     if (Hls.isSupported()) {
       hls = new Hls({
         enableWorker: true,
         lowLatencyMode: true,
-        backBufferLength: 90
+        backBufferLength: 90,
+        xhrSetup: (xhr: XMLHttpRequest) => {
+          Object.entries(streamHeaders).forEach(([key, value]) => {
+            try { xhr.setRequestHeader(key, String(value)); } catch {}
+          });
+        }
       });
       hlsRef.current = hls;
 
       try { video.crossOrigin = 'anonymous'; } catch { /* ignore */ }
       audioEnhancer.warmUp();
-      hls.loadSource(activeMovie.streamUrl);
+      hls.loadSource(currentStreamUrl);
       hls.attachMedia(video);
       audioEnhancer.attach(video, 'movie');
 
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         setIsLoading(false);
-        video.play().catch(e => console.warn('Autoplay prevented:', e));
+        if (savedSeekTimeRef.current !== null && savedSeekTimeRef.current > 0) {
+          video.currentTime = savedSeekTimeRef.current;
+          savedSeekTimeRef.current = null;
+        }
+        video.play().catch(e => {
+          if (e?.name !== 'AbortError') console.warn('Autoplay prevented:', e);
+        });
 
         if (hls && hls.audioTracks && hls.audioTracks.length > 0) {
           const tracks = hls.audioTracks.map((t, idx) => ({
@@ -382,7 +460,14 @@ export const CustomVideoPlayer: React.FC = () => {
             name: t.name || t.lang || `Subtitle ${idx + 1}`,
             lang: t.lang || 'default'
           }));
-          setNativeSubtitleTracks(tracks);
+          setNativeSubtitleTracks(prev => {
+            // merge HLS tracks with any external scraper tracks
+            const merged = [...tracks];
+            prev.forEach(p => {
+              if (p.url && !merged.some(m => m.name === p.name)) merged.push(p);
+            });
+            return merged;
+          });
         }
       });
 
@@ -437,11 +522,13 @@ export const CustomVideoPlayer: React.FC = () => {
         /* ignore */
       }
       audioEnhancer.warmUp();
-      video.src = activeMovie.streamUrl;
+      video.src = currentStreamUrl;
       audioEnhancer.attach(video, 'movie');
       video.addEventListener('loadedmetadata', () => {
         setIsLoading(false);
-        video.play().catch(e => console.warn('Autoplay prevented:', e));
+        video.play().catch(e => {
+          if (e?.name !== 'AbortError') console.warn('Autoplay prevented:', e);
+        });
       });
     }
 
@@ -452,10 +539,23 @@ export const CustomVideoPlayer: React.FC = () => {
       }
       audioEnhancer.detach();
     };
-  }, [isVideoModalOpen, activeMovie?.streamUrl, activeMovie?.id]);
+  }, [isVideoModalOpen, currentStreamUrl, activeMovie?.id]);
+
+  const skipSeconds = useCallback((sec: number) => {
+    if (videoRef.current) {
+      const dur = videoRef.current.duration || 999999;
+      const targetTime = Math.max(0, Math.min(dur, videoRef.current.currentTime + sec));
+      videoRef.current.currentTime = targetTime;
+      setVideoTime(targetTime);
+    }
+  }, []);
+
+  const skipIntro = useCallback(() => {
+    skipSeconds(85);
+  }, [skipSeconds]);
 
   const togglePlayPause = () => {
-    if (activeMovie?.streamUrl && videoRef.current) {
+    if ((currentStreamUrl || activeMovie?.streamUrl) && videoRef.current) {
       if (videoRef.current.paused) {
         videoRef.current.play();
         setIsPlaying(true);
@@ -516,6 +616,12 @@ export const CustomVideoPlayer: React.FC = () => {
       } else if (e.key === ' ' || e.key === 'k') {
         e.preventDefault();
         togglePlayPause();
+      } else if (e.key === 'ArrowLeft' || e.key === 'j' || e.key === 'J') {
+        e.preventDefault();
+        skipSeconds(-10);
+      } else if (e.key === 'ArrowRight' || e.key === 'l' || e.key === 'L') {
+        e.preventDefault();
+        skipSeconds(10);
       } else if (e.key === 'f' || e.key === 'F') {
         e.preventDefault();
         toggleFullscreen();
@@ -536,7 +642,7 @@ export const CustomVideoPlayer: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isVideoModalOpen, videoProviderIndex, isPlaying, isMuted, aspectRatioMode, isLocked, closeMoviePlayer, handleSwitchServer]);
+  }, [isVideoModalOpen, videoProviderIndex, isPlaying, isMuted, aspectRatioMode, isLocked, closeMoviePlayer, handleSwitchServer, currentStreamUrl, skipSeconds]);
 
   const toggleFullscreen = async () => {
     const doc = document as any;
@@ -806,6 +912,40 @@ export const CustomVideoPlayer: React.FC = () => {
                 </>
               )}
 
+              {/* Rewind & Forward 10s */}
+              <button
+                className="mobile-action-item"
+                onClick={() => {
+                  skipSeconds(-10);
+                }}
+              >
+                <RotateCcw size={18} />
+                <span>Rewind 10s</span>
+              </button>
+
+              <button
+                className="mobile-action-item"
+                onClick={() => {
+                  skipSeconds(10);
+                }}
+              >
+                <RotateCw size={18} />
+                <span>Forward 10s</span>
+              </button>
+
+              {videoTime >= 2 && videoTime <= 130 && (
+                <button
+                  className="mobile-action-item lime"
+                  onClick={() => {
+                    skipIntro();
+                    setShowMobileActions(false);
+                  }}
+                >
+                  <ChevronRight size={18} />
+                  <span>Skip Intro (+85s)</span>
+                </button>
+              )}
+
               {/* Mute Toggle */}
               <button
                 className={`mobile-action-item ${isMuted ? 'active' : ''}`}
@@ -835,13 +975,19 @@ export const CustomVideoPlayer: React.FC = () => {
 
       {/* Left Vertical Control Rail — Icon-only transparent buttons */}
       <div className={`player-left-control-rail ${showControls || isLocked ? 'visible' : 'hidden'}`}>
-        {!isLocked && activeMovie.streamUrl && (
+        {!isLocked && (currentStreamUrl || activeMovie.streamUrl) && (
           <button className="player-ctrl-glass-btn" onClick={togglePlayPause} aria-label="Play or Pause">
             {isPlaying ? <Pause size={17} /> : <Play size={17} fill="#ffffff" />}
           </button>
         )}
         {!isLocked && (
           <>
+            <button className="player-ctrl-glass-btn" onClick={() => skipSeconds(-10)} aria-label="Rewind 10s" title="Rewind 10s">
+              <RotateCcw size={17} />
+            </button>
+            <button className="player-ctrl-glass-btn" onClick={() => skipSeconds(10)} aria-label="Forward 10s" title="Forward 10s">
+              <RotateCw size={17} />
+            </button>
             <button className="player-ctrl-glass-btn" onClick={toggleMute} aria-label="Mute">
               {isMuted ? <VolumeX size={17} /> : <Volume2 size={17} />}
             </button>
@@ -926,9 +1072,7 @@ export const CustomVideoPlayer: React.FC = () => {
           </div>
         )}
 
-
-
-        {activeMovie.streamUrl && !directStreamFailed ? (
+        {(currentStreamUrl || activeMovie.streamUrl) && !directStreamFailed ? (
           <video
             ref={videoRef}
             crossOrigin="anonymous"
@@ -939,10 +1083,32 @@ export const CustomVideoPlayer: React.FC = () => {
             onClick={togglePlayPause}
             onPlay={() => setIsPlaying(true)}
             onPause={() => setIsPlaying(false)}
+            onTimeUpdate={() => {
+              if (videoRef.current) setVideoTime(videoRef.current.currentTime);
+            }}
             onWaiting={() => setIsLoading(true)}
             onPlaying={() => {
               setIsLoading(false);
             }}
+          >
+            {activeSubtitleUrl && (
+              <track
+                key={activeSubtitleUrl}
+                kind="subtitles"
+                src={activeSubtitleUrl}
+                srcLang="en"
+                label={selectedSubtitles}
+                default
+              />
+            )}
+          </video>
+        ) : currentEmbedUrl ? (
+          <iframe
+            src={currentEmbedUrl}
+            className="custom-stream-iframe"
+            title="Media Stream Player"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+            allowFullScreen
           />
         ) : (
           <div className="direct-stream-unavailable" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', color: '#fff', textAlign: 'center', padding: '24px' }}>
@@ -952,6 +1118,24 @@ export const CustomVideoPlayer: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Skip Intro Floating HUD Button (first 130s of media playback) */}
+        <AnimatePresence>
+          {videoTime >= 2 && videoTime <= 130 && !isLocked && (
+            <motion.button
+              className="skip-intro-floating-btn"
+              initial={{ opacity: 0, scale: 0.9, x: 20 }}
+              animate={{ opacity: 1, scale: 1, x: 0 }}
+              exit={{ opacity: 0, scale: 0.9, x: 20 }}
+              transition={{ duration: 0.2 }}
+              onClick={skipIntro}
+              title="Skip Intro (+85s)"
+            >
+              <span>Skip Intro</span>
+              <ChevronRight size={16} />
+            </motion.button>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* 2. "HOLD TO 2X PLAY" Floating Pill Indicator */}
@@ -1050,12 +1234,21 @@ export const CustomVideoPlayer: React.FC = () => {
               <span className="lang-col-title" style={{ padding: '0.6rem 0.6rem 0.1rem', fontSize: '0.72rem' }}>
                 Video Quality
               </span>
-              {QUALITIES.map((q, idx) => (
+              {(scrapedStream?.videoSources?.length
+                ? scrapedStream.videoSources.map((source, idx) => ({ label: source.quality, badge: source.quality, url: source.url, idx }))
+                : QUALITIES.map((q, idx) => ({ label: q.label, badge: q.badge, url: currentStreamUrl, idx }))
+              ).map((q) => (
                 <div
-                  key={idx}
+                  key={q.idx}
                   className={`menu-option-item ${selectedQuality === q.label ? 'active' : ''}`}
                   onClick={() => {
                     setSelectedQuality(q.label);
+                    if (q.url && q.url !== selectedQualityUrl) {
+                      if (videoRef.current) {
+                        savedSeekTimeRef.current = videoRef.current.currentTime;
+                      }
+                      setSelectedQualityUrl(q.url);
+                    }
                     setShowQualityMenu(false);
                   }}
                 >
@@ -1081,7 +1274,7 @@ export const CustomVideoPlayer: React.FC = () => {
             <div className="menu-modal-header">
               <button className="menu-close-x" onClick={() => setShowLangMenu(false)}>✕</button>
             </div>
-            {!activeMovie.streamUrl && (
+            {!currentStreamUrl && (
               <>
                 <div className="multi-audio-recommend-card">
                   <span className="multi-audio-recommend-title">
@@ -1123,7 +1316,7 @@ export const CustomVideoPlayer: React.FC = () => {
                         className={`menu-option-item ${selectedAudioLang === track.name ? 'active' : ''}`}
                         onClick={() => {
                           setSelectedAudioLang(track.name);
-                          if (hlsRef.current) {
+                          if (hlsRef.current && track.id >= 0 && track.id < (hlsRef.current.audioTracks?.length || 0)) {
                             hlsRef.current.audioTrack = track.id;
                           }
                         }}
@@ -1156,6 +1349,7 @@ export const CustomVideoPlayer: React.FC = () => {
                         className={`menu-option-item ${selectedSubtitles === 'Off' ? 'active' : ''}`}
                         onClick={() => {
                           setSelectedSubtitles('Off');
+                          setActiveSubtitleUrl(null);
                           if (hlsRef.current) {
                             hlsRef.current.subtitleTrack = -1;
                           }
@@ -1170,7 +1364,11 @@ export const CustomVideoPlayer: React.FC = () => {
                           className={`menu-option-item ${selectedSubtitles === track.name ? 'active' : ''}`}
                           onClick={() => {
                             setSelectedSubtitles(track.name);
-                            if (hlsRef.current) {
+                            if (track.url) {
+                              setActiveSubtitleUrl(track.url);
+                              if (hlsRef.current) hlsRef.current.subtitleTrack = -1;
+                            } else if (hlsRef.current && track.id >= 0 && track.id < (hlsRef.current.subtitleTracks?.length || 0)) {
+                              setActiveSubtitleUrl(null);
                               hlsRef.current.subtitleTrack = track.id;
                             }
                           }}

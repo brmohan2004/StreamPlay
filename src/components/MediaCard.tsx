@@ -6,6 +6,8 @@ import { MovieItem } from '../types/media';
 import { useMedia } from '../context/MediaContext';
 import { useNavigation } from '../context/NavigationContext';
 
+import { handlePosterError } from '../config/mediaFallback';
+
 interface MediaCardProps {
   item: MovieItem;
   rank?: number;
@@ -33,10 +35,7 @@ export const MediaCard: React.FC<MediaCardProps> = ({ item, rank }) => {
             alt={item.name}
             className="media-poster"
             loading="lazy"
-            onError={e => {
-              (e.target as HTMLImageElement).src =
-                'https://images.metahub.space/poster/small/default/img';
-            }}
+            onError={handlePosterError}
           />
 
           {rank && <div className="media-rank-badge">#{rank}</div>}

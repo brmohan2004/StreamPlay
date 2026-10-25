@@ -8,6 +8,7 @@ import {
   FolderPlus
 } from 'lucide-react';
 import { useMedia } from '../context/MediaContext';
+import { handleSongCoverError } from '../config/mediaFallback';
 import './AddToPlaylistModal.css';
 
 export const AddToPlaylistModal: React.FC = () => {
@@ -106,10 +107,7 @@ export const AddToPlaylistModal: React.FC = () => {
               src={songToAddToPlaylist.image || '/StreamPlay.png'}
               alt={songToAddToPlaylist.title}
               className="add-playlist-song-thumb"
-              onError={e => {
-                (e.target as HTMLImageElement).src =
-                  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 18V5l12-2v13'%3E%3C/path%3E%3Ccircle cx='6' cy='18' r='3'%3E%3C/circle%3E%3Ccircle cx='18' cy='16' r='3'%3E%3C/circle%3E%3C/svg%3E";
-              }}
+              onError={handleSongCoverError}
             />
             <div className="add-playlist-song-info">
               <span className="add-playlist-song-title">{songToAddToPlaylist.title}</span>

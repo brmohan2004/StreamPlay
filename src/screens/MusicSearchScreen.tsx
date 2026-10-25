@@ -505,9 +505,11 @@ export const MusicSearchScreen: React.FC = () => {
             className={`artist-card-avatar ${isStar ? 'avatar-star' : ''} ${isComposer ? 'avatar-composer' : ''}`}
             loading="lazy"
             onError={e => {
+              const target = e.currentTarget;
+              target.onerror = null;
               const bg = isStar ? '3b1828' : isComposer ? '1c2b18' : '152535';
               const text = isStar ? 'ff4081' : isComposer ? 'c8ff00' : '00e5ff';
-              (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+              target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
                 artist.name
               )}&background=${bg}&color=${text}&size=200&bold=true`;
             }}

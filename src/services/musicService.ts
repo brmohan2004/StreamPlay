@@ -23,11 +23,10 @@ export function getSaavnBaseUrls(): string[] {
       '/api/saavn'
     ];
   }
-  return [
-    '/api/saavn',
-    'https://www.jiosaavn.com/api.php'
-  ];
-}
+   return [
+     '/api/saavn'
+   ];
+ }
 
 const DEFAULT_HEADERS: Record<string, string> =
   typeof window === 'undefined'
@@ -346,11 +345,10 @@ export async function searchAudiusSongs(query: string, limit = 12, offset = 0): 
   const trimmed = query.trim();
   if (!trimmed) return [];
 
-  const audiusHosts = [
-    'https://discoveryprovider.audius.co',
-    'https://audius-discovery-1.theblueprint.xyz',
-    'https://discoveryprovider2.audius.co'
-  ];
+   const audiusHosts = [
+     'https://discoveryprovider.audius.co',
+     'https://discoveryprovider2.audius.co'
+   ];
 
   for (const host of audiusHosts) {
     try {

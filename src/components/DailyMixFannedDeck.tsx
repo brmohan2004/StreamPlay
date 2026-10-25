@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Play, ChevronLeft, ChevronRight } from 'lucide-react';
 import { SongItem } from '../types/media';
+import { handleSongCoverError } from '../config/mediaFallback';
 
 interface DailyMixFannedDeckProps {
   songs: (SongItem & { _recReason?: string })[];
@@ -168,10 +169,7 @@ export const DailyMixFannedDeck: React.FC<DailyMixFannedDeckProps> = ({ songs, o
                     alt={song.title}
                     className="fanned-card-poster"
                     loading="lazy"
-                    onError={e => {
-                      (e.target as HTMLImageElement).src =
-                        'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&auto=format&fit=crop&q=80';
-                    }}
+                    onError={handleSongCoverError}
                   />
                   <div className="fanned-card-vignette" />
 

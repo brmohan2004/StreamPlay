@@ -1,4 +1,4 @@
-import { registerPlugin } from '@capacitor/core';
+import { registerPlugin, Capacitor } from '@capacitor/core';
 
 interface BackgroundAudioPlugin {
   start(options: {
@@ -25,6 +25,7 @@ interface BackgroundAudioPlugin {
 }
 
 const BackgroundAudio = registerPlugin<BackgroundAudioPlugin>('BackgroundAudio');
+const isNative = Capacitor.isNativePlatform();
 
 let silentAudioCtx: AudioContext | null = null;
 
@@ -70,6 +71,7 @@ export async function startNativeBackgroundAudio(
   position: number = 0
 ): Promise<void> {
   enableAudioPipelineKeepAlive();
+  if (!isNative) return;
   try {
     if (BackgroundAudio) {
       await BackgroundAudio.start({
@@ -97,6 +99,7 @@ export async function updateNativeBackgroundAudio(
   duration: number = 0,
   position: number = 0
 ): Promise<void> {
+  if (!isNative) return;
   try {
     if (BackgroundAudio) {
       await BackgroundAudio.update({
@@ -117,6 +120,7 @@ export async function updateNativeBackgroundAudio(
  * Stops the native Android Foreground Service and releases locks.
  */
 export async function stopNativeBackgroundAudio(): Promise<void> {
+  if (!isNative) return;
   try {
     if (BackgroundAudio) {
       await BackgroundAudio.stop();
@@ -136,6 +140,7 @@ export function listenToNativeMediaActions(callbacks: {
   onPrevious: () => void;
   onSeek: (positionSec: number) => void;
 }): void {
+  if (!isNative) return;
   try {
     if (BackgroundAudio && typeof BackgroundAudio.addListener === 'function') {
       BackgroundAudio.addListener('mediaAction', (data: { action: string; position?: number }) => {

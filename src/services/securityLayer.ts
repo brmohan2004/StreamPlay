@@ -30,6 +30,7 @@ export function getAllowedProviderHosts(): string[] {
   }
   hosts.add('v3-cinemeta.strem.io');
   hosts.add('www.jiosaavn.com');
+  hosts.add('www.youtube-nocookie.com');
   return Array.from(hosts);
 }
 
@@ -131,8 +132,8 @@ export function installSecurityLayer(): void {
     `frame-src 'self' ${getAllowedProviderHosts().map((h) => `https://${h}`).join(' ')}`,
     "connect-src 'self' https: wss:",
     "object-src 'none'",
-    "base-uri 'self'",
-    "frame-ancestors 'self'"
+     "base-uri 'self'"
+
   ].join('; ');
 
   const meta = document.createElement('meta');

@@ -18,21 +18,21 @@ function sendJson(res, status, obj) {
   res.end(JSON.stringify(obj));
 }
 
-function fetchText(targetUrl) {
+function fetchText(targetUrl, options = {}) {
   return new Promise((resolve, reject) => {
     const u = new URL(targetUrl);
     const mod = u.protocol === 'https:' ? https : http;
-    const req = mod.get(targetUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Referer': `${u.origin}/`
-      }
-    }, (r) => {
+    const headers = Object.assign({
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Referer': `${u.origin}/`
+    }, options.headers || {});
+    if (!headers.Referer) headers.Referer = `${u.origin}/`;
+    const req = mod.get(targetUrl, { headers }, (r) => {
       if (r.statusCode >= 300 && r.statusCode < 400 && r.headers.location) {
         const next = new URL(r.headers.location, targetUrl).toString();
-        fetchText(next).then(resolve).catch(reject);
+        fetchText(next, options).then(resolve).catch(reject);
         return;
       }
       let data = '';
@@ -146,7 +146,7 @@ async function resolveProviderMediaUrls(id, type, season, episode) {
   return urls;
 }
 
-async function buildStreamBundle(req, mediaUrls) {
+async function buildStreamBundle(req, mediaUrls, headers = {}) {
   const sessionId = (crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex'));
   const expiresAt = Date.now() + TOKEN_TTL_MS;
   const base = (req.headers['x-forwarded-proto'] || 'http') + '://' + (req.headers.host || ('localhost:' + PORT));
@@ -158,6 +158,7 @@ async function buildStreamBundle(req, mediaUrls) {
       sid: sessionId,
       origin: new URL(mediaUrl).origin,
       allowedOrigins: [new URL(mediaUrl).origin],
+      headers,
       exp: expiresAt
     });
     const proxyUrl = base + '/api/proxy/hls?token=' + encodeURIComponent(token);
@@ -173,7 +174,8 @@ async function buildStreamBundle(req, mediaUrls) {
     expiresAt,
     mirrors,
     subtitles: [],
-    qualities: ['auto']
+    qualities: ['auto'],
+    headers
   };
 }
 
@@ -494,7 +496,7 @@ export async function handleRequest(req, res) {
 
     let isManifest = /\.m3u8(\?|$)/i.test(target);
     try {
-      const ft = await fetchText(target);
+      const ft = await fetchText(target, { headers: payload.headers || {} });
       const body = ft.body || '';
       if (/#EXTM3U/i.test(body)) {
         isManifest = true;
@@ -511,7 +513,7 @@ export async function handleRequest(req, res) {
               const uri = m[1];
               try {
                 const abs = new URL(uri, target).toString();
-                const t = await streamCrypto.signStreamToken({ url: abs, sid: sessionId, exp: expiresAt });
+                const t = await streamCrypto.signStreamToken({ url: abs, sid: sessionId, exp: expiresAt, headers: payload.headers });
                 const newUri = base + '/api/proxy/hls?token=' + encodeURIComponent(t);
                 out = out.split('URI="' + uri + '"').join('URI="' + newUri + '"');
               } catch {
@@ -523,8 +525,9 @@ export async function handleRequest(req, res) {
           }
           try {
             const abs = new URL(trimmed, target).toString();
-            const t = await streamCrypto.signStreamToken({ url: abs, sid: sessionId, exp: expiresAt });
-            rewritten.push(base + '/api/proxy/hls?token=' + encodeURIComponent(t));
+            const t = await streamCrypto.signStreamToken({ url: abs, sid: sessionId, exp: expiresAt, headers: payload.headers });
+            const segUri = base + '/api/proxy/hls?token=' + encodeURIComponent(t);
+            rewritten.push(segUri);
           } catch {
             rewritten.push(line);
           }
@@ -543,11 +546,12 @@ export async function handleRequest(req, res) {
 
     const u2 = new URL(target);
     const mod = u2.protocol === 'https:' ? https : http;
-    const upstreamHeaders = {
+    const upstreamHeaders = Object.assign({
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
       'Accept': '*/*',
       'Referer': u2.origin + '/'
-    };
+    }, payload.headers || {});
+    if (!upstreamHeaders.Referer) upstreamHeaders.Referer = u2.origin + '/';
     if (req.headers.range) upstreamHeaders.Range = req.headers.range;
     const upstreamReq = mod.get(target, { headers: upstreamHeaders }, (upstreamRes) => {
       const outHeaders = {

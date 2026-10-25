@@ -4,6 +4,7 @@ import { Search, Play, Music, Flame } from 'lucide-react';
 import { SongItem } from '../types/media';
 import { searchSongs } from '../services/musicService';
 import { useMedia } from '../context/MediaContext';
+import { handleSongCoverError } from '../config/mediaFallback';
 
 export const MusicView: React.FC = () => {
   const [songs, setSongs] = useState<SongItem[]>([]);
@@ -145,10 +146,7 @@ export const MusicView: React.FC = () => {
                       src={song.image}
                       alt={song.title}
                       className="song-thumb"
-                      onError={e => {
-                        (e.target as HTMLImageElement).src =
-                          "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 18V5l12-2v13'%3E%3C/path%3E%3Ccircle cx='6' cy='18' r='3'%3E%3C/circle%3E%3Ccircle cx='18' cy='16' r='3'%3E%3C/circle%3E%3C/svg%3E";
-                      }}
+                      onError={handleSongCoverError}
                     />
                     <div className="title-text-group">
                       <span className="track-name">{song.title}</span>
