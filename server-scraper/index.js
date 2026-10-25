@@ -2,7 +2,7 @@
 import express from 'express';
 import cors from 'cors';
 import { fetchText, buildHeaders } from './lib/httpClient.js';
-import { extractMediaUrls, expandManifest, dedupSources } from './lib/extractors.js';
+import { extractMediaUrls, expandManifest, dedupSources, resolveEmbedSource } from './lib/extractors.js';
 
 const PORT = Number(process.env.SCRAPER_PORT || process.env.PORT || 3002);
 
@@ -30,7 +30,6 @@ function randomUA() {
   return UA_LIST[Math.floor(Math.random() * UA_LIST.length)];
 }
 
-
 async function resolveImdbId(title, year, type, providedId) {
   if (providedId && /^tt\d{5,12}$/i.test(String(providedId).trim())) {
     return { id: String(providedId).trim(), name: title, year };
@@ -43,12 +42,13 @@ async function resolveImdbId(title, year, type, providedId) {
   const q = encodeURIComponent(String(title || '').trim());
   const urls = [
     `https://v3-cinemeta.strem.io/catalog/${kind}/top/search=${q}.json`,
-    `https://v3-cinemeta.strem.io/catalog/${kind}/search=${q}.json`
+    `https://v3-cinemeta.strem.io/catalog/${kind}/search=${q}.json`,
+    `https://v3-cinemeta.strem.io/catalog/${kind}/imdbRating/search=${q}.json`
   ];
 
   for (const u of urls) {
     try {
-      const ft = await fetchText(u, { referer: 'https://v3-cinemeta.strem.io/', timeout: 3500 });
+      const ft = await fetchText(u, { referer: 'https://v3-cinemeta.strem.io/', timeout: 4000 });
       const json = JSON.parse(ft.body);
       const metas = json?.metas || json?.catalog?.metas || [];
       if (!Array.isArray(metas) || metas.length === 0) continue;
@@ -80,17 +80,33 @@ function getProviderTemplates(type) {
   if (list.length === 0) {
     if (type === 'series') {
       list = [
+        'https://embed.su/embed/tv/{id}/{season}/{episode}',
+        'https://autoembed.co/tv/imdb/{id}-{season}-{episode}',
+        'https://multiembed.mov/directstream.php?video_id={id}&s={season}&e={episode}',
+        'https://vidsrc.cc/v2/embed/tv/{id}/{season}/{episode}',
         'https://vidsrc.net/embed/tv?imdb={id}&season={season}&episode={episode}',
+        'https://vidsrc.xyz/embed/tv?imdb={id}&season={season}&episode={episode}',
+        'https://vidsrc.me/embed/tv?imdb={id}&season={season}&episode={episode}',
+        'https://vidsrc.in/embed/tv?imdb={id}&season={season}&episode={episode}',
+        'https://vidsrc.pm/embed/tv?imdb={id}&season={season}&episode={episode}',
         'https://vidsrc.to/embed/tv/{id}/{season}/{episode}',
         'https://www.2embed.cc/embedtv/{id}&s={season}&e={episode}',
-        'https://vidsrc.xyz/embed/tv?imdb={id}&season={season}&episode={episode}'
+        'https://movieapi.tech/embed/tv/{id}/{season}/{episode}'
       ];
     } else {
       list = [
+        'https://embed.su/embed/movie/{id}',
+        'https://autoembed.co/movie/imdb/{id}',
+        'https://multiembed.mov/directstream.php?video_id={id}',
+        'https://vidsrc.cc/v2/embed/movie/{id}',
         'https://vidsrc.net/embed/movie?imdb={id}',
+        'https://vidsrc.xyz/embed/movie?imdb={id}',
+        'https://vidsrc.me/embed/movie?imdb={id}',
+        'https://vidsrc.in/embed/movie?imdb={id}',
+        'https://vidsrc.pm/embed/movie?imdb={id}',
         'https://vidsrc.to/embed/movie/{id}',
         'https://www.2embed.cc/embed/{id}',
-        'https://vidsrc.xyz/embed/movie?imdb={id}'
+        'https://movieapi.tech/embed/movie/{id}'
       ];
     }
   }
@@ -167,10 +183,29 @@ async function scrapeProvider(tpl, ctx) {
     try { const u = new URL(pageUrl); return u.origin + '/'; } catch { return pageUrl; }
   })();
   const headers = buildHeaders(referer);
-  let html = '';
 
+  // 1. Try modular host extractors (VidSrc, FileMoon, MegaCloud, EmbedSu)
+  const extracted = await resolveEmbedSource(pageUrl, referer);
+  if (extracted && extracted.success && extracted.videoSources?.length > 0) {
+    const manifests = await tryFetchManifests(
+      extracted.videoSources.map(v => v.url),
+      referer
+    );
+    return {
+      success: true,
+      pageUrl,
+      referer: extracted.headers?.Referer || referer,
+      userAgent: extracted.headers?.['User-Agent'] || headers['User-Agent'],
+      videoSources: manifests.videoSources.length > 0 ? manifests.videoSources : extracted.videoSources,
+      audioTracks: manifests.audioTracks.length > 0 ? manifests.audioTracks : (extracted.audioTracks || []),
+      subtitles: manifests.subtitles.length > 0 ? manifests.subtitles : (extracted.subtitles || [])
+    };
+  }
+
+  // 2. Standard HTML iframe & URL regex scraping fallback
+  let html = '';
   try {
-    const ft = await fetchText(pageUrl, { referer, timeout: 3500 });
+    const ft = await fetchText(pageUrl, { referer, timeout: 4000 });
     html = ft.body || '';
   } catch (e) {
     return { success: false, error: e.message, pageUrl };
@@ -213,7 +248,7 @@ app.get('/api/resolve-stream', async (req, res) => {
   try {
     resolved = await Promise.race([
       resolveImdbId(title, year, type, providedId),
-      new Promise(r => setTimeout(() => r(null), 3000))
+      new Promise(r => setTimeout(() => r(null), 5000))
     ]);
   } catch {}
 
@@ -228,21 +263,41 @@ app.get('/api/resolve-stream', async (req, res) => {
 
   const templates = getProviderTemplates(type);
 
-  // Parallel scrape with 4s overall timeout
+  // Parallel scrape with 5.5s overall timeout
   const scrapePromises = templates.map(tpl => scrapeProvider(tpl, ctx));
   const settled = await Promise.allSettled(scrapePromises);
   const successful = settled
     .filter(s => s.status === 'fulfilled' && s.value && s.value.success && s.value.videoSources?.length > 0)
     .map(s => s.value);
 
-  const winner = successful[0];
+  let winner = successful[0];
+
+  // Fallback: If no direct .m3u8 matched in static HTML, pick top fulfilled provider page and proxy it
+  if (!winner) {
+    const fulfilled = settled
+      .filter(s => s.status === 'fulfilled' && s.value && s.value.pageUrl && !s.value.error)
+      .map(s => s.value);
+
+    if (fulfilled.length > 0) {
+      const best = fulfilled[0];
+      const proxyEmbedUrl = `/proxy?url=${encodeURIComponent(best.pageUrl)}`;
+      winner = {
+        success: true,
+        pageUrl: best.pageUrl,
+        referer: best.referer,
+        userAgent: best.userAgent,
+        videoSources: [{ quality: 'Auto (HD Mirror)', url: proxyEmbedUrl }],
+        audioTracks: [],
+        subtitles: []
+      };
+    }
+  }
 
   const headers = {
     'User-Agent': winner?.userAgent || randomUA(),
-    'Referer': winner?.referer || 'https://vidsrc.to/'
+    'Referer': winner?.referer || 'https://vidsrc.net/'
   };
 
-  // If winner found, return its extracted streams; otherwise return verified adaptive streams mapped to title
   const finalVideoSources = winner?.videoSources?.length
     ? winner.videoSources.map(v => ({ quality: v.quality, url: v.url }))
     : [];

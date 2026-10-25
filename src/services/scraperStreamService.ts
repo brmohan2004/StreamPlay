@@ -34,7 +34,7 @@ export interface ScrapedStreamResult {
 export function getScraperBase(): string {
   const envBase = (import.meta as any).env?.VITE_SCRAPER_BASE;
   if (typeof envBase === 'string' && envBase.trim().length > 0) return envBase.trim();
-  if (typeof window !== 'undefined' && /^https?:/i.test(window.location.protocol)) {
+  if (typeof window !== 'undefined' && window.location.origin) {
     return window.location.origin;
   }
   return 'http://localhost:3002';
@@ -85,9 +85,16 @@ export async function resolveScrapedStream(params: {
 }
 
 export async function toProxyUrl(rawUrl: string, headers: Record<string, string> = {}): Promise<string> {
-  const base = (typeof window !== 'undefined' && /^https?:/i.test(window.location.protocol))
-    ? window.location.origin
-    : 'http://localhost:3001';
+  if (!rawUrl || rawUrl.includes('/api/proxy/hls?token=')) return rawUrl;
+  const envBase = (import.meta as any).env?.VITE_STREAM_BASE || (import.meta as any).env?.VITE_PROXY_BASE;
+  let base = '';
+  if (typeof envBase === 'string' && envBase.trim().length > 0) {
+    base = envBase.trim();
+  } else if (typeof window !== 'undefined' && window.location.origin) {
+    base = window.location.origin;
+  } else {
+    base = 'http://localhost:3001';
+  }
   try {
     const token = await signStreamToken({
       url: rawUrl,

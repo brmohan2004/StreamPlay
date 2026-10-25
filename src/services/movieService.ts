@@ -1,7 +1,9 @@
 import { MovieItem, OTTBrand, OTTMetadata } from '../types/media';
 import { DEFAULT_POSTER_FALLBACK } from '../config/mediaFallback';
 
-const CINEMETA_BASE = 'https://v3-cinemeta.strem.io';
+const CINEMETA_BASE = (typeof window !== 'undefined' && window.location.origin)
+  ? `${window.location.origin}/api/cinemeta`
+  : 'https://v3-cinemeta.strem.io';
 
 export const OTT_PLATFORMS: OTTMetadata[] = [
   {

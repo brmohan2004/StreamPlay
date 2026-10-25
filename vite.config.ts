@@ -8,7 +8,7 @@ function streamPlayBackendPlugin() {
     configureServer(server: any) {
       server.middlewares.use((req: any, res: any, next: any) => {
         const url = req.url || "";
-        if (url.startsWith("/stream") || url.startsWith("/proxy") || url.startsWith("/health") || url.startsWith("/playback") || url.startsWith("/segment") || url.startsWith("/api/stream") || url.startsWith("/api/proxy") || url.startsWith("/api/health")) {
+        if (url.startsWith("/stream") || url.startsWith("/proxy") || url.startsWith("/health") || url.startsWith("/playback") || url.startsWith("/segment") || url.startsWith("/api/stream") || url.startsWith("/api/proxy") || url.startsWith("/api/health") || url.startsWith("/api/cinemeta")) {
           handleRequest(req, res).catch((err: any) => {
             if (!res.headersSent) {
               res.statusCode = 500;
@@ -23,7 +23,7 @@ function streamPlayBackendPlugin() {
     configurePreviewServer(server: any) {
       server.middlewares.use((req: any, res: any, next: any) => {
         const url = req.url || "";
-        if (url.startsWith("/stream") || url.startsWith("/proxy") || url.startsWith("/health") || url.startsWith("/playback") || url.startsWith("/segment") || url.startsWith("/api/stream") || url.startsWith("/api/proxy") || url.startsWith("/api/health")) {
+        if (url.startsWith("/stream") || url.startsWith("/proxy") || url.startsWith("/health") || url.startsWith("/playback") || url.startsWith("/segment") || url.startsWith("/api/stream") || url.startsWith("/api/proxy") || url.startsWith("/api/health") || url.startsWith("/api/cinemeta")) {
           handleRequest(req, res).catch((err: any) => {
             if (!res.headersSent) {
               res.statusCode = 500;
@@ -48,6 +48,12 @@ export default defineConfig({
         target: "http://localhost:3002",
         changeOrigin: true,
         secure: false
+      },
+      "/api/cinemeta": {
+        target: "https://v3-cinemeta.strem.io",
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api\/cinemeta/, "")
       },
       "/api/saavn": {
         target: "https://www.jiosaavn.com",
@@ -78,6 +84,12 @@ export default defineConfig({
         target: "http://localhost:3002",
         changeOrigin: true,
         secure: false
+      },
+      "/api/cinemeta": {
+        target: "https://v3-cinemeta.strem.io",
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api\/cinemeta/, "")
       },
       "/api/saavn": {
         target: "https://www.jiosaavn.com",

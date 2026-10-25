@@ -1,33 +1,36 @@
 // server-scraper/lib/extractors.js
 import { fetchText } from './httpClient.js';
+import { unpackJs } from './extractors/base.js';
+import { VidSrcExtractor } from './extractors/vidsrc.js';
+import { FileMoonExtractor } from './extractors/filemoon.js';
+import { MegaCloudExtractor } from './extractors/megacloud.js';
+import { EmbedSuExtractor } from './extractors/embedsu.js';
+
+export { unpackJs };
+
+const EXTRACTORS = [
+  new VidSrcExtractor(),
+  new FileMoonExtractor(),
+  new MegaCloudExtractor(),
+  new EmbedSuExtractor()
+];
 
 const MEDIA_EXT = /\.(m3u8|mp4|mkv|webm|ts|m4s|vtt|srt)(\?|#|$)/i;
 
-/**
- * Lightweight safe unpacker for Dean Edwards p.a.c.k.e.r encoded scripts commonly found on video mirrors.
- */
-export function unpackJs(code) {
-  if (!code || typeof code !== 'string') return '';
-  const regex = /eval\(function\(p,a,c,k,e,[rd]\)\{.*\}\('(.*?)',(\d+),(\d+),'(.*?)'\.split\('\|'\)/s;
-  const match = regex.exec(code);
-  if (!match) return code;
-  try {
-    const [, payload, radixStr, countStr, syms] = match;
-    const radix = parseInt(radixStr, 10);
-    const count = parseInt(countStr, 10);
-    const symArray = syms.split('|');
-    const baseUnpack = (c) => {
-      return (c < radix ? '' : baseUnpack(Math.floor(c / radix))) +
-        ((c = c % radix) > 35 ? String.fromCharCode(c + 29) : c.toString(36));
-    };
-    const dict = {};
-    for (let i = 0; i < count; i++) {
-      dict[baseUnpack(i)] = symArray[i] || baseUnpack(i);
+export async function resolveEmbedSource(embedUrl, referer) {
+  for (const ext of EXTRACTORS) {
+    if (ext.canExtract(embedUrl)) {
+      try {
+        const res = await ext.extract(embedUrl, referer);
+        if (res && res.success && res.videoSources.length > 0) {
+          return res;
+        }
+      } catch (err) {
+        console.warn(`[Extractors] ${ext.name} failed for ${embedUrl}:`, err.message);
+      }
     }
-    return payload.replace(/\b\w+\b/g, (w) => dict[w] !== undefined ? dict[w] : w);
-  } catch {
-    return code;
   }
+  return null;
 }
 
 export function extractMediaUrls(html, baseUrl) {
@@ -167,22 +170,23 @@ export function normalizeQualityLabel(q) {
 }
 
 export async function expandManifest(url, referer) {
-  const { fetchText } = await import('./httpClient.js');
-  const ft = await fetchText(url, { referer });
-  const text = ft.body || '';
-  if (/#EXTM3U/i.test(text)) {
-    if (isMasterPlaylist(text)) {
-      const parsed = parseMasterPlaylist(text, url);
-      return { type: 'master', ...parsed, headersReferer: referer || new URL(url).origin + '/' };
+  try {
+    const ft = await fetchText(url, { referer });
+    const text = ft.body || '';
+    if (/#EXTM3U/i.test(text)) {
+      if (isMasterPlaylist(text)) {
+        const parsed = parseMasterPlaylist(text, url);
+        return { type: 'master', ...parsed, headersReferer: referer || new URL(url).origin + '/' };
+      }
+      return { type: 'media', videoSources: [{ quality: 'Auto (Adaptive)', url }], audioTracks: [], subtitles: [] };
     }
-    return { type: 'media', videoSources: [{ quality: 'Auto (Adaptive)', url }], audioTracks: [], subtitles: [] };
-  }
+  } catch {}
   return null;
 }
 
 export function dedupSources(sources) {
   const seen = new Set();
-  return sources.filter(s => {
+  return (sources || []).filter(s => {
     if (!s || !s.url) return false;
     if (seen.has(s.url)) return false;
     seen.add(s.url);

@@ -45,21 +45,19 @@ function fetchText(targetUrl, options = {}) {
   });
 }
 
-
-function fetchBuffer(targetUrl) {
+function fetchBuffer(targetUrl, options = {}) {
   return new Promise((resolve, reject) => {
     const u = new URL(targetUrl);
     const mod = u.protocol === 'https:' ? https : http;
-    const req = mod.get(targetUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
-        'Accept': '*/*',
-        'Referer': `${u.origin}/`
-      }
-    }, (r) => {
+    const headers = Object.assign({
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+      'Accept': '*/*',
+      'Referer': `${u.origin}/`
+    }, options.headers || {});
+    const req = mod.get(targetUrl, { headers }, (r) => {
       if (r.statusCode >= 300 && r.statusCode < 400 && r.headers.location) {
         const next = new URL(r.headers.location, targetUrl).toString();
-        fetchBuffer(next).then(resolve).catch(reject);
+        fetchBuffer(next, options).then(resolve).catch(reject);
         return;
       }
       const chunks = [];
@@ -87,18 +85,48 @@ function isValidId(id) {
   return /^tt\d{5,12}$/.test(id) || /^\d{1,12}$/.test(id);
 }
 
-function getProviderTemplates() {
+function getProviderTemplates(type = 'movie') {
   const raw = process.env.STREAM_PROVIDER_TEMPLATES || process.env.STREAM_PROVIDERS || '';
-  if (!raw || !String(raw).trim()) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) {
-      return parsed.map((v) => String(v || '').trim()).filter(Boolean);
+  let list = [];
+  if (raw && String(raw).trim()) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) list = parsed.map((v) => String(v || '').trim()).filter(Boolean);
+    } catch {
+      list = String(raw).split(',').map((v) => v.trim()).filter(Boolean);
     }
-  } catch {
-    // Allow comma-separated templates for simple env configuration.
   }
-  return String(raw).split(',').map((v) => v.trim()).filter(Boolean);
+
+  if (list.length === 0) {
+    if (type === 'series') {
+      list = [
+        'https://embed.su/embed/tv/{id}/{season}/{episode}',
+        'https://autoembed.co/tv/imdb/{id}-{season}-{episode}',
+        'https://multiembed.mov/directstream.php?video_id={id}&s={season}&e={episode}',
+        'https://vidsrc.cc/v2/embed/tv/{id}/{season}/{episode}',
+        'https://vidsrc.net/embed/tv?imdb={id}&season={season}&episode={episode}',
+        'https://vidsrc.xyz/embed/tv?imdb={id}&season={season}&episode={episode}',
+        'https://vidsrc.me/embed/tv?imdb={id}&season={season}&episode={episode}',
+        'https://vidsrc.pm/embed/tv?imdb={id}&season={season}&episode={episode}',
+        'https://vidsrc.to/embed/tv/{id}/{season}/{episode}',
+        'https://www.2embed.cc/embedtv/{id}&s={season}&e={episode}'
+      ];
+    } else {
+      list = [
+        'https://embed.su/embed/movie/{id}',
+        'https://autoembed.co/movie/imdb/{id}',
+        'https://multiembed.mov/directstream.php?video_id={id}',
+        'https://vidsrc.cc/v2/embed/movie/{id}',
+        'https://vidsrc.net/embed/movie?imdb={id}',
+        'https://vidsrc.xyz/embed/movie?imdb={id}',
+        'https://vidsrc.me/embed/movie?imdb={id}',
+        'https://vidsrc.pm/embed/movie?imdb={id}',
+        'https://vidsrc.to/embed/movie/{id}',
+        'https://www.2embed.cc/embed/{id}'
+      ];
+    }
+  }
+  return list;
 }
 
 function renderProviderTemplate(template, id, type, season, episode) {
@@ -125,24 +153,38 @@ function extractMediaUrls(html) {
   return [...found];
 }
 
-async function resolveProviderMediaUrls(id, type, season, episode) {
-  const templates = getProviderTemplates();
+async function resolveProviderMediaUrls(id, type, season, episode, req) {
+  const templates = getProviderTemplates(type);
   const urls = [];
   const seen = new Set();
+  const validEmbedPages = [];
+
   for (const template of templates) {
     const embedUrl = renderProviderTemplate(template, id, type, season, episode);
     if (!embedUrl || !validateTargetUrl(embedUrl)) continue;
     try {
       const { body } = await fetchText(embedUrl);
-      for (const mediaUrl of extractMediaUrls(body)) {
-        if (seen.has(mediaUrl)) continue;
-        seen.add(mediaUrl);
-        urls.push(mediaUrl);
+      const extracted = extractMediaUrls(body);
+      if (extracted.length > 0) {
+        for (const mediaUrl of extracted) {
+          if (seen.has(mediaUrl)) continue;
+          seen.add(mediaUrl);
+          urls.push(mediaUrl);
+        }
+      } else {
+        validEmbedPages.push(embedUrl);
       }
     } catch {
-      // Try the next configured provider.
+      // Try next template
     }
   }
+
+  if (urls.length === 0 && validEmbedPages.length > 0) {
+    const base = req ? ((req.headers['x-forwarded-proto'] || 'http') + '://' + (req.headers.host || ('localhost:' + PORT))) : `http://localhost:${PORT}`;
+    const fallbackEmbed = validEmbedPages[0];
+    urls.push(`${base}/proxy?url=${encodeURIComponent(fallbackEmbed)}`);
+  }
+
   return urls;
 }
 
@@ -178,7 +220,6 @@ async function buildStreamBundle(req, mediaUrls, headers = {}) {
     headers
   };
 }
-
 
 function clientIp(req) {
   const xf = (req.headers['x-forwarded-for'] || '').toString().split(',')[0].trim();
@@ -219,6 +260,7 @@ function sendNoWildcardCors(req, res, status, headers) {
   if (origin) { h['Access-Control-Allow-Origin'] = origin; h['Vary'] = 'Origin'; }
   res.writeHead(status, h);
 }
+
 export async function handleRequest(req, res) {
   const u = new URL(req.url, `http://localhost:${PORT}`);
 
@@ -242,6 +284,25 @@ export async function handleRequest(req, res) {
     return;
   }
 
+  if (u.pathname.startsWith('/api/cinemeta')) {
+    const cinemetaPath = u.pathname.replace(/^\/api\/cinemeta/, '') + u.search;
+    const targetUrl = `https://v3-cinemeta.strem.io${cinemetaPath}`;
+    try {
+      const { body, status } = await fetchText(targetUrl, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+      });
+      res.writeHead(status || 200, {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'public, max-age=3600'
+      });
+      res.end(body);
+    } catch (err) {
+      sendJson(res, 502, { error: String(err?.message || err) });
+    }
+    return;
+  }
+
   if (u.pathname === '/stream') {
     const id = u.searchParams.get('id') || '';
     const type = u.searchParams.get('type') === 'series' ? 'series' : 'movie';
@@ -251,7 +312,7 @@ export async function handleRequest(req, res) {
       sendJson(res, 404, { error: 'invalid id' });
       return;
     }
-    const mediaUrls = await resolveProviderMediaUrls(id, type, season, episode);
+    const mediaUrls = await resolveProviderMediaUrls(id, type, season, episode, req);
     if (mediaUrls.length === 0) {
       sendJson(res, 404, { error: 'no direct stream found' });
       return;
@@ -261,7 +322,6 @@ export async function handleRequest(req, res) {
     sendJson(res, 200, encrypted);
     return;
   }
-
 
   if (u.pathname === '/proxy') {
     const target = u.searchParams.get('url');
@@ -281,7 +341,6 @@ export async function handleRequest(req, res) {
           targetOrigin = new URL(target).origin;
         } catch {}
 
-        // 0. Detect upstream 404 / Missing content and inform parent StreamPlay player
         const is404Missing = status === 404 ||
           (text.includes('404') && (text.includes('Content not found') || text.includes('not found'))) ||
           (text.includes('Content not found') && text.includes('IMDB:'));
@@ -297,24 +356,18 @@ export async function handleRequest(req, res) {
           text = failoverScript + text;
         }
 
-        // 1. Inject <base> tag so relative paths (posters, styles, icons) resolve to target origin
         if (targetOrigin && !/<base\s/i.test(text)) {
           text = text.includes('<head>')
             ? text.replace('<head>', `<head><base href="${targetOrigin}/">`)
             : `<base href="${targetOrigin}/">` + text;
         }
 
-        // 2. Strip known ad injection scripts (tagivi, adplox, popads, propellerads, whos.amung, disable-devtool, etc.)
         text = text.replace(/<script[^>]+(?:tagivi|adplox|whos\.amung|disable-devtool|histats|popads|clickadu|propellerads|interline)[^>]*><\/script>/gi, '');
-
-        // 3. Strip ad links & tracking images
         text = text.replace(/<a[^>]+href=["'][^"']*(?:interline|adplox|traffic|banner|sponsor)[^"']*["'][^>]*>[\s\S]*?<\/a>/gi, '');
         text = text.replace(/<img[^>]+src=["'][^"']*(?:whos\.amung\.us|adplox)[^"']*["'][^>]*>/gi, '');
 
-        // 4. Inject runtime anti-ad protection and auto-player initialization
         const antiAdScript = `
 <style>
-  /* Strip all ad overlays, ad links, and fake error screens */
   a, a *, a[href], a[target="_blank"] {
     pointer-events: none !important;
     cursor: default !important;
@@ -336,10 +389,8 @@ export async function handleRequest(req, res) {
   }
 </style>
 <script>
-  // Prevent popup window creation
   window.open = function() { return null; };
 
-  // Strip all href and target attributes so Chrome never previews or navigates any ad link
   function stripAllAdLinks() {
     var links = document.querySelectorAll('a');
     for (var i = 0; i < links.length; i++) {
@@ -359,7 +410,6 @@ export async function handleRequest(req, res) {
     });
   } catch(e) {}
 
-  // Intercept any clicks on ad links
   window.addEventListener('click', function(e) {
     var a = e.target && e.target.closest ? e.target.closest('a') : null;
     if (a && a.href) {
@@ -372,7 +422,6 @@ export async function handleRequest(req, res) {
     }
   }, true);
 
-  // Auto-play driver: triggers video play and clicks player controls automatically
   function autoPlayEmbeddedMedia() {
     try {
       var ifr = document.getElementById('iframesrc');
@@ -389,13 +438,11 @@ export async function handleRequest(req, res) {
       var drop = document.querySelector('.dropdown');
       if (drop) drop.style.display = 'block';
 
-      // Auto-click play buttons
       var playBtns = document.querySelectorAll('button[aria-label*="play" i], button[title*="play" i], .play-button, .vjs-big-play-button, .jw-icon-display, .plyr__control--overlaid, [class*="play-btn"], [class*="playBtn"]');
       for (var i = 0; i < playBtns.length; i++) {
         playBtns[i].click();
       }
 
-      // Unpause any HTML5 video
       var vids = document.querySelectorAll('video');
       for (var j = 0; j < vids.length; j++) {
         if (vids[j].paused) {
@@ -458,7 +505,7 @@ export async function handleRequest(req, res) {
       sendJson(res, 404, { error: 'invalid id' });
       return;
     }
-    const mediaUrls = await resolveProviderMediaUrls(id, type, season, episode);
+    const mediaUrls = await resolveProviderMediaUrls(id, type, season, episode, req);
     if (mediaUrls.length === 0) {
       sendJson(res, 404, { error: 'no direct stream found' });
       return;
@@ -580,4 +627,3 @@ if (process.argv[1] && process.argv[1].endsWith('index.js')) {
     console.log(`StreamPlay backend listening on http://localhost:${PORT}`);
   });
 }
-

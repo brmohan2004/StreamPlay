@@ -497,14 +497,26 @@ export const CustomVideoPlayer: React.FC = () => {
         if (data.fatal) {
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:
+              // Try reloading first; if persistent, failover to next scraped mirror/quality
               hls?.startLoad();
               break;
             case Hls.ErrorTypes.MEDIA_ERROR:
               hls?.recoverMediaError();
               break;
             default:
+              if (scrapedStream && scrapedStream.videoSources.length > 1) {
+                const currentIdx = scrapedStream.videoSources.findIndex(s => s.url === currentStreamUrl);
+                if (currentIdx >= 0 && currentIdx + 1 < scrapedStream.videoSources.length) {
+                  const nextSource = scrapedStream.videoSources[currentIdx + 1];
+                  console.info(`[CustomVideoPlayer] HLS fatal error, failing over to ${nextSource.quality}`);
+                  setSelectedQuality(nextSource.quality);
+                  setSelectedQualityUrl(nextSource.url);
+                  return;
+                }
+              }
               hls?.destroy();
               setDirectStreamFailed(true);
+              setIsLoading(false);
               break;
           }
         }
@@ -1064,38 +1076,55 @@ export const CustomVideoPlayer: React.FC = () => {
           </div>
         )}
 
-        {(currentStreamUrl || activeMovie.streamUrl) && !directStreamFailed ? (
-          <video
-            ref={videoRef}
-            crossOrigin="anonymous"
-            className="custom-stream-video"
-            playsInline
-            autoPlay
-            muted={isMuted}
-            onClick={togglePlayPause}
-            onPlay={() => setIsPlaying(true)}
-            onPause={() => setIsPlaying(false)}
-            onTimeUpdate={() => {
-              if (videoRef.current) setVideoTime(videoRef.current.currentTime);
-            }}
-            onWaiting={() => setIsLoading(true)}
-            onPlaying={() => {
-              setIsLoading(false);
-            }}
-          >
-            {activeSubtitleUrl && (
-              <track
-                key={activeSubtitleUrl}
-                kind="subtitles"
-                src={activeSubtitleUrl}
-                srcLang="en"
-                label={selectedSubtitles}
-                default
-              />
-            )}
-          </video>
+        {(currentStreamUrl || activeMovie.streamUrl) ? (
+          (currentStreamUrl && (currentStreamUrl.includes('/proxy?url=') || (!/\.(m3u8|mp4|webm|ts)(\?|#|$)/i.test(currentStreamUrl) && !currentStreamUrl.includes('/api/proxy/hls')))) ? (
+            <iframe
+              src={currentStreamUrl}
+              className="custom-stream-video"
+              style={{ width: '100%', height: '100%', border: 'none', background: '#000' }}
+              allow="autoplay; encrypted-media; fullscreen"
+              allowFullScreen
+              onLoad={() => setIsLoading(false)}
+            />
+          ) : !directStreamFailed ? (
+            <video
+              ref={videoRef}
+              crossOrigin="anonymous"
+              className="custom-stream-video"
+              playsInline
+              autoPlay
+              muted={isMuted}
+              onClick={togglePlayPause}
+              onPlay={() => setIsPlaying(true)}
+              onPause={() => setIsPlaying(false)}
+              onTimeUpdate={() => {
+                if (videoRef.current) setVideoTime(videoRef.current.currentTime);
+              }}
+              onWaiting={() => setIsLoading(true)}
+              onPlaying={() => {
+                setIsLoading(false);
+              }}
+            >
+              {activeSubtitleUrl && (
+                <track
+                  key={activeSubtitleUrl}
+                  kind="subtitles"
+                  src={activeSubtitleUrl}
+                  srcLang="en"
+                  label={selectedSubtitles}
+                  default
+                />
+              )}
+            </video>
+          ) : (
+            <div className="direct-stream-unavailable" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', color: '#fff', textAlign: 'center', padding: '24px' }}>
+              <div>
+                <p style={{ fontSize: '1.1rem', marginBottom: '8px' }}>Direct stream unavailable</p>
+                <p style={{ opacity: 0.7, fontSize: '0.9rem' }}>This title could not be resolved to a playable HLS stream.</p>
+              </div>
+            </div>
+          )
         ) : (
-
           <div className="direct-stream-unavailable" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', color: '#fff', textAlign: 'center', padding: '24px' }}>
             <div>
               <p style={{ fontSize: '1.1rem', marginBottom: '8px' }}>Direct stream unavailable</p>
