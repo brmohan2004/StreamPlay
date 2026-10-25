@@ -26,8 +26,8 @@ import {
   RotateCw
 } from 'lucide-react';
 import { useMedia } from '../context/MediaContext';
-import { STREAMING_SERVERS, getStreamEmbedUrl, fetchMovieDetails, markProviderHealthy, markProviderUnhealthy, isProviderHealthy, getFirstHealthyProviderIndex, getNextHealthyProviderIndex } from '../services/movieService';
-import { activateMovieModeAdRecovery, deactivateMovieModeAdRecovery } from '../services/adRecovery';
+import { STREAMING_SERVERS, fetchMovieDetails, markProviderHealthy, markProviderUnhealthy, isProviderHealthy, getFirstHealthyProviderIndex, getNextHealthyProviderIndex } from '../services/movieService';
+import { deactivateMovieModeAdRecovery } from '../services/adRecovery';
 import { activateAdBlocker, deactivateAdBlocker } from '../services/adBlocker';
 import { audioEnhancer } from '../services/audioEnhancer';
 import { EpisodeItem } from '../types/media';
@@ -61,16 +61,7 @@ export const CustomVideoPlayer: React.FC = () => {
   const [videoTime, setVideoTime] = useState<number>(0);
   const savedSeekTimeRef = useRef<number | null>(null);
 
-  const currentEmbedUrl = useMemo(() => {
-    if (!activeMovie) return '';
-    return getStreamEmbedUrl(
-      activeMovie.id,
-      (activeMovie.type || 'movie') as 'movie' | 'series',
-      videoProviderIndex,
-      activeSeason,
-      activeEpisode
-    );
-  }, [activeMovie, videoProviderIndex, activeSeason, activeEpisode]);
+// (iframe fallback removed: direct HLS only)
 
   // Player UI states
   const [isPlaying, setIsPlaying] = useState(true);
@@ -586,14 +577,12 @@ export const CustomVideoPlayer: React.FC = () => {
   }, [hasPlayerCrashed, isVideoModalOpen, videoProviderIndex, handleSwitchServer]);
 
   // Movie-mode ad recovery: when an ad URL is triggered, wait (ms) then
-  // trigger the back button (return to player) and auto-close opened tabs.
+  // adRecovery is intentionally disabled: rely on the ad blocker instead of
+  // allowing ad tabs to open and then recovering them.
   useEffect(() => {
     if (!isVideoModalOpen) {
       deactivateMovieModeAdRecovery();
-      return;
     }
-    const cleanup = activateMovieModeAdRecovery({ delayMs: 1200 });
-    return () => cleanup();
   }, [isVideoModalOpen]);
 
   // Playback rate synchronization for native video
@@ -1102,15 +1091,8 @@ export const CustomVideoPlayer: React.FC = () => {
               />
             )}
           </video>
-        ) : currentEmbedUrl ? (
-          <iframe
-            src={currentEmbedUrl}
-            className="custom-stream-iframe"
-            title="Media Stream Player"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-            allowFullScreen
-          />
         ) : (
+
           <div className="direct-stream-unavailable" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', color: '#fff', textAlign: 'center', padding: '24px' }}>
             <div>
               <p style={{ fontSize: '1.1rem', marginBottom: '8px' }}>Direct stream unavailable</p>

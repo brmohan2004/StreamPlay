@@ -30,36 +30,6 @@ function randomUA() {
   return UA_LIST[Math.floor(Math.random() * UA_LIST.length)];
 }
 
-// Fallback adaptive HLS streams for reliable playback
-const DEFAULT_FALLBACK_STREAMS = [
-  {
-    quality: '1080p FHD',
-    url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8'
-  },
-  {
-    quality: '720p HD',
-    url: 'https://test-streams.mux.dev/x36xhzz/url_0/193039199_mp4_h264_aac_hd_720p_2000.m3u8'
-  },
-  {
-    quality: '480p SD',
-    url: 'https://test-streams.mux.dev/x36xhzz/url_2/193039199_mp4_h264_aac_ld_360p_240.m3u8'
-  },
-  {
-    quality: 'Auto (Adaptive)',
-    url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8'
-  }
-];
-
-const DEFAULT_AUDIO_TRACKS = [
-  { name: 'English (Original 5.1)', lang: 'en', url: '', default: true },
-  { name: 'Tamil (Dubbed)', lang: 'ta', url: '', default: false },
-  { name: 'Hindi (Dubbed)', lang: 'hi', url: '', default: false }
-];
-
-const DEFAULT_SUBTITLES = [
-  { lang: 'English [CC]', url: 'https://bitdash-a.akamaihd.net/content/sintel/subtitles/subtitles_en.vtt', default: true },
-  { lang: 'Spanish', url: 'https://bitdash-a.akamaihd.net/content/sintel/subtitles/subtitles_es.vtt', default: false }
-];
 
 async function resolveImdbId(title, year, type, providedId) {
   if (providedId && /^tt\d{5,12}$/i.test(String(providedId).trim())) {
@@ -275,18 +245,18 @@ app.get('/api/resolve-stream', async (req, res) => {
   // If winner found, return its extracted streams; otherwise return verified adaptive streams mapped to title
   const finalVideoSources = winner?.videoSources?.length
     ? winner.videoSources.map(v => ({ quality: v.quality, url: v.url }))
-    : DEFAULT_FALLBACK_STREAMS;
+    : [];
 
   const finalAudioTracks = winner?.audioTracks?.length
     ? winner.audioTracks.map(a => ({ name: a.name || 'Audio Track', lang: a.lang || 'und', url: a.url, default: !!a.default }))
-    : DEFAULT_AUDIO_TRACKS;
+    : [];
 
   const finalSubtitles = winner?.subtitles?.length
     ? winner.subtitles.map(s => ({ lang: s.lang || 'Subtitle', url: s.url, default: !!s.default }))
-    : DEFAULT_SUBTITLES;
+    : [];
 
   return res.json({
-    success: true,
+    success: !!winner,
     title: resolved?.name || title,
     year: resolved?.year || year,
     imdbId: resolved?.id || providedId || null,

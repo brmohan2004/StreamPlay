@@ -117,6 +117,12 @@ interface MediaContextType {
   songToAddToPlaylist: SongItem | null;
   openAddToPlaylist: (song: SongItem) => void;
   closeAddToPlaylist: () => void;
+
+  // Audio Enhancer Modal state
+  isAudioEnhancerOpen: boolean;
+  openAudioEnhancer: (mode?: 'music' | 'movie') => void;
+  closeAudioEnhancer: () => void;
+  toggleAudioEnhancer: (mode?: 'music' | 'movie') => void;
 }
 
 const MediaContext = createContext<MediaContextType | undefined>(undefined);
@@ -365,6 +371,27 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const closeAddToPlaylist = () => {
     setSongToAddToPlaylist(null);
+  };
+
+  // Audio Enhancer Modal state
+  const [isAudioEnhancerOpen, setIsAudioEnhancerOpen] = useState(false);
+
+  const openAudioEnhancer = (mode?: 'music' | 'movie') => {
+    if (mode) audioEnhancer.setMode(mode);
+    audioEnhancer.warmUp();
+    setIsAudioEnhancerOpen(true);
+  };
+
+  const closeAudioEnhancer = () => {
+    setIsAudioEnhancerOpen(false);
+  };
+
+  const toggleAudioEnhancer = (mode?: 'music' | 'movie') => {
+    if (isAudioEnhancerOpen) {
+      closeAudioEnhancer();
+    } else {
+      openAudioEnhancer(mode);
+    }
   };
 
   const isSongInPlaylist = (playlistId: string, songId: string | number) => {
@@ -1335,6 +1362,10 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         songToAddToPlaylist,
         openAddToPlaylist,
         closeAddToPlaylist,
+        isAudioEnhancerOpen,
+        openAudioEnhancer,
+        closeAudioEnhancer,
+        toggleAudioEnhancer,
         userLocation,
         changeUserLocation,
         videoQuality,
