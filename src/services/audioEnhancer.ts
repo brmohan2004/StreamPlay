@@ -769,35 +769,8 @@ export class AudioEnhancerEngine {
 
   prime(element: HTMLMediaElement | null | undefined, mode: EnhancerMode = 'music'): void {
     void mode;
-    if (!element || element === this.currentElement || !this.settings.enabled) {
-      this.warmUp();
-      return;
-    }
-    const ctx = this.ensureContext();
-    if (!ctx) return;
-
-    if (!element.crossOrigin) {
-      try { element.crossOrigin = 'anonymous'; } catch {}
-    }
-
-    let source = this.sourceMap.get(element);
-    if (!source) {
-      try {
-        source = ctx.createMediaElementSource(element);
-        this.sourceMap.set(element, source);
-      } catch (err) {
-        return;
-      }
-    }
-
-    try {
-      try { source.disconnect(); } catch {}
-      if (this.nodes.inputGain) {
-        source.connect(this.nodes.inputGain);
-      } else {
-        source.connect(ctx.destination);
-      }
-    } catch {}
+    void element;
+    this.warmUp();
   }
 
   preEnhance(element?: HTMLMediaElement | null, mode: EnhancerMode = 'music'): void {

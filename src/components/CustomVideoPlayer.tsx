@@ -407,8 +407,11 @@ export const CustomVideoPlayer: React.FC = () => {
     if (Hls.isSupported()) {
       hls = new Hls({
         enableWorker: true,
-        lowLatencyMode: true,
-        backBufferLength: 90,
+        lowLatencyMode: false, // Disabling low-latency polling saves significant mobile CPU and battery
+        maxBufferLength: 20, // Buffer 20s ahead: zero stutter, but stops gigabytes of runaway downloads
+        maxMaxBufferLength: 35, // Hard cap forward buffer to 35s
+        maxBufferSize: 20 * 1024 * 1024, // 20MB RAM limit
+        backBufferLength: 10, // Evict played chunks after 10s to keep memory footprint light
         xhrSetup: (xhr: XMLHttpRequest) => {
           Object.entries(streamHeaders).forEach(([key, value]) => {
             try { xhr.setRequestHeader(key, String(value)); } catch {}

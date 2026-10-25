@@ -51,8 +51,16 @@ export const AudioEnhancerModal: React.FC = () => {
     if (!ctx) return;
 
     let idlePhase = 0;
+    let lastDrawTime = 0;
+    const targetInterval = 33; // 30fps throttled: cuts GPU/CPU load in half while looking buttery smooth
 
-    const render = () => {
+    const render = (timestamp: number) => {
+      animFrameRef.current = requestAnimationFrame(render);
+      if (document.hidden) return;
+
+      if (timestamp - lastDrawTime < targetInterval) return;
+      lastDrawTime = timestamp;
+
       const data = audioEnhancer.getFrequencyData();
       const width = canvas.width;
       const height = canvas.height;
@@ -105,8 +113,6 @@ export const AudioEnhancerModal: React.FC = () => {
           ctx.fill();
         }
       }
-
-      animFrameRef.current = requestAnimationFrame(render);
     };
 
     animFrameRef.current = requestAnimationFrame(render);

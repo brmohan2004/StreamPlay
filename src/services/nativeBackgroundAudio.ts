@@ -31,8 +31,7 @@ let silentAudioCtx: AudioContext | null = null;
 
 /**
  * Keeps the browser's native audio pipeline active across track switches.
- * When a song ends and the next begins, an active AudioContext prevents the OS
- * audio session from dropping or entering an idle state when the screen is turned off.
+ * Uses lightweight AudioContext state check without heavy continuous oscillator spinning.
  */
 export function enableAudioPipelineKeepAlive(): void {
   try {
@@ -40,14 +39,7 @@ export function enableAudioPipelineKeepAlive(): void {
     if (!AudioCtx) return;
 
     if (!silentAudioCtx) {
-      silentAudioCtx = new AudioCtx();
-      const osc = silentAudioCtx.createOscillator();
-      const gain = silentAudioCtx.createGain();
-      // Near-zero gain: mathematically inaudible, but keeps the OS hardware DAC active
-      gain.gain.value = 0.00001;
-      osc.connect(gain);
-      gain.connect(silentAudioCtx.destination);
-      osc.start();
+      silentAudioCtx = new AudioCtx({ latencyHint: 'playback' });
     }
 
     if (silentAudioCtx.state === 'suspended') {

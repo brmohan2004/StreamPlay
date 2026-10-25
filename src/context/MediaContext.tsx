@@ -740,17 +740,16 @@ export const MediaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
 
         // Gapless background audio preloader:
-        // When current track has <= 25 seconds remaining or is >= 70% played,
-        // proactively preload the next track into the browser audio cache
-        if (remaining <= 25 || (audio.currentTime / audio.duration) >= 0.7) {
+        // Respects user setting 'streamplay_setting_gapless'.
+        // Only preloads within 10 seconds of song end, saving massive cellular data on skipped tracks
+        const isGaplessEnabled = localStorage.getItem('streamplay_setting_gapless') !== 'false';
+        if (isGaplessEnabled && remaining <= 10 && remaining > 1) {
           const candidate = getNextCandidateSong();
           if (candidate && candidate.streamUrl && preloadAudioRef.current) {
             if (preloadedUrlRef.current !== candidate.streamUrl) {
               preloadedUrlRef.current = candidate.streamUrl;
               preloadAudioRef.current.src = candidate.streamUrl;
               preloadAudioRef.current.load();
-              audioEnhancer.warmUp();
-              audioEnhancer.prime(preloadAudioRef.current, 'music');
             }
           }
 
