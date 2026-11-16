@@ -1,0 +1,41 @@
+name: streamplay
+description: "StreamPlay - Pixel-Perfect Music & Movie Mobile Experience"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.7
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  provider: ^6.1.2
+  http: ^1.2.1
+  cached_network_image: ^3.3.1
+  just_audio: ^0.9.38
+  just_audio_background: ^0.0.1-beta.13
+  webview_flutter: ^4.10.0
+  audio_video_progress_bar: ^2.0.3
+  shared_preferences: ^2.2.3
+  google_fonts: ^6.2.1
+  intl: ^0.19.0
+  flutter_spinkit: ^5.2.1
+  flutter_svg: ^2.4.0
+  path_provider: ^2.1.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/
+    - assets/locations/
+    - assets/onboarding/
+    - assets/icons/
