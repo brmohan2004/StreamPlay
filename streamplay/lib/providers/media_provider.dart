@@ -215,6 +215,7 @@ class MediaProvider with ChangeNotifier {
     _primaryLanguage = _storage.getPrimaryLanguage();
     _secondaryLanguage = _storage.getSecondaryLanguage();
     _userLocation = _storage.getUserLocation();
+    _audioHandler.setAudioQualityPreference(_storage.getAudioQuality());
     notifyListeners();
   }
 
@@ -628,6 +629,7 @@ class MediaProvider with ChangeNotifier {
   String get audioQuality => _storage.getAudioQuality();
   void setAudioQuality(String q) {
     _storage.setAudioQuality(q);
+    _audioHandler.setAudioQualityPreference(q);
     notifyListeners();
   }
 

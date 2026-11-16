@@ -40,6 +40,43 @@ class AudioPlayerHandler {
   Future<void> Function(int index, SongItem song, bool wasPlaying)? onTrackSwitched;
   bool _isAutoFetching = false;
   int _lastReportedIndex = -1;
+  String _qualityPreference = '320k';
+
+  void setAudioQualityPreference(String q) {
+    _qualityPreference = q;
+  }
+
+  String _resolveUrlForQuality(String url, String qualityPreference) {
+    if (!url.contains('.saavncdn.com')) return url;
+
+    String targetSuffix = '_320.mp4';
+    if (qualityPreference == '160k') {
+      targetSuffix = '_160.mp4';
+    } else if (qualityPreference == '96k') {
+      targetSuffix = '_96.mp4';
+    }
+
+    return url.replaceAll(RegExp(r'_(96|160|320)\.(mp4|m4a)'), targetSuffix);
+  }
+
+  AudioSource _buildAudioSource(SongItem song) {
+    final candidateUrls = [song.streamUrl, ...song.backupStreamUrls].where((u) => u.isNotEmpty).toList();
+    final rawUrl = candidateUrls.isNotEmpty ? candidateUrls.first : song.streamUrl;
+    final primaryUrl = _resolveUrlForQuality(rawUrl, _qualityPreference);
+    final uri = Uri.parse(primaryUrl);
+    final artUri = song.image.isNotEmpty ? Uri.tryParse(song.image) : null;
+
+    return AudioSource.uri(
+      uri,
+      tag: MediaItem(
+        id: song.id,
+        album: song.album,
+        title: song.title,
+        artist: song.artist,
+        artUri: artUri,
+      ),
+    );
+  }
 
   void _initListener() {
     // 1. Listen for track changes directly from OS notification / next/prev skips
@@ -112,24 +149,6 @@ class AudioPlayerHandler {
         await _playlistSource!.addAll(sources);
       } catch (_) {}
     }
-  }
-
-  AudioSource _buildAudioSource(SongItem song) {
-    final candidateUrls = [song.streamUrl, ...song.backupStreamUrls].where((u) => u.isNotEmpty).toList();
-    final primaryUrl = candidateUrls.isNotEmpty ? candidateUrls.first : song.streamUrl;
-    final uri = Uri.parse(primaryUrl);
-    final artUri = song.image.isNotEmpty ? Uri.tryParse(song.image) : null;
-
-    return AudioSource.uri(
-      uri,
-      tag: MediaItem(
-        id: song.id,
-        album: song.album,
-        title: song.title,
-        artist: song.artist,
-        artUri: artUri,
-      ),
-    );
   }
 
   Future<void> prepareSong(SongItem song, [List<SongItem>? newQueue]) async {
