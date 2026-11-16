@@ -77,11 +77,41 @@ class PlayerOptionsModal extends StatelessWidget {
       }
 
       Directory? targetDir;
-      try {
-        final extDir = await getExternalStorageDirectory();
-        if (extDir != null) targetDir = extDir;
-      } catch (_) {}
+      String locationNote = '';
+
+      if (Platform.isAndroid) {
+        // Priority 1: Public standard Android Downloads folder
+        final publicDownload = Directory('/storage/emulated/0/Download/StreamPlay');
+        try {
+          if (!publicDownload.existsSync()) {
+            publicDownload.createSync(recursive: true);
+          }
+          targetDir = publicDownload;
+          locationNote = 'Downloads/StreamPlay';
+        } catch (_) {
+          // Priority 2: Public standard Android Music folder
+          final publicMusic = Directory('/storage/emulated/0/Music/StreamPlay');
+          try {
+            if (!publicMusic.existsSync()) {
+              publicMusic.createSync(recursive: true);
+            }
+            targetDir = publicMusic;
+            locationNote = 'Music/StreamPlay';
+          } catch (_) {}
+        }
+      }
+
+      if (targetDir == null) {
+        try {
+          final extDir = await getExternalStorageDirectory();
+          if (extDir != null) {
+            targetDir = extDir;
+            locationNote = 'Device Storage';
+          }
+        } catch (_) {}
+      }
       targetDir ??= await getApplicationDocumentsDirectory();
+      if (locationNote.isEmpty) locationNote = 'App Storage';
 
       final cleanName = song.title.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
       final file = File('${targetDir.path}/$cleanName.mp3');
@@ -90,9 +120,9 @@ class PlayerOptionsModal extends StatelessWidget {
       final mb = (downloadedBytes.length / (1024 * 1024)).toStringAsFixed(1);
       messenger.showSnackBar(
         SnackBar(
-          content: Text('✓ Saved "${song.title}" ($mb MB) to offline storage!'),
+          content: Text('✓ Saved "$cleanName.mp3" ($mb MB)\n📁 Location: $locationNote/'),
           backgroundColor: const Color(0xFF10401E),
-          duration: const Duration(seconds: 4),
+          duration: const Duration(seconds: 5),
         ),
       );
     } catch (e) {

@@ -51,6 +51,49 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
     );
   }
 
+  Future<void> _confirmExitDriveMode(BuildContext context) async {
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF161E18),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Colors.white12),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.directions_car_rounded, color: AppTheme.musicLime, size: 24),
+            SizedBox(width: 10),
+            Text('Exit Drive Mode?', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: const Text(
+          'Do you want to exit Drive Mode and return to the standard music player?',
+          style: TextStyle(color: Colors.white70, fontSize: 13.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('STAY', style: TextStyle(color: Colors.white54, fontWeight: FontWeight.bold)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.musicLime,
+              foregroundColor: Colors.black,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('EXIT', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldExit == true && mounted) {
+      setState(() => _isDriveMode = false);
+    }
+  }
+
   void _openSleepTimerSheet(BuildContext context, MediaProvider media) {
     showModalBottomSheet(
       context: context,
@@ -91,62 +134,107 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
 
     // Drive Mode View
     if (_isDriveMode) {
-      return Scaffold(
-        backgroundColor: Colors.black,
-        body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded, color: Colors.white, size: 28),
-                      onPressed: () => setState(() => _isDriveMode = false),
-                    ),
-                    const Text('DRIVE MODE', style: TextStyle(color: AppTheme.musicLime, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
-                    const SizedBox(width: 48),
-                  ],
-                ),
-                Column(
-                  children: [
-                    Text(song.title, maxLines: 2, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    Text(song.artist, style: const TextStyle(color: AppTheme.textMuted, fontSize: 18)),
-                  ],
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    IconButton(
-                      iconSize: 48,
-                      icon: const Icon(Icons.skip_previous_rounded, color: Colors.white),
-                      onPressed: () => media.prevSong(),
-                    ),
-                    GestureDetector(
-                      onTap: () => media.togglePlay(),
-                      child: Container(
-                        width: 90,
-                        height: 90,
-                        decoration: const BoxDecoration(
-                          color: AppTheme.musicLime,
-                          shape: BoxShape.circle,
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) _confirmExitDriveMode(context);
+        },
+        child: Scaffold(
+          backgroundColor: AppTheme.pureBlack,
+          body: Stack(
+            children: [
+              // Drive Mode Ambient Poster Background
+              if (media.isDynamicPlayerBgEnabled && song.image.isNotEmpty)
+                Positioned.fill(
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 650),
+                    child: Stack(
+                      key: ValueKey(song.id),
+                      fit: StackFit.expand,
+                      children: [
+                        CachedNetworkImage(
+                          imageUrl: song.image,
+                          fit: BoxFit.cover,
+                          errorWidget: (context, url, error) => const SizedBox.shrink(),
                         ),
-                        child: Icon(isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded, color: Colors.black, size: 52),
-                      ),
+                        BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 65, sigmaY: 65),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.black.withValues(alpha: 0.65),
+                                  Colors.black.withValues(alpha: 0.85),
+                                  Colors.black.withValues(alpha: 0.95),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    IconButton(
-                      iconSize: 48,
-                      icon: const Icon(Icons.skip_next_rounded, color: Colors.white),
-                      onPressed: () => media.nextSong(),
-                    ),
-                  ],
+                  ),
                 ),
-                const SizedBox(height: 20),
-              ],
-            ),
+
+              SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.close_rounded, color: Colors.white, size: 28),
+                            onPressed: () => _confirmExitDriveMode(context),
+                          ),
+                          const Text('DRIVE MODE', style: TextStyle(color: AppTheme.musicLime, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+                          const SizedBox(width: 48),
+                        ],
+                      ),
+                      Column(
+                        children: [
+                          Text(song.title, maxLines: 2, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 8),
+                          Text(song.artist, style: const TextStyle(color: AppTheme.textMuted, fontSize: 18)),
+                        ],
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          IconButton(
+                            iconSize: 48,
+                            icon: const Icon(Icons.skip_previous_rounded, color: Colors.white),
+                            onPressed: () => media.prevSong(),
+                          ),
+                          GestureDetector(
+                            onTap: () => media.togglePlay(),
+                            child: Container(
+                              width: 90,
+                              height: 90,
+                              decoration: const BoxDecoration(
+                                color: AppTheme.musicLime,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded, color: Colors.black, size: 52),
+                            ),
+                          ),
+                          IconButton(
+                            iconSize: 48,
+                            icon: const Icon(Icons.skip_next_rounded, color: Colors.white),
+                            onPressed: () => media.nextSong(),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       );
