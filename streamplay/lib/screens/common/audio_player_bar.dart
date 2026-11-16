@@ -49,13 +49,9 @@ class AudioPlayerBar extends StatelessWidget {
               children: [
                 // Top Progress Bar
                 LinearProgressIndicator(
-                  value: media.isSwitchingSong
-                      ? (1.0 - (media.switchDelaySecondsRemaining / 5.0)).clamp(0.0, 1.0)
-                      : progress,
+                  value: progress,
                   backgroundColor: Colors.white.withValues(alpha: 0.08),
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    media.isSwitchingSong ? const Color(0xFFFFB703) : AppTheme.musicLime,
-                  ),
+                  valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.musicLime),
                   minHeight: 2.5,
                 ),
 
@@ -113,41 +109,22 @@ class AudioPlayerBar extends StatelessWidget {
                                       ),
                                     ),
                                   ),
-                                  if (media.isSwitchingSong)
-                                    Container(
-                                      margin: const EdgeInsets.only(left: 6),
-                                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFFFB703).withValues(alpha: 0.2),
-                                        borderRadius: BorderRadius.circular(4),
-                                        border: Border.all(color: const Color(0xFFFFB703).withValues(alpha: 0.6)),
-                                      ),
-                                      child: Text(
-                                        'Next in ${media.switchDelaySecondsRemaining}s',
-                                        style: const TextStyle(
-                                          color: Color(0xFFFFB703),
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    )
-                                  else
-                                    Container(
-                                      margin: const EdgeInsets.only(left: 6),
-                                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.musicLime.withValues(alpha: 0.16),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: const Text(
-                                        '320k',
-                                        style: TextStyle(
-                                          color: AppTheme.musicLime,
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                  Container(
+                                    margin: const EdgeInsets.only(left: 6),
+                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.musicLime.withValues(alpha: 0.16),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      media.audioQuality,
+                                      style: const TextStyle(
+                                        color: AppTheme.musicLime,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
                                       ),
                                     ),
+                                  ),
                                 ],
                               ),
                             ],
@@ -167,15 +144,11 @@ class AudioPlayerBar extends StatelessWidget {
                             const SizedBox(width: 8),
                             IconButton(
                               icon: Icon(
-                                media.isSwitchingSong
-                                    ? Icons.play_circle_fill_rounded
-                                    : (media.isPlayingSong
-                                        ? Icons.pause_circle_filled_rounded
-                                        : Icons.play_circle_fill_rounded),
+                                media.isPlayingSong
+                                    ? Icons.pause_circle_filled_rounded
+                                    : Icons.play_circle_fill_rounded,
                                 size: 36,
-                                color: media.isSwitchingSong
-                                    ? const Color(0xFFFFB703)
-                                    : AppTheme.musicLime,
+                                color: AppTheme.musicLime,
                               ),
                               onPressed: () => media.togglePlay(),
                               padding: EdgeInsets.zero,

@@ -104,18 +104,20 @@ class AudioPlayerHandler {
     _player.playerStateStream.listen((state) async {
       if (state.processingState == ProcessingState.completed) {
         if (_player.loopMode == LoopMode.one) {
-          _player.seek(Duration.zero);
-          _player.play();
+          await _player.seek(Duration.zero);
+          await _player.play();
         } else if (_player.hasNext) {
-          _player.seekToNext();
+          await _player.seekToNext();
+          await _player.play();
         } else {
           // Reached end of current queue: auto-extend with related tracks or seamless continuous queue
           await checkAndAutoExtendQueue();
           if (_player.hasNext) {
-            _player.seekToNext();
+            await _player.seekToNext();
+            await _player.play();
           } else if (_queue.isNotEmpty) {
-            _player.seek(Duration.zero, index: 0);
-            _player.play();
+            await _player.seek(Duration.zero, index: 0);
+            await _player.play();
           }
         }
       }
@@ -247,7 +249,10 @@ class AudioPlayerHandler {
   }
 
   Future<void> togglePlay() async {
-    if (_player.playing) {
+    if (_player.processingState == ProcessingState.completed) {
+      await _player.seek(Duration.zero);
+      await _player.play();
+    } else if (_player.playing) {
       await _player.pause();
     } else {
       await _player.play();
@@ -265,9 +270,10 @@ class AudioPlayerHandler {
     if (_player.hasNext) {
       await _player.seekToNext();
     } else if (_queue.length > 1) {
-      _currentIndex = (_currentIndex + 1) % _queue.length;
-      await _player.seek(Duration.zero, index: _currentIndex);
+      _currentIndex = 0;
+      await _player.seek(Duration.zero, index: 0);
     }
+    await _player.play();
   }
 
   /// OS Previous action & in-app prev track
@@ -276,15 +282,17 @@ class AudioPlayerHandler {
 
     if (_player.position.inSeconds > 3) {
       await _player.seek(Duration.zero);
+      await _player.play();
       return;
     }
 
     if (_player.hasPrevious) {
       await _player.seekToPrevious();
     } else if (_queue.length > 1) {
-      _currentIndex = (_currentIndex - 1 + _queue.length) % _queue.length;
+      _currentIndex = _queue.length - 1;
       await _player.seek(Duration.zero, index: _currentIndex);
     }
+    await _player.play();
   }
 
   void toggleShuffle() {

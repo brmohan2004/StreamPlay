@@ -158,9 +158,9 @@ class StorageService {
   bool isAudioPlayerDismissed() => _prefs.getBool(_keyAudioPlayerDismissed) ?? false;
   Future<void> setAudioPlayerDismissed(bool dismissed) => _prefs.setBool(_keyAudioPlayerDismissed, dismissed);
 
-  // 5s Song Switch Delay (Disabled by default for seamless instant transition)
-  bool getSongSwitchDelayEnabled() => _prefs.getBool(_keySongSwitchDelay) ?? false;
-  Future<void> setSongSwitchDelayEnabled(bool val) => _prefs.setBool(_keySongSwitchDelay, val);
+  // Song Switch Delay (Disabled, seamless instant transition)
+  bool getSongSwitchDelayEnabled() => false;
+  Future<void> setSongSwitchDelayEnabled(bool val) => _prefs.setBool(_keySongSwitchDelay, false);
 
   // Recent Searches
   List<String> getRecentSearches(String mode) {

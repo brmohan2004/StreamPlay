@@ -217,27 +217,6 @@ class ProfileMusicTab extends StatelessWidget {
                   children: [
                     const Row(
                       children: [
-                        Icon(Icons.hourglass_bottom, color: Color(0xFFFFB703), size: 20),
-                        SizedBox(width: 12),
-                        Text('5s Delay on Songs Switching', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
-                      ],
-                    ),
-                    Switch(
-                      value: media.songSwitchDelayEnabled,
-                      activeThumbColor: const Color(0xFFFFB703),
-                      onChanged: (val) {
-                        media.setSongSwitchDelayEnabled(val);
-                        onShowToast(val ? '5s delay between songs switching enabled' : 'Instant song switching enabled');
-                      },
-                    ),
-                  ],
-                ),
-                const Divider(color: Colors.white10, height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      children: [
                         Icon(Icons.auto_awesome, color: AppTheme.musicLime, size: 20),
                         SizedBox(width: 12),
                         Text('Auto-Play Infinite Radio', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),

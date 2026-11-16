@@ -45,13 +45,12 @@ class MediaProvider with ChangeNotifier {
   Timer? _sleepTimer;
   DateTime? _sleepTimerEndTime;
 
-  // 5s Delay for Each Song Switching
-  int _songSwitchDelayRemaining = 0;
+  // Transition Delay (deprecated, instant playback)
   Timer? _switchDelayTimer;
 
-  bool get isSwitchingSong => _songSwitchDelayRemaining > 0;
-  int get switchDelaySecondsRemaining => _songSwitchDelayRemaining;
-  bool get songSwitchDelayEnabled => _storage.getSongSwitchDelayEnabled();
+  bool get isSwitchingSong => false;
+  int get switchDelaySecondsRemaining => 0;
+  bool get songSwitchDelayEnabled => false;
 
   void setSongSwitchDelayEnabled(bool val) {
     _storage.setSongSwitchDelayEnabled(val);
@@ -113,39 +112,12 @@ class MediaProvider with ChangeNotifier {
       _storage.saveLastPlayedSong(song);
       _storage.saveLastPlayedQueue(_audioHandler.queue);
       _playedSongKeys.add(_songKey(song));
-
-      if (!wasPlaying || !_storage.getSongSwitchDelayEnabled()) {
-        notifyListeners();
-        return;
-      }
-
-      // 5-second delay for each song switching
-      await _audioHandler.pause();
-      _startSongSwitchCountdown(5);
+      notifyListeners();
     };
-  }
-
-  void _startSongSwitchCountdown(int seconds) {
-    _switchDelayTimer?.cancel();
-    _songSwitchDelayRemaining = seconds;
-    notifyListeners();
-
-    _switchDelayTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
-      if (_songSwitchDelayRemaining > 1) {
-        _songSwitchDelayRemaining--;
-        notifyListeners();
-      } else {
-        _songSwitchDelayRemaining = 0;
-        timer.cancel();
-        notifyListeners();
-        await _audioHandler.resume();
-      }
-    });
   }
 
   void _cancelSwitchDelayTimer() {
     _switchDelayTimer?.cancel();
-    _songSwitchDelayRemaining = 0;
   }
 
   void _setupAutoplayQueueExtender() {
@@ -428,13 +400,7 @@ class MediaProvider with ChangeNotifier {
   }
 
   Future<void> togglePlay() async {
-    if (_songSwitchDelayRemaining > 0) {
-      // User tapped pause during countdown: stop countdown and ensure paused
-      _cancelSwitchDelayTimer();
-      await _audioHandler.pause();
-      notifyListeners();
-      return;
-    }
+    _cancelSwitchDelayTimer();
     await _audioHandler.togglePlay();
     notifyListeners();
   }
@@ -450,23 +416,13 @@ class MediaProvider with ChangeNotifier {
 
   Future<void> nextSong() async {
     _cancelSwitchDelayTimer();
-    final wasPlaying = _audioHandler.isPlaying;
     await _audioHandler.nextSong();
-    if (wasPlaying && _storage.getSongSwitchDelayEnabled()) {
-      await _audioHandler.pause();
-      _startSongSwitchCountdown(5);
-    }
     notifyListeners();
   }
 
   Future<void> prevSong() async {
     _cancelSwitchDelayTimer();
-    final wasPlaying = _audioHandler.isPlaying;
     await _audioHandler.prevSong();
-    if (wasPlaying && _storage.getSongSwitchDelayEnabled()) {
-      await _audioHandler.pause();
-      _startSongSwitchCountdown(5);
-    }
     notifyListeners();
   }
 
