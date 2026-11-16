@@ -144,7 +144,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
           body: Stack(
             children: [
               // Drive Mode Ambient Poster Background
-              if (media.isDynamicPlayerBgEnabled && song.image.isNotEmpty)
+              if (media.isDynamicPlayerBgEnabled && song.image.isNotEmpty && media.isMusicPlayerOpen)
                 Positioned.fill(
                   child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 650),
@@ -152,24 +152,24 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
                       key: ValueKey(song.id),
                       fit: StackFit.expand,
                       children: [
-                        CachedNetworkImage(
-                          imageUrl: song.image,
-                          fit: BoxFit.cover,
-                          errorWidget: (context, url, error) => const SizedBox.shrink(),
+                        ImageFiltered(
+                          imageFilter: ImageFilter.blur(sigmaX: 55, sigmaY: 55),
+                          child: CachedNetworkImage(
+                            imageUrl: song.image,
+                            fit: BoxFit.cover,
+                            errorWidget: (context, url, error) => const SizedBox.shrink(),
+                          ),
                         ),
-                        BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 65, sigmaY: 65),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  Colors.black.withValues(alpha: 0.65),
-                                  Colors.black.withValues(alpha: 0.85),
-                                  Colors.black.withValues(alpha: 0.95),
-                                ],
-                              ),
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.black.withValues(alpha: 0.65),
+                                Colors.black.withValues(alpha: 0.85),
+                                Colors.black.withValues(alpha: 0.95),
+                              ],
                             ),
                           ),
                         ),
@@ -252,7 +252,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
         body: Stack(
           children: [
             // Dynamic Poster Ambient Background
-            if (media.isDynamicPlayerBgEnabled && song.image.isNotEmpty)
+            if (media.isDynamicPlayerBgEnabled && song.image.isNotEmpty && media.isMusicPlayerOpen)
               Positioned.fill(
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 650),
@@ -260,24 +260,24 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
                     key: ValueKey(song.id),
                     fit: StackFit.expand,
                     children: [
-                      CachedNetworkImage(
-                        imageUrl: song.image,
-                        fit: BoxFit.cover,
-                        errorWidget: (context, url, error) => const SizedBox.shrink(),
+                      ImageFiltered(
+                        imageFilter: ImageFilter.blur(sigmaX: 55, sigmaY: 55),
+                        child: CachedNetworkImage(
+                          imageUrl: song.image,
+                          fit: BoxFit.cover,
+                          errorWidget: (context, url, error) => const SizedBox.shrink(),
+                        ),
                       ),
-                      BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 65, sigmaY: 65),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.black.withValues(alpha: 0.65),
-                                Colors.black.withValues(alpha: 0.85),
-                                Colors.black.withValues(alpha: 0.95),
-                              ],
-                            ),
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.black.withValues(alpha: 0.65),
+                              Colors.black.withValues(alpha: 0.85),
+                              Colors.black.withValues(alpha: 0.95),
+                            ],
                           ),
                         ),
                       ),

@@ -87,24 +87,16 @@ class _PlayerLyricsStageState extends State<PlayerLyricsStage>
 
   int _calculateActiveIndex() {
     if (_lyrics == null || _lyrics!.lines.isEmpty) return -1;
-    final lines = _lyrics!.lines;
+    if (!_lyrics!.isSynced) return -1; // Unsynced: do not fake-highlight!
 
-    if (_lyrics!.isSynced) {
-      for (int i = lines.length - 1; i >= 0; i--) {
-        final t = lines[i].timestamp;
-        if (t != null && widget.currentPosition >= t) {
-          return i;
-        }
+    final lines = _lyrics!.lines;
+    for (int i = lines.length - 1; i >= 0; i--) {
+      final t = lines[i].timestamp;
+      if (t != null && widget.currentPosition >= t) {
+        return i;
       }
-      return 0;
-    } else {
-      // Non-synced fallback: highlight by proportional audio progress
-      final totalSec = widget.songDuration.inSeconds;
-      if (totalSec <= 0) return 0;
-      final curSec = widget.currentPosition.inSeconds;
-      final progress = (curSec / totalSec).clamp(0.0, 1.0);
-      return (progress * (lines.length - 1)).round().clamp(0, lines.length - 1);
     }
+    return 0;
   }
 
   void _autoScrollToActiveLine({bool force = false}) {
@@ -216,17 +208,18 @@ class _PlayerLyricsStageState extends State<PlayerLyricsStage>
                       mainAxisSize: MainAxisSize.min,
                       children: List.generate(_lyrics!.lines.length, (index) {
                         final line = _lyrics!.lines[index];
-                        final isActive = index == activeIndex;
+                        final isSynced = _lyrics?.isSynced == true;
+                        final isActive = isSynced && index == activeIndex;
                         final isInstrumental = line.text.contains('♪') || line.text.contains('♫');
                         final key = _lineKeys.putIfAbsent(index, () => GlobalKey());
 
                         return GestureDetector(
                           key: key,
                           onTap: () {
-                            if (line.timestamp != null) {
+                            if (isSynced && line.timestamp != null) {
                               widget.onSeek(line.timestamp!);
+                              _autoScrollToActiveLine(force: true);
                             }
-                            _autoScrollToActiveLine(force: true);
                           },
                           behavior: HitTestBehavior.opaque,
                           child: AnimatedPadding(
@@ -236,11 +229,11 @@ class _PlayerLyricsStageState extends State<PlayerLyricsStage>
                             child: AnimatedScale(
                               duration: const Duration(milliseconds: 400),
                               curve: Curves.easeOutCubic,
-                              scale: isActive ? 1.08 : 0.88,
+                              scale: isSynced ? (isActive ? 1.08 : 0.88) : 1.0,
                               child: AnimatedOpacity(
                                 duration: const Duration(milliseconds: 400),
                                 curve: Curves.easeOutCubic,
-                                opacity: isActive ? 1.0 : 0.30,
+                                opacity: isSynced ? (isActive ? 1.0 : 0.30) : 0.88,
                                 child: isInstrumental
                                     ? _buildInstrumentalItem(isActive)
                                     : Text(
@@ -248,7 +241,7 @@ class _PlayerLyricsStageState extends State<PlayerLyricsStage>
                                         textAlign: TextAlign.center,
                                         style: TextStyle(
                                           color: Colors.white,
-                                          fontSize: 22.0,
+                                          fontSize: isSynced ? 22.0 : 18.0,
                                           fontWeight: isActive ? FontWeight.w900 : FontWeight.w600,
                                           letterSpacing: isActive ? -0.3 : 0,
                                           height: 1.35,
@@ -272,6 +265,29 @@ class _PlayerLyricsStageState extends State<PlayerLyricsStage>
                           ),
                         );
                       }),
+                    ),
+                  ),
+                ),
+
+              // Subtle status pill if lyrics are unsynced plain text
+              if (_lyrics != null && !_lyrics!.isSynced)
+                Positioned(
+                  top: 8,
+                  left: 16,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Text(
+                      'READ-ONLY LYRICS',
+                      style: TextStyle(
+                        color: Colors.white54,
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.8,
+                      ),
                     ),
                   ),
                 ),

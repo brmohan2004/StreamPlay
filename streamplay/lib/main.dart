@@ -204,9 +204,11 @@ class _AppContentState extends State<AppContent> with WidgetsBindingObserver {
                         offset: media.isMusicPlayerOpen ? Offset.zero : const Offset(0.0, 1.0),
                         duration: const Duration(milliseconds: 320),
                         curve: Curves.easeOutCubic,
-                        child: IgnorePointer(
-                          ignoring: !media.isMusicPlayerOpen,
-                          child: const MusicPlayerScreen(),
+                        child: ClipRect(
+                          child: IgnorePointer(
+                            ignoring: !media.isMusicPlayerOpen,
+                            child: const MusicPlayerScreen(),
+                          ),
                         ),
                       ),
                     ),

@@ -431,7 +431,7 @@ class MusicService {
       }
     } catch (_) {}
 
-    // 2. Try search match on LRCLIB
+    // 2. Try search match on LRCLIB (Prioritizing synced lyrics)
     try {
       final searchUri = Uri.parse(
         'https://lrclib.net/api/search?q=${Uri.encodeComponent('$effectiveTitle $primaryArtist')}',
@@ -440,7 +440,18 @@ class MusicService {
       if (res.statusCode == 200) {
         final List list = json.decode(res.body);
         if (list.isNotEmpty) {
-          final lyrics = _parseLrcLibResponse(list.first as Map<String, dynamic>);
+          Map<String, dynamic>? bestMatch;
+          for (final item in list) {
+            if (item is Map<String, dynamic>) {
+              final syn = item['syncedLyrics']?.toString();
+              if (syn != null && syn.trim().isNotEmpty) {
+                bestMatch = item;
+                break;
+              }
+            }
+          }
+          bestMatch ??= list.first as Map<String, dynamic>;
+          final lyrics = _parseLrcLibResponse(bestMatch);
           if (lyrics != null) {
             if (song.id.isNotEmpty) _lyricsCache[song.id] = lyrics;
             return lyrics;
@@ -499,51 +510,48 @@ class MusicService {
 
     if (synced != null && synced.trim().isNotEmpty) {
       final rawLines = <LyricLine>[];
-      final lrcRegex = RegExp(r'\[(\d{2}):(\d{2})\.?(\d{1,3})?\](.*)');
+      final lrcTimeRegex = RegExp(r'\[(\d{1,2}):(\d{2})(?:[.:](\d{1,3}))?\]');
+
       for (var rawLine in synced.split('\n')) {
         final trimmed = rawLine.trim();
-        final match = lrcRegex.firstMatch(trimmed);
-        if (match != null) {
+        if (trimmed.isEmpty) continue;
+
+        final matches = lrcTimeRegex.allMatches(trimmed);
+        if (matches.isEmpty) continue;
+
+        // Clean line text by removing all timestamp tags
+        final text = trimmed.replaceAll(lrcTimeRegex, '').trim();
+        if (text.isEmpty) continue;
+
+        for (final match in matches) {
           final min = int.tryParse(match.group(1) ?? '0') ?? 0;
           final sec = int.tryParse(match.group(2) ?? '0') ?? 0;
-          var msRaw = match.group(3) ?? '0';
-          if (msRaw.length == 2) msRaw = '${msRaw}0';
-          final ms = int.tryParse(msRaw) ?? 0;
-          final time = Duration(minutes: min, seconds: sec, milliseconds: ms);
-          final text = match.group(4)?.trim() ?? '';
-          if (text.isNotEmpty) {
-            rawLines.add(LyricLine(timestamp: time, text: text));
+          final msStr = match.group(3);
+          int ms = 0;
+          if (msStr != null && msStr.isNotEmpty) {
+            if (msStr.length == 1) {
+              ms = (int.tryParse(msStr) ?? 0) * 100;
+            } else if (msStr.length == 2) {
+              ms = (int.tryParse(msStr) ?? 0) * 10;
+            } else {
+              ms = int.tryParse(msStr.substring(0, 3)) ?? 0;
+            }
           }
+          final time = Duration(minutes: min, seconds: sec, milliseconds: ms);
+          rawLines.add(LyricLine(timestamp: time, text: text));
         }
       }
 
       if (rawLines.isNotEmpty) {
         rawLines.sort((a, b) => (a.timestamp ?? Duration.zero).compareTo(b.timestamp ?? Duration.zero));
 
-        // Intelligent Instrumental Interlude Detection:
-        // Automatically injects music note symbols for intro music and instrumental breaks
         final enrichedLines = <LyricLine>[];
         final firstTime = rawLines.first.timestamp ?? Duration.zero;
-        if (firstTime.inSeconds >= 4) {
-          // Intro music portion before first vocals
+        if (firstTime.inSeconds >= 6) {
+          // Intro instrumental break
           enrichedLines.add(const LyricLine(timestamp: Duration.zero, text: '♪ ♫ ♪'));
         }
-
-        for (int i = 0; i < rawLines.length; i++) {
-          enrichedLines.add(rawLines[i]);
-          if (i < rawLines.length - 1) {
-            final curTime = rawLines[i].timestamp ?? Duration.zero;
-            final nextTime = rawLines[i + 1].timestamp ?? Duration.zero;
-            final gap = nextTime - curTime;
-            if (gap.inSeconds >= 6) {
-              // Interlude music portion (guitar solo, beat drop, bridge)
-              enrichedLines.add(LyricLine(
-                timestamp: curTime + const Duration(seconds: 3),
-                text: '♪ ♫ ♪',
-              ));
-            }
-          }
-        }
+        enrichedLines.addAll(rawLines);
 
         return SongLyrics(
           isSynced: true,
