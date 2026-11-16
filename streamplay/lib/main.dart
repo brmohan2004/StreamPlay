@@ -7,7 +7,6 @@ import 'providers/media_provider.dart';
 import 'providers/navigation_provider.dart';
 import 'providers/recommendation_provider.dart';
 import 'screens/common/audio_player_bar.dart';
-import 'screens/common/floating_filter_pill.dart';
 import 'screens/common/floating_nav_bar.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/landing/landing_screen.dart';
@@ -198,10 +197,6 @@ class _AppContentState extends State<AppContent> with WidgetsBindingObserver {
                       // Movie Details Screen Modal (Screenshot 11)
                       if (media.selectedMovie != null)
                         MovieDetailsScreen(movie: media.selectedMovie!),
-
-                      // Floating Filter Capsule Pill (above bottom nav bar, hidden on Profile/Settings)
-                      if (nav.activeScreen != ScreenName.profile)
-                        const FloatingFilterPill(),
 
                       // Persistent Mini Audio Player Bar (above bottom nav bar)
                       const AudioPlayerBar(),

@@ -28,6 +28,7 @@ class MediaProvider with ChangeNotifier {
   StreamSubscription? _posSub;
   StreamSubscription? _durSub;
   StreamSubscription? _stateSub;
+  StreamSubscription? _playingSub;
   StreamSubscription? _loopSub;
   StreamSubscription? _indexSub;
 
@@ -227,6 +228,10 @@ class MediaProvider with ChangeNotifier {
       notifyListeners();
     });
 
+    _playingSub = _audioHandler.playingStream.listen((_) {
+      notifyListeners();
+    });
+
     _loopSub = _audioHandler.loopModeStream.listen((_) {
       notifyListeners();
     });
@@ -416,13 +421,20 @@ class MediaProvider with ChangeNotifier {
 
   Future<void> togglePlay() async {
     if (_songSwitchDelayRemaining > 0) {
-      // User tapped play during the 5s transition delay: start immediately
+      // User tapped pause during countdown: stop countdown and ensure paused
       _cancelSwitchDelayTimer();
-      await _audioHandler.resume();
+      await _audioHandler.pause();
       notifyListeners();
       return;
     }
     await _audioHandler.togglePlay();
+    notifyListeners();
+  }
+
+  /// Explicitly skip transition countdown and play immediately
+  Future<void> skipDelayAndPlay() async {
+    _cancelSwitchDelayTimer();
+    await _audioHandler.resume();
     notifyListeners();
   }
 
@@ -672,6 +684,7 @@ class MediaProvider with ChangeNotifier {
     _posSub?.cancel();
     _durSub?.cancel();
     _stateSub?.cancel();
+    _playingSub?.cancel();
     _loopSub?.cancel();
     _indexSub?.cancel();
     super.dispose();

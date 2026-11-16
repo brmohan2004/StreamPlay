@@ -10,9 +10,9 @@ import 'components/player_arc_scrubber.dart';
 import 'components/player_playback_controls.dart';
 import 'components/player_bottom_nav_bar.dart';
 import 'components/player_options_modal.dart';
-import 'components/player_lyrics_modal.dart';
 import 'components/player_sleep_timer_modal.dart';
 import 'components/player_queue_sheet.dart';
+import 'components/player_lyrics_stage.dart';
 
 class MusicPlayerScreen extends StatefulWidget {
   final VoidCallback? onDismiss;
@@ -26,6 +26,7 @@ class MusicPlayerScreen extends StatefulWidget {
 class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
   bool _isVideoMode = false;
   bool _isDriveMode = false;
+  bool _showLyrics = false;
 
   void _handleClose(MediaProvider media) {
     if (widget.onDismiss != null) {
@@ -45,15 +46,6 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
         media: media,
         onActivateDriveMode: () => setState(() => _isDriveMode = true),
       ),
-    );
-  }
-
-  void _openLyricsSheet(BuildContext context, SongItem song) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => PlayerLyricsModal(song: song),
     );
   }
 
@@ -159,33 +151,12 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
     }
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: AppTheme.pureBlack,
       body: SafeArea(
-        top: false,
+        top: true,
         bottom: true,
         child: Column(
           children: [
-            // Top Pull-Down Pill Indicator (Sheet Handle)
-            GestureDetector(
-              onTap: () => _handleClose(media),
-              behavior: HitTestBehavior.opaque,
-              child: Container(
-                color: Colors.transparent,
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                child: Center(
-                  child: Container(
-                    width: 44,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.38),
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
             // 1. Top Header Bar (Screenshot 12)
             PlayerHeader(
               isVideoMode: _isVideoMode,
@@ -206,15 +177,24 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
 
             const Spacer(flex: 1),
 
-            // 2. Center Disk Stage / Video Mode with horizontal swipe gestures
-            PlayerDiskStage(
-              song: song,
-              isVideoMode: _isVideoMode,
-              onSwipeLeft: () => media.nextSong(),
-              onSwipeRight: () => media.prevSong(),
-            ),
+            // 2. Center Stage: In-Poster Synced Lyrics OR Video Mode OR Disc Stage
+            if (_showLyrics)
+              PlayerLyricsStage(
+                song: song,
+                currentPosition: media.songPosition,
+                songDuration: media.songDuration,
+                onSeek: (pos) => media.seek(pos),
+                onClose: () => setState(() => _showLyrics = false),
+              )
+            else
+              PlayerDiskStage(
+                song: song,
+                isVideoMode: _isVideoMode,
+                onSwipeLeft: () => media.nextSong(),
+                onSwipeRight: () => media.prevSong(),
+              ),
 
-                  const Spacer(flex: 1),
+            const Spacer(flex: 1),
 
                   // 3. Track Info (Track #, non-overlapping titles, artist/album)
                   PlayerInfoSection(
@@ -252,7 +232,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
                   // 5s Transition Delay Pill Indicator (with instant tap-to-play)
                   if (media.isSwitchingSong)
                     GestureDetector(
-                      onTap: () => media.togglePlay(),
+                      onTap: () => media.skipDelayAndPlay(),
                       child: Container(
                         margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
@@ -293,13 +273,14 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
 
                   const SizedBox(height: 10),
 
-                  // 6. Bottom Navigation Bar (Lyrics, Up Next, Sleep Timer)
-                  PlayerBottomNavBar(
-                    remainingTimerSec: media.remainingSleepTimerSeconds,
-                    onOpenLyrics: () => _openLyricsSheet(context, song),
-                    onOpenQueue: () => _openQueueSheet(context, media),
-                    onOpenSleepTimer: () => _openSleepTimerSheet(context, media),
-                  ),
+            // 6. Floating Bottom Navigation Bar (Logos Only, Elevated Center Button)
+            PlayerBottomNavBar(
+              remainingTimerSec: media.remainingSleepTimerSeconds,
+              isLyricsActive: _showLyrics,
+              onToggleLyrics: () => setState(() => _showLyrics = !_showLyrics),
+              onOpenQueue: () => _openQueueSheet(context, media),
+              onOpenSleepTimer: () => _openSleepTimerSheet(context, media),
+            ),
 
                   const SizedBox(height: 8),
                 ],

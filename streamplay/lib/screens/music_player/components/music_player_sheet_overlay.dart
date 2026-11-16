@@ -174,9 +174,7 @@ class MusicPlayerSheetOverlayState extends State<MusicPlayerSheetOverlay>
     final media = context.watch<MediaProvider>();
     final mediaQuery = MediaQuery.of(context);
     final screenHeight = mediaQuery.size.height;
-    // Elegant sheet top inset exposing background scaled card
-    final topInset = mediaQuery.padding.top + 14.0;
-    final travelDistance = screenHeight - topInset;
+    final travelDistance = screenHeight;
 
     return AnimatedBuilder(
       animation: _controller,
@@ -209,10 +207,10 @@ class MusicPlayerSheetOverlayState extends State<MusicPlayerSheetOverlay>
                 ),
               ),
 
-            // 3. Fluid Interactive Bottom Sheet
+            // 3. Fluid Interactive Full-Height Sheet
             if (isVisible)
               Positioned(
-                top: topInset,
+                top: 0,
                 left: 0,
                 right: 0,
                 bottom: 0,
@@ -224,28 +222,8 @@ class MusicPlayerSheetOverlayState extends State<MusicPlayerSheetOverlay>
                     onVerticalDragUpdate: (d) => _onDragUpdate(d, travelDistance),
                     onVerticalDragEnd: _onDragEnd,
                     child: Container(
-                      decoration: BoxDecoration(
-                        color: AppTheme.pureBlack,
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-                        border: Border(
-                          top: BorderSide(
-                            color: Colors.white.withValues(alpha: 0.14),
-                            width: 1.2,
-                          ),
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: (0.85 * progress).clamp(0.0, 0.85)),
-                            blurRadius: 36,
-                            spreadRadius: 2,
-                            offset: const Offset(0, -6),
-                          ),
-                        ],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-                        child: MusicPlayerScreen(onDismiss: dismiss),
-                      ),
+                      color: AppTheme.pureBlack,
+                      child: MusicPlayerScreen(onDismiss: dismiss),
                     ),
                   ),
                 ),

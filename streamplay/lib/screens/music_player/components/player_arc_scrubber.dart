@@ -127,7 +127,7 @@ class _ArcScrubberPainter extends CustomPainter {
       ..color = AppTheme.musicLime
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
-      ..strokeWidth = 3.0;
+      ..strokeWidth = 3.8;
 
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
@@ -137,18 +137,31 @@ class _ArcScrubberPainter extends CustomPainter {
       progressPaint,
     );
 
-    // Thumb position indicator dot with lime glow
+    // Prominent Thumb position indicator circle with bold lime glow (User Image Reference)
     final thumbAngle = math.pi + (math.pi * progress);
     final thumbX = center.dx + radius * math.cos(thumbAngle);
     final thumbY = center.dy + radius * math.sin(thumbAngle);
+    final thumbCenter = Offset(thumbX, thumbY);
 
-    final glowPaint = Paint()
-      ..color = AppTheme.musicLime.withValues(alpha: 0.5)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
-    canvas.drawCircle(Offset(thumbX, thumbY), 8, glowPaint);
+    // 1. Outer Neon Bloom Halo
+    final outerGlowPaint = Paint()
+      ..color = AppTheme.musicLime.withValues(alpha: 0.55)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12);
+    canvas.drawCircle(thumbCenter, 14, outerGlowPaint);
 
-    final thumbPaint = Paint()..color = AppTheme.musicLime;
-    canvas.drawCircle(Offset(thumbX, thumbY), 5.5, thumbPaint);
+    // 2. Mid Intense Lime Glow
+    final midGlowPaint = Paint()
+      ..color = AppTheme.musicLime.withValues(alpha: 0.9)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
+    canvas.drawCircle(thumbCenter, 9.5, midGlowPaint);
+
+    // 3. Bright Lime Circle Ring
+    final ringPaint = Paint()..color = AppTheme.musicLime;
+    canvas.drawCircle(thumbCenter, 8.5, ringPaint);
+
+    // 4. Crisp White Core Dot for Maximum Visual Pop
+    final corePaint = Paint()..color = Colors.white;
+    canvas.drawCircle(thumbCenter, 4.5, corePaint);
   }
 
   @override

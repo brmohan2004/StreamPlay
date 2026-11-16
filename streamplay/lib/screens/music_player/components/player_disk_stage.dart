@@ -44,7 +44,18 @@ class _PlayerDiskStageState extends State<PlayerDiskStage> {
     super.didUpdateWidget(oldWidget);
     if (widget.isVideoMode && (!oldWidget.isVideoMode || widget.song.id != _loadedSongId)) {
       _initVideo(widget.song);
+    } else if (!widget.isVideoMode && oldWidget.isVideoMode) {
+      // Immediately stop and destroy WebView playback when returning to audio mode
+      _webViewController?.loadHtmlString('<html><body style="background:#000;"></body></html>');
+      _webViewController = null;
     }
+  }
+
+  @override
+  void dispose() {
+    _webViewController?.loadHtmlString('<html><body style="background:#000;"></body></html>');
+    _webViewController = null;
+    super.dispose();
   }
 
   Future<void> _initVideo(SongItem song) async {
@@ -54,9 +65,10 @@ class _PlayerDiskStageState extends State<PlayerDiskStage> {
     final searchQuery = '${song.title} ${song.artist} official video';
     final videoId = await _musicService.searchYouTubeVideoId(searchQuery);
 
+    // Provide full origin and parameters to prevent YouTube embed configuration errors
     final embedUrl = (videoId != null && videoId.isNotEmpty)
-        ? 'https://www.youtube-nocookie.com/embed/$videoId?autoplay=1&playsinline=1&controls=1&rel=0&modestbranding=1'
-        : 'https://www.youtube-nocookie.com/embed?listType=search&list=${Uri.encodeComponent(searchQuery)}&autoplay=1&playsinline=1';
+        ? 'https://www.youtube.com/embed/$videoId?autoplay=1&playsinline=1&controls=1&rel=0&enablejsapi=1&origin=https://www.youtube.com'
+        : 'https://www.youtube.com/embed?listType=search&list=${Uri.encodeComponent(searchQuery)}&autoplay=1&playsinline=1&enablejsapi=1&origin=https://www.youtube.com';
 
     final htmlContent = '''
 <!DOCTYPE html>
@@ -82,6 +94,7 @@ class _PlayerDiskStageState extends State<PlayerDiskStage> {
     final controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.black)
+      ..setUserAgent('Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36')
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageFinished: (_) {
@@ -90,7 +103,8 @@ class _PlayerDiskStageState extends State<PlayerDiskStage> {
         ),
       );
 
-    await controller.loadHtmlString(htmlContent);
+    // Providing baseUrl: https://www.youtube.com satisfies YouTube's origin requirement
+    await controller.loadHtmlString(htmlContent, baseUrl: 'https://www.youtube.com');
 
     if (mounted) {
       setState(() {
@@ -174,25 +188,28 @@ class _PlayerDiskStageState extends State<PlayerDiskStage> {
       },
       child: Center(
         child: Container(
-          width: 250,
-          height: 250,
+          width: 265,
+          height: 265,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.white.withValues(alpha: 0.15), width: 3),
+            border: Border.all(color: AppTheme.musicLime.withValues(alpha: 0.4), width: 3.5),
             boxShadow: [
               BoxShadow(
-                color: AppTheme.musicLime.withValues(alpha: 0.22),
-                blurRadius: 36,
-                spreadRadius: 2,
+                color: AppTheme.musicLime.withValues(alpha: 0.28),
+                blurRadius: 42,
+                spreadRadius: 3,
               ),
             ],
           ),
-          child: ClipOval(
-            child: CachedNetworkImage(
-              imageUrl: widget.song.image,
-              fit: BoxFit.cover,
-              placeholder: (context, url) => Container(color: AppTheme.cardDark),
-              errorWidget: (context, url, error) => Container(color: AppTheme.cardDark),
+          child: Padding(
+            padding: const EdgeInsets.all(3.5),
+            child: ClipOval(
+              child: CachedNetworkImage(
+                imageUrl: widget.song.image,
+                fit: BoxFit.cover,
+                placeholder: (context, url) => Container(color: AppTheme.cardDark),
+                errorWidget: (context, url, error) => Container(color: AppTheme.cardDark),
+              ),
             ),
           ),
         ),

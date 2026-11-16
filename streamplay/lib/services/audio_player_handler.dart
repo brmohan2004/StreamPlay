@@ -31,6 +31,7 @@ class AudioPlayerHandler {
   Stream<Duration> get positionStream => _player.positionStream;
   Stream<Duration?> get durationStream => _player.durationStream;
   Stream<PlayerState> get playerStateStream => _player.playerStateStream;
+  Stream<bool> get playingStream => _player.playingStream;
   Stream<LoopMode> get loopModeStream => _player.loopModeStream;
   Stream<double> get speedStream => _player.speedStream;
   Stream<int?> get currentIndexStream => _player.currentIndexStream;

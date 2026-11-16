@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:http/http.dart' as http;
@@ -23,44 +24,83 @@ class PlayerOptionsModal extends StatelessWidget {
     final messenger = ScaffoldMessenger.of(context);
     messenger.showSnackBar(
       SnackBar(
-        content: Text('Downloading "${song.title}" (320kbps)...'),
+        content: Row(
+          children: [
+            const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(color: AppTheme.musicLime, strokeWidth: 2),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Downloading "${song.title}"...',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
         backgroundColor: const Color(0xFF1B2A1E),
-        duration: const Duration(seconds: 2),
+        duration: const Duration(seconds: 4),
       ),
     );
 
     try {
-      final candidateUrls = [song.streamUrl, ...song.backupStreamUrls].where((u) => u.isNotEmpty).toList();
-      final url = candidateUrls.isNotEmpty ? candidateUrls.first : song.streamUrl;
-      final res = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 45));
+      final candidateUrls = [song.streamUrl, ...song.backupStreamUrls]
+          .where((u) => u.trim().isNotEmpty)
+          .toSet()
+          .toList();
 
-      if (res.statusCode == 200 && res.bodyBytes.isNotEmpty) {
-        Directory? targetDir;
-        try {
-          final extDir = await getExternalStorageDirectory();
-          if (extDir != null) targetDir = extDir;
-        } catch (_) {}
-        targetDir ??= await getApplicationDocumentsDirectory();
-
-        final cleanName = song.title.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
-        final file = File('${targetDir.path}/$cleanName.mp3');
-        await file.writeAsBytes(res.bodyBytes);
-
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text('✓ Saved "${song.title}" (${(res.bodyBytes.length / (1024 * 1024)).toStringAsFixed(1)} MB)!'),
-            backgroundColor: const Color(0xFF10401E),
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      } else {
-        throw Exception('Download failed with status ${res.statusCode}');
+      if (candidateUrls.isEmpty) {
+        throw Exception('No stream URL available for download');
       }
-    } catch (_) {
+
+      final headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': '*/*',
+        'Referer': 'https://www.jiosaavn.com/',
+      };
+
+      Uint8List? downloadedBytes;
+      for (final url in candidateUrls) {
+        try {
+          final res = await http.get(Uri.parse(url), headers: headers).timeout(const Duration(seconds: 30));
+          if (res.statusCode == 200 && res.bodyBytes.isNotEmpty) {
+            downloadedBytes = res.bodyBytes;
+            break;
+          }
+        } catch (_) {}
+      }
+
+      if (downloadedBytes == null || downloadedBytes.isEmpty) {
+        throw Exception('Could not fetch audio bytes from any candidate mirrors');
+      }
+
+      Directory? targetDir;
+      try {
+        final extDir = await getExternalStorageDirectory();
+        if (extDir != null) targetDir = extDir;
+      } catch (_) {}
+      targetDir ??= await getApplicationDocumentsDirectory();
+
+      final cleanName = song.title.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+      final file = File('${targetDir.path}/$cleanName.mp3');
+      await file.writeAsBytes(downloadedBytes);
+
+      final mb = (downloadedBytes.length / (1024 * 1024)).toStringAsFixed(1);
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('✓ Saved "${song.title}" ($mb MB) to offline storage!'),
+          backgroundColor: const Color(0xFF10401E),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    } catch (e) {
       messenger.showSnackBar(
         const SnackBar(
-          content: Text('Download failed. Please check network connection.'),
+          content: Text('Download failed. Network mirror unavailable.'),
           backgroundColor: Color(0xFF5E1B1B),
+          duration: Duration(seconds: 3),
         ),
       );
     }
