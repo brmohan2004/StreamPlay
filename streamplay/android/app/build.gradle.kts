@@ -43,11 +43,31 @@ android {
     }
 
     applicationVariants.all {
+        val variant = this
         outputs.all {
             val outputImpl = this as? com.android.build.gradle.internal.api.BaseVariantOutputImpl
             if (outputImpl != null) {
                 val abiName = outputImpl.getFilter(com.android.build.OutputFile.ABI)
                 outputImpl.outputFileName = if (abiName != null) "StreamPlay-$abiName.apk" else "StreamPlay.apk"
+            }
+        }
+
+        if (variant.buildType.name == "release") {
+            variant.assembleProvider.configure {
+                doLast {
+                    val buildDir = layout.buildDirectory.asFile.get()
+                    val releaseDir = File(buildDir, "outputs/apk/release")
+                    val flutterApkDir = File(buildDir, "outputs/flutter-apk")
+                    flutterApkDir.mkdirs()
+
+                    val arm64 = File(releaseDir, "StreamPlay-arm64-v8a.apk")
+                    val universal = File(releaseDir, "StreamPlay.apk")
+                    val src = if (arm64.exists()) arm64 else if (universal.exists()) universal else null
+                    if (src != null) {
+                        src.copyTo(File(flutterApkDir, "StreamPlay.apk"), overwrite = true)
+                        src.copyTo(File(flutterApkDir, "StreamPlay-arm64-v8a.apk"), overwrite = true)
+                    }
+                }
             }
         }
     }
