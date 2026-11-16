@@ -81,19 +81,19 @@ class _FloatingNavBarState extends State<FloatingNavBar> with SingleTickerProvid
         child: Padding(
           padding: const EdgeInsets.only(bottom: 16),
           child: SizedBox(
-            height: 64, // Accommodates protruding center button & pulse ring
+            height: 72, // Accommodates protruding center button & pulse ring
             child: Stack(
               alignment: Alignment.center,
               clipBehavior: Clip.none,
               children: [
-                // 1. Pill Background with Blur and Border (Screenshot media_1794820793474_94c3e029.png)
+                // 1. Pill Background with Blur and Border
                 ClipRRect(
                   borderRadius: BorderRadius.circular(44),
                   child: BackdropFilter(
                     filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
                     child: Container(
-                      height: 48,
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      height: 56,
+                      padding: const EdgeInsets.symmetric(horizontal: 22),
                       decoration: BoxDecoration(
                         color: const Color(0xE80C0C0C),
                         borderRadius: BorderRadius.circular(44),
@@ -117,12 +117,12 @@ class _FloatingNavBarState extends State<FloatingNavBar> with SingleTickerProvid
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          // 1.1 Home Tab Item with Active Dot (media_1794820793474_94c3e029.png)
+                          // 1.1 Home Tab Item with Active Dot
                           _buildTabItem(
                             isActive: isHomeActive && !isFiltered,
                             icon: AppSvgIcons.home(
                               color: (isHomeActive && !isFiltered) ? Colors.white : const Color(0xFFA1A1AA),
-                              size: 22,
+                              size: 25,
                             ),
                             onTap: () {
                               if (isFiltered) {
@@ -134,14 +134,14 @@ class _FloatingNavBarState extends State<FloatingNavBar> with SingleTickerProvid
                           ),
 
                           // Gap reserved for the protruding Center Mode Button
-                          const SizedBox(width: 58),
+                          const SizedBox(width: 66),
 
-                          // 1.2 Search Tab Item with Active Dot (media_1794820793474_94c3e029.png)
+                          // 1.2 Search Tab Item with Active Dot
                           _buildTabItem(
                             isActive: isSearchActive,
                             icon: AppSvgIcons.search(
                               color: isSearchActive ? Colors.white : const Color(0xFFA1A1AA),
-                              size: 22,
+                              size: 25,
                             ),
                             onTap: () {
                               nav.setActiveScreen(ScreenName.search);
@@ -174,8 +174,8 @@ class _FloatingNavBarState extends State<FloatingNavBar> with SingleTickerProvid
                             return Transform.scale(
                               scale: _pulseScale.value,
                               child: Container(
-                                width: 62,
-                                height: 62,
+                                width: 72,
+                                height: 72,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   border: Border.all(
@@ -188,10 +188,10 @@ class _FloatingNavBarState extends State<FloatingNavBar> with SingleTickerProvid
                           },
                         ),
 
-                        // Center Circular Button (Protrudes outside the 48px pill)
+                        // Center Circular Button (Protrudes outside the 56px pill)
                         Container(
-                          width: 54,
-                          height: 54,
+                          width: 62,
+                          height: 62,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             gradient: LinearGradient(
@@ -218,10 +218,10 @@ class _FloatingNavBarState extends State<FloatingNavBar> with SingleTickerProvid
                           ),
                           child: Center(
                             child: isFiltered
-                                ? AppSvgIcons.rotateCcw(color: Colors.white, size: 21)
+                                ? AppSvgIcons.rotateCcw(color: Colors.white, size: 24)
                                 : isMovieMode
-                                    ? AppSvgIcons.music(color: Colors.black, size: 22)
-                                    : AppSvgIcons.movies(color: Colors.black, size: 22),
+                                    ? AppSvgIcons.music(color: Colors.black, size: 25)
+                                    : AppSvgIcons.movies(color: Colors.black, size: 25),
                           ),
                         ),
                       ],
@@ -245,17 +245,17 @@ class _FloatingNavBarState extends State<FloatingNavBar> with SingleTickerProvid
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Container(
-        width: 48,
+        width: 56,
         alignment: Alignment.center,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             icon,
             const SizedBox(height: 3),
-            // Glowing Active Dot Indicator (Screenshot media_1794820793474_94c3e029.png)
+            // Glowing Active Dot Indicator
             Container(
-              width: 4,
-              height: 4,
+              width: 5,
+              height: 5,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: isActive ? Colors.white : Colors.transparent,

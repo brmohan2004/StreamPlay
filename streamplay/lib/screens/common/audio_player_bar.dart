@@ -29,7 +29,7 @@ class AudioPlayerBar extends StatelessWidget {
       alignment: Alignment.bottomCenter,
       child: SafeArea(
         child: Container(
-          margin: const EdgeInsets.only(bottom: 84, left: 14, right: 14),
+          margin: const EdgeInsets.only(bottom: 94, left: 14, right: 14),
           decoration: BoxDecoration(
             color: const Color(0xF2121724), // High opacity dark slate
             borderRadius: BorderRadius.circular(16),

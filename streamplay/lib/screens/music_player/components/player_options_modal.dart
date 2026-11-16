@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:http/http.dart' as http;
@@ -79,7 +80,7 @@ class PlayerOptionsModal extends StatelessWidget {
       Directory? targetDir;
       String locationNote = '';
 
-      if (Platform.isAndroid) {
+      if (!kIsWeb && Platform.isAndroid) {
         // Priority 1: Public standard Android Downloads folder
         final publicDownload = Directory('/storage/emulated/0/Download/StreamPlay');
         try {
