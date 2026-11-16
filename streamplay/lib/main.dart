@@ -11,7 +11,7 @@ import 'screens/common/floating_nav_bar.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/landing/landing_screen.dart';
 import 'screens/movie_details/movie_details_screen.dart';
-import 'screens/music_player/components/music_player_sheet_overlay.dart';
+import 'screens/music_player/music_player_screen.dart';
 import 'screens/playlist/playlist_screen.dart';
 import 'screens/profile/profile_settings_screen.dart';
 import 'screens/search/movie_search_screen.dart';
@@ -84,7 +84,6 @@ class AppContent extends StatefulWidget {
 }
 
 class _AppContentState extends State<AppContent> with WidgetsBindingObserver {
-  final GlobalKey<MusicPlayerSheetOverlayState> _sheetOverlayKey = GlobalKey<MusicPlayerSheetOverlayState>();
   // 1-second dynamic splash screen animation
   bool _showSplash = true;
   bool _showOnboarding = false;
@@ -157,13 +156,9 @@ class _AppContentState extends State<AppContent> with WidgetsBindingObserver {
               canPop: false,
               onPopInvokedWithResult: (didPop, result) {
                 if (didPop) return;
-                // 1. If music player is open, smoothly minimize it via sheet controller
+                // 1. If music player is open, smoothly minimize it with sheet-like close animation
                 if (media.isMusicPlayerOpen) {
-                  if (_sheetOverlayKey.currentState != null) {
-                    _sheetOverlayKey.currentState!.dismiss();
-                  } else {
-                    media.closeMusicPlayer();
-                  }
+                  media.closeMusicPlayer();
                   return;
                 }
                 // 2. If movie details modal is open, close it
@@ -184,28 +179,38 @@ class _AppContentState extends State<AppContent> with WidgetsBindingObserver {
                 // 5. If on clean Home, exit the application
                 SystemNavigator.pop();
               },
-              child: MusicPlayerSheetOverlay(
-                key: _sheetOverlayKey,
-                child: Scaffold(
-                  key: const ValueKey('main_app_shell'),
-                  backgroundColor: AppTheme.pureBlack,
-                  body: Stack(
-                    children: [
-                      // Active Screen View
-                      _buildActiveScreen(nav.activeScreen, nav),
+              child: Scaffold(
+                key: const ValueKey('main_app_shell'),
+                backgroundColor: AppTheme.pureBlack,
+                body: Stack(
+                  children: [
+                    // Active Screen View
+                    _buildActiveScreen(nav.activeScreen, nav),
 
-                      // Movie Details Screen Modal (Screenshot 11)
-                      if (media.selectedMovie != null)
-                        MovieDetailsScreen(movie: media.selectedMovie!),
+                    // Movie Details Screen Modal (Screenshot 11)
+                    if (media.selectedMovie != null)
+                      MovieDetailsScreen(movie: media.selectedMovie!),
 
-                      // Persistent Mini Audio Player Bar (above bottom nav bar)
-                      const AudioPlayerBar(),
+                    // Persistent Mini Audio Player Bar (above bottom nav bar)
+                    const AudioPlayerBar(),
 
-                      // Centered Bottom Floating Navigation Bar (hidden on Profile/Settings)
-                      if (nav.activeScreen != ScreenName.profile)
-                        const FloatingNavBar(),
-                    ],
-                  ),
+                    // Centered Bottom Floating Navigation Bar (hidden on Profile/Settings)
+                    if (nav.activeScreen != ScreenName.profile)
+                      const FloatingNavBar(),
+
+                    // Full-Screen Music Player with sheet-like slide-down close animation
+                    Positioned.fill(
+                      child: AnimatedSlide(
+                        offset: media.isMusicPlayerOpen ? Offset.zero : const Offset(0.0, 1.0),
+                        duration: const Duration(milliseconds: 320),
+                        curve: Curves.easeOutCubic,
+                        child: IgnorePointer(
+                          ignoring: !media.isMusicPlayerOpen,
+                          child: const MusicPlayerScreen(),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),

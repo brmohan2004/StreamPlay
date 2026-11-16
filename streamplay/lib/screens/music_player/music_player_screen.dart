@@ -150,12 +150,19 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
       );
     }
 
-    return Scaffold(
-      backgroundColor: AppTheme.pureBlack,
-      body: SafeArea(
-        top: true,
-        bottom: true,
-        child: Column(
+    return GestureDetector(
+      onVerticalDragEnd: (details) {
+        if ((details.primaryVelocity ?? 0) > 250) {
+          _handleClose(media);
+        }
+      },
+      behavior: HitTestBehavior.translucent,
+      child: Scaffold(
+        backgroundColor: AppTheme.pureBlack,
+        body: SafeArea(
+          top: true,
+          bottom: true,
+          child: Column(
           children: [
             // 1. Top Header Bar (Screenshot 12)
             PlayerHeader(
@@ -286,6 +293,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
                 ],
               ),
             ),
-          );
+          ),
+        );
   }
 }

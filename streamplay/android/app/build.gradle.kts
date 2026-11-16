@@ -41,6 +41,16 @@ android {
             )
         }
     }
+
+    applicationVariants.all {
+        outputs.all {
+            val outputImpl = this as? com.android.build.gradle.internal.api.BaseVariantOutputImpl
+            if (outputImpl != null) {
+                val abiName = outputImpl.getFilter(com.android.build.OutputFile.ABI)
+                outputImpl.outputFileName = if (abiName != null) "StreamPlay-$abiName.apk" else "StreamPlay.apk"
+            }
+        }
+    }
 }
 
 kotlin {
