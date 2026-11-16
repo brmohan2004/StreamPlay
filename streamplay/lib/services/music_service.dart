@@ -498,7 +498,7 @@ class MusicService {
     final artist = data['artistName']?.toString();
 
     if (synced != null && synced.trim().isNotEmpty) {
-      final lines = <LyricLine>[];
+      final rawLines = <LyricLine>[];
       final lrcRegex = RegExp(r'\[(\d{2}):(\d{2})\.?(\d{1,3})?\](.*)');
       for (var rawLine in synced.split('\n')) {
         final trimmed = rawLine.trim();
@@ -512,15 +512,42 @@ class MusicService {
           final time = Duration(minutes: min, seconds: sec, milliseconds: ms);
           final text = match.group(4)?.trim() ?? '';
           if (text.isNotEmpty) {
-            lines.add(LyricLine(timestamp: time, text: text));
+            rawLines.add(LyricLine(timestamp: time, text: text));
           }
         }
       }
 
-      if (lines.isNotEmpty) {
+      if (rawLines.isNotEmpty) {
+        rawLines.sort((a, b) => (a.timestamp ?? Duration.zero).compareTo(b.timestamp ?? Duration.zero));
+
+        // Intelligent Instrumental Interlude Detection:
+        // Automatically injects music note symbols for intro music and instrumental breaks
+        final enrichedLines = <LyricLine>[];
+        final firstTime = rawLines.first.timestamp ?? Duration.zero;
+        if (firstTime.inSeconds >= 4) {
+          // Intro music portion before first vocals
+          enrichedLines.add(const LyricLine(timestamp: Duration.zero, text: '♪ ♫ ♪'));
+        }
+
+        for (int i = 0; i < rawLines.length; i++) {
+          enrichedLines.add(rawLines[i]);
+          if (i < rawLines.length - 1) {
+            final curTime = rawLines[i].timestamp ?? Duration.zero;
+            final nextTime = rawLines[i + 1].timestamp ?? Duration.zero;
+            final gap = nextTime - curTime;
+            if (gap.inSeconds >= 6) {
+              // Interlude music portion (guitar solo, beat drop, bridge)
+              enrichedLines.add(LyricLine(
+                timestamp: curTime + const Duration(seconds: 3),
+                text: '♪ ♫ ♪',
+              ));
+            }
+          }
+        }
+
         return SongLyrics(
           isSynced: true,
-          lines: lines,
+          lines: enrichedLines,
           plainText: plain,
           trackName: track,
           artistName: artist,

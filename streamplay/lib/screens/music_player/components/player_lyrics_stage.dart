@@ -3,13 +3,14 @@ import '../../../config/app_theme.dart';
 import '../../../models/media_item.dart';
 import '../../../services/music_service.dart';
 
-/// In-Poster Synced Lyrics Stage (replaces album poster when lyrics mode is enabled).
+/// Ultra-Modern, Minimalist In-Poster Synced Lyrics Stage.
 ///
 /// Features:
-/// 1. Real-time audio line highlighting (bright lime neon glow for active line, muted for inactive).
-/// 2. Auto-scrolls smoothly to keep the currently sung line centered.
-/// 3. Interactive tap-to-seek: tapping any line jumps audio directly to that timestamp.
-/// 4. Graceful fallback for non-synced lyrics with progress-based line highlighting.
+/// 1. Spotify & Apple Music inspired minimalist typography with vertical fade gradient.
+/// 2. Active line bold expansion (20px, pure white + vivid neon lime ambient glow).
+/// 3. Automated instrumental break rendering: displays animated musical symbols (♪ ♫ ♪) during intro and solos.
+/// 4. Tap-to-seek: instant jump to any lyric timestamp on touch.
+/// 5. Smooth auto-centering of active line with cubic ease curves.
 class PlayerLyricsStage extends StatefulWidget {
   final SongItem song;
   final Duration currentPosition;
@@ -30,9 +31,11 @@ class PlayerLyricsStage extends StatefulWidget {
   State<PlayerLyricsStage> createState() => _PlayerLyricsStageState();
 }
 
-class _PlayerLyricsStageState extends State<PlayerLyricsStage> {
+class _PlayerLyricsStageState extends State<PlayerLyricsStage>
+    with SingleTickerProviderStateMixin {
   final MusicService _musicService = MusicService();
   final ScrollController _scrollController = ScrollController();
+  late final AnimationController _pulseController;
 
   SongLyrics? _lyrics;
   bool _isLoading = true;
@@ -42,6 +45,10 @@ class _PlayerLyricsStageState extends State<PlayerLyricsStage> {
   @override
   void initState() {
     super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat(reverse: true);
     _loadLyrics();
   }
 
@@ -102,8 +109,8 @@ class _PlayerLyricsStageState extends State<PlayerLyricsStage> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scrollController.hasClients) return;
-      // Approximate line height ~42px, center the line in the 265px container
-      final targetOffset = (activeIndex * 44.0) - (265 / 2) + 22.0;
+      // Center the active item in the 265px container
+      final targetOffset = (activeIndex * 48.0) - (265 / 2) + 24.0;
       final clampedOffset = targetOffset.clamp(
         0.0,
         _scrollController.position.maxScrollExtent,
@@ -120,6 +127,7 @@ class _PlayerLyricsStageState extends State<PlayerLyricsStage> {
   @override
   void dispose() {
     _scrollController.dispose();
+    _pulseController.dispose();
     super.dispose();
   }
 
@@ -128,20 +136,21 @@ class _PlayerLyricsStageState extends State<PlayerLyricsStage> {
     final activeIndex = _calculateActiveIndex();
 
     return Container(
-      width: 280,
+      width: 285,
       height: 265,
       decoration: BoxDecoration(
-        color: const Color(0xF2101612), // Deep dark glass
+        color: const Color(0xF20B0F0C), // Deep obsidian minimal glass
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: AppTheme.musicLime.withValues(alpha: 0.28),
-          width: 1.5,
+          color: Colors.white.withValues(alpha: 0.1),
+          width: 1.0,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.7),
+            color: Colors.black.withValues(alpha: 0.65),
             blurRadius: 36,
             spreadRadius: 2,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -149,24 +158,24 @@ class _PlayerLyricsStageState extends State<PlayerLyricsStage> {
         borderRadius: BorderRadius.circular(23),
         child: Stack(
           children: [
-            // Content Stage
+            // 1. Content Area
             if (_isLoading)
               const Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     SizedBox(
-                      width: 28,
-                      height: 28,
+                      width: 26,
+                      height: 26,
                       child: CircularProgressIndicator(
                         color: AppTheme.musicLime,
-                        strokeWidth: 2.5,
+                        strokeWidth: 2.2,
                       ),
                     ),
                     SizedBox(height: 12),
                     Text(
-                      'Loading lyrics...',
-                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                      'Syncing lyrics...',
+                      style: TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),
@@ -174,16 +183,16 @@ class _PlayerLyricsStageState extends State<PlayerLyricsStage> {
             else if (_lyrics == null || _lyrics!.lines.isEmpty)
               Center(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.subtitles_off_rounded, color: Colors.white.withValues(alpha: 0.3), size: 36),
+                      Icon(Icons.subtitles_off_rounded, color: Colors.white.withValues(alpha: 0.25), size: 36),
                       const SizedBox(height: 10),
                       const Text(
-                        'Lyrics not available for this song',
+                        'Lyrics not available for this track',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.white54, fontSize: 13),
+                        style: TextStyle(color: Colors.white54, fontSize: 13, fontWeight: FontWeight.w500),
                       ),
                     ],
                   ),
@@ -201,17 +210,18 @@ class _PlayerLyricsStageState extends State<PlayerLyricsStage> {
                       Colors.black,
                       Colors.transparent,
                     ],
-                    stops: [0.0, 0.15, 0.85, 1.0],
+                    stops: [0.0, 0.16, 0.84, 1.0],
                   ).createShader(rect);
                 },
                 blendMode: BlendMode.dstIn,
                 child: ListView.builder(
                   controller: _scrollController,
-                  padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 16),
+                  padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 16),
                   itemCount: _lyrics!.lines.length,
                   itemBuilder: (context, index) {
                     final line = _lyrics!.lines[index];
                     final isActive = index == activeIndex;
+                    final isInstrumental = line.text.contains('♪') || line.text.contains('♫');
 
                     return GestureDetector(
                       onTap: () {
@@ -220,36 +230,83 @@ class _PlayerLyricsStageState extends State<PlayerLyricsStage> {
                         }
                       },
                       behavior: HitTestBehavior.opaque,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeOut,
+                        padding: EdgeInsets.symmetric(vertical: isActive ? 10 : 6),
                         alignment: Alignment.center,
-                        child: AnimatedDefaultTextStyle(
-                          duration: const Duration(milliseconds: 250),
-                          curve: Curves.easeOut,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: isActive ? AppTheme.musicLime : Colors.white.withValues(alpha: 0.38),
-                            fontSize: isActive ? 18 : 14.5,
-                            fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-                            letterSpacing: isActive ? 0.2 : 0,
-                            shadows: isActive
-                                ? [
-                                    Shadow(
-                                      color: AppTheme.musicLime.withValues(alpha: 0.65),
-                                      blurRadius: 16,
-                                    ),
-                                  ]
-                                : null,
-                          ),
-                          child: Text(line.text),
-                        ),
+                        child: isInstrumental
+                            ? _buildInstrumentalItem(isActive)
+                            : AnimatedDefaultTextStyle(
+                                duration: const Duration(milliseconds: 260),
+                                curve: Curves.easeOutCubic,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: isActive
+                                      ? Colors.white
+                                      : Colors.white.withValues(alpha: 0.32),
+                                  fontSize: isActive ? 19.5 : 14.5,
+                                  fontWeight: isActive ? FontWeight.w800 : FontWeight.w500,
+                                  letterSpacing: isActive ? -0.2 : 0,
+                                  height: 1.35,
+                                  shadows: isActive
+                                      ? [
+                                          Shadow(
+                                            color: AppTheme.musicLime.withValues(alpha: 0.75),
+                                            blurRadius: 18,
+                                          ),
+                                          Shadow(
+                                            color: Colors.black.withValues(alpha: 0.8),
+                                            blurRadius: 4,
+                                            offset: const Offset(0, 1),
+                                          ),
+                                        ]
+                                      : null,
+                                ),
+                                child: Text(line.text),
+                              ),
                       ),
                     );
                   },
                 ),
               ),
 
-            // Top-right Close/Return to Poster icon button
+            // 2. Minimalist Header Badge (Live Sync Status)
+            Positioned(
+              top: 10,
+              left: 14,
+              child: Row(
+                children: [
+                  Container(
+                    width: 6.5,
+                    height: 6.5,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppTheme.musicLime,
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.musicLime.withValues(alpha: 0.8),
+                          blurRadius: 6,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    _lyrics?.isSynced == true ? 'SYNCED' : 'LYRICS',
+                    style: const TextStyle(
+                      color: AppTheme.musicLime,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // 3. Top-Right Dismiss Icon Button
             Positioned(
               top: 8,
               right: 8,
@@ -258,7 +315,7 @@ class _PlayerLyricsStageState extends State<PlayerLyricsStage> {
                 child: Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.5),
+                    color: Colors.white.withValues(alpha: 0.08),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -272,6 +329,66 @@ class _PlayerLyricsStageState extends State<PlayerLyricsStage> {
           ],
         ),
       ),
+    );
+  }
+
+  /// Musical symbols indicator (♪ ♫ ♪) shown during instrumental portions
+  Widget _buildInstrumentalItem(bool isActive) {
+    return AnimatedBuilder(
+      animation: _pulseController,
+      builder: (context, _) {
+        final pulseScale = isActive ? (1.0 + _pulseController.value * 0.12) : 1.0;
+        final glowOpacity = isActive ? (0.4 + _pulseController.value * 0.5) : 0.0;
+
+        return Transform.scale(
+          scale: pulseScale,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            decoration: BoxDecoration(
+              color: isActive
+                  ? AppTheme.musicLime.withValues(alpha: 0.12)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.music_note_rounded,
+                  size: isActive ? 20 : 15,
+                  color: isActive ? AppTheme.musicLime : Colors.white24,
+                  shadows: isActive
+                      ? [
+                          Shadow(
+                            color: AppTheme.musicLime.withValues(alpha: glowOpacity),
+                            blurRadius: 14,
+                          ),
+                        ]
+                      : null,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '♪  ♫  ♪',
+                  style: TextStyle(
+                    color: isActive ? AppTheme.musicLime : Colors.white24,
+                    fontSize: isActive ? 18 : 13,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 3,
+                    shadows: isActive
+                        ? [
+                            Shadow(
+                              color: AppTheme.musicLime.withValues(alpha: glowOpacity),
+                              blurRadius: 16,
+                            ),
+                          ]
+                        : null,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
