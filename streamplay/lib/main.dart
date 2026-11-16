@@ -12,7 +12,7 @@ import 'screens/common/floating_nav_bar.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/landing/landing_screen.dart';
 import 'screens/movie_details/movie_details_screen.dart';
-import 'screens/music_player/music_player_screen.dart';
+import 'screens/music_player/components/music_player_sheet_overlay.dart';
 import 'screens/playlist/playlist_screen.dart';
 import 'screens/profile/profile_settings_screen.dart';
 import 'screens/search/movie_search_screen.dart';
@@ -85,6 +85,7 @@ class AppContent extends StatefulWidget {
 }
 
 class _AppContentState extends State<AppContent> with WidgetsBindingObserver {
+  final GlobalKey<MusicPlayerSheetOverlayState> _sheetOverlayKey = GlobalKey<MusicPlayerSheetOverlayState>();
   // 1-second dynamic splash screen animation
   bool _showSplash = true;
   bool _showOnboarding = false;
@@ -157,9 +158,13 @@ class _AppContentState extends State<AppContent> with WidgetsBindingObserver {
               canPop: false,
               onPopInvokedWithResult: (didPop, result) {
                 if (didPop) return;
-                // 1. If music player is open, smoothly minimize it
+                // 1. If music player is open, smoothly minimize it via sheet controller
                 if (media.isMusicPlayerOpen) {
-                  media.closeMusicPlayer();
+                  if (_sheetOverlayKey.currentState != null) {
+                    _sheetOverlayKey.currentState!.dismiss();
+                  } else {
+                    media.closeMusicPlayer();
+                  }
                   return;
                 }
                 // 2. If movie details modal is open, close it
@@ -180,55 +185,32 @@ class _AppContentState extends State<AppContent> with WidgetsBindingObserver {
                 // 5. If on clean Home, exit the application
                 SystemNavigator.pop();
               },
-              child: Scaffold(
-                key: const ValueKey('main_app_shell'),
-                backgroundColor: AppTheme.pureBlack,
-                body: Stack(
-                  children: [
-                    // Active Screen View
-                    _buildActiveScreen(nav.activeScreen, nav),
+              child: MusicPlayerSheetOverlay(
+                key: _sheetOverlayKey,
+                child: Scaffold(
+                  key: const ValueKey('main_app_shell'),
+                  backgroundColor: AppTheme.pureBlack,
+                  body: Stack(
+                    children: [
+                      // Active Screen View
+                      _buildActiveScreen(nav.activeScreen, nav),
 
-                    // Movie Details Screen Modal (Screenshot 11)
-                    if (media.selectedMovie != null)
-                      MovieDetailsScreen(movie: media.selectedMovie!),
+                      // Movie Details Screen Modal (Screenshot 11)
+                      if (media.selectedMovie != null)
+                        MovieDetailsScreen(movie: media.selectedMovie!),
 
-                    // Floating Filter Capsule Pill (above bottom nav bar, hidden on Profile/Settings)
-                    if (nav.activeScreen != ScreenName.profile)
-                      const FloatingFilterPill(),
+                      // Floating Filter Capsule Pill (above bottom nav bar, hidden on Profile/Settings)
+                      if (nav.activeScreen != ScreenName.profile)
+                        const FloatingFilterPill(),
 
-                    // Persistent Mini Audio Player Bar (above bottom nav bar)
-                    const AudioPlayerBar(),
+                      // Persistent Mini Audio Player Bar (above bottom nav bar)
+                      const AudioPlayerBar(),
 
-                    // Centered Bottom Floating Navigation Bar (hidden on Profile/Settings)
-                    if (nav.activeScreen != ScreenName.profile)
-                      const FloatingNavBar(),
-
-                    // Sheet Backdrop Scrim Dimmer
-                    if (media.isMusicPlayerOpen)
-                      Positioned.fill(
-                        child: GestureDetector(
-                          onTap: () => media.closeMusicPlayer(),
-                          behavior: HitTestBehavior.opaque,
-                          child: Container(
-                            color: Colors.black.withValues(alpha: 0.55),
-                          ),
-                        ),
-                      ),
-
-                    // Sheet-Style Slide-Up / Minimize Music Player Modal
-                    Positioned.fill(
-                      top: 40, // Elegant sheet inset exposing background scrim
-                      child: AnimatedSlide(
-                        offset: media.isMusicPlayerOpen ? Offset.zero : const Offset(0.0, 1.05),
-                        duration: const Duration(milliseconds: 340),
-                        curve: Curves.easeOutCubic,
-                        child: IgnorePointer(
-                          ignoring: !media.isMusicPlayerOpen,
-                          child: const MusicPlayerScreen(),
-                        ),
-                      ),
-                    ),
-                  ],
+                      // Centered Bottom Floating Navigation Bar (hidden on Profile/Settings)
+                      if (nav.activeScreen != ScreenName.profile)
+                        const FloatingNavBar(),
+                    ],
+                  ),
                 ),
               ),
             ),

@@ -16,8 +16,8 @@ class AudioPlayerBar extends StatelessWidget {
     final song = media.currentSong;
     if (song == null) return const SizedBox.shrink();
 
-    // If fullscreen player is open or details screen, hide mini bar
-    if (media.isMusicPlayerOpen || nav.activeScreen == ScreenName.details) {
+    // If movie details screen is active, hide mini bar
+    if (nav.activeScreen == ScreenName.details) {
       return const SizedBox.shrink();
     }
 

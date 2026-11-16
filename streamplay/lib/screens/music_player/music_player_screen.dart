@@ -15,7 +15,9 @@ import 'components/player_sleep_timer_modal.dart';
 import 'components/player_queue_sheet.dart';
 
 class MusicPlayerScreen extends StatefulWidget {
-  const MusicPlayerScreen({super.key});
+  final VoidCallback? onDismiss;
+
+  const MusicPlayerScreen({super.key, this.onDismiss});
 
   @override
   State<MusicPlayerScreen> createState() => _MusicPlayerScreenState();
@@ -24,6 +26,14 @@ class MusicPlayerScreen extends StatefulWidget {
 class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
   bool _isVideoMode = false;
   bool _isDriveMode = false;
+
+  void _handleClose(MediaProvider media) {
+    if (widget.onDismiss != null) {
+      widget.onDismiss!();
+    } else {
+      media.closeMusicPlayer();
+    }
+  }
 
   void _openOptionsMenu(BuildContext context, SongItem song, MediaProvider media) {
     showModalBottomSheet(
@@ -148,85 +158,61 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
       );
     }
 
-    return GestureDetector(
-      onVerticalDragEnd: (details) {
-        if ((details.primaryVelocity ?? 0) > 250) {
-          media.closeMusicPlayer();
-        }
-      },
-      behavior: HitTestBehavior.translucent,
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppTheme.pureBlack,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          border: Border(
-            top: BorderSide(
-              color: Colors.white.withValues(alpha: 0.12),
-              width: 1,
-            ),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.8),
-              blurRadius: 36,
-              spreadRadius: 4,
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          child: Scaffold(
-            backgroundColor: Colors.transparent,
-            body: SafeArea(
-              child: Column(
-                children: [
-                  // Top Pull-Down Pill Indicator (Sheet Handle)
-                  GestureDetector(
-                    onTap: () => media.closeMusicPlayer(),
-                    child: Container(
-                      color: Colors.transparent,
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Center(
-                        child: Container(
-                          width: 40,
-                          height: 4.5,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.32),
-                            borderRadius: BorderRadius.circular(3),
-                          ),
-                        ),
-                      ),
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: SafeArea(
+        top: false,
+        bottom: true,
+        child: Column(
+          children: [
+            // Top Pull-Down Pill Indicator (Sheet Handle)
+            GestureDetector(
+              onTap: () => _handleClose(media),
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                color: Colors.transparent,
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Center(
+                  child: Container(
+                    width: 44,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.38),
+                      borderRadius: BorderRadius.circular(3),
                     ),
                   ),
+                ),
+              ),
+            ),
 
-                  // 1. Top Header Bar (Screenshot 12)
-                  PlayerHeader(
-                    isVideoMode: _isVideoMode,
-                    onToggleVideoMode: () {
-                      setState(() {
-                        _isVideoMode = !_isVideoMode;
-                        if (_isVideoMode) {
-                          media.pauseSong();
-                        } else {
-                          media.resumeSong();
-                        }
-                      });
-                    },
-                    onClose: () => media.closeMusicPlayer(),
-                    onOpenQueue: () => _openQueueSheet(context, media),
-                    onOpenOptions: () => _openOptionsMenu(context, song, media),
-                  ),
+            // 1. Top Header Bar (Screenshot 12)
+            PlayerHeader(
+              isVideoMode: _isVideoMode,
+              onToggleVideoMode: () {
+                setState(() {
+                  _isVideoMode = !_isVideoMode;
+                  if (_isVideoMode) {
+                    media.pauseSong();
+                  } else {
+                    media.resumeSong();
+                  }
+                });
+              },
+              onClose: () => _handleClose(media),
+              onOpenQueue: () => _openQueueSheet(context, media),
+              onOpenOptions: () => _openOptionsMenu(context, song, media),
+            ),
 
-                  const Spacer(flex: 1),
+            const Spacer(flex: 1),
 
-                  // 2. Center Disk Stage / Video Mode with horizontal swipe gestures & swipe down to minimize
-                  PlayerDiskStage(
-                    song: song,
-                    isVideoMode: _isVideoMode,
-                    onSwipeLeft: () => media.nextSong(),
-                    onSwipeRight: () => media.prevSong(),
-                    onSwipeDown: () => media.closeMusicPlayer(),
-                  ),
+            // 2. Center Disk Stage / Video Mode with horizontal swipe gestures
+            PlayerDiskStage(
+              song: song,
+              isVideoMode: _isVideoMode,
+              onSwipeLeft: () => media.nextSong(),
+              onSwipeRight: () => media.prevSong(),
+            ),
 
                   const Spacer(flex: 1),
 
@@ -319,9 +305,6 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
                 ],
               ),
             ),
-          ),
-        ),
-      ),
-    );
+          );
   }
 }

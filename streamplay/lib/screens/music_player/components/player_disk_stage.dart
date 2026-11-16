@@ -172,11 +172,6 @@ class _PlayerDiskStageState extends State<PlayerDiskStage> {
           }
         }
       },
-      onVerticalDragEnd: (details) {
-        if ((details.primaryVelocity ?? 0) > 250) {
-          widget.onSwipeDown?.call();
-        }
-      },
       child: Center(
         child: Container(
           width: 250,
