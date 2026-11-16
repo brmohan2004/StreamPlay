@@ -35,6 +35,7 @@ class _PlayerLyricsStageState extends State<PlayerLyricsStage>
     with SingleTickerProviderStateMixin {
   final MusicService _musicService = MusicService();
   final ScrollController _scrollController = ScrollController();
+  final Map<int, GlobalKey> _lineKeys = {};
   late final AnimationController _pulseController;
 
   SongLyrics? _lyrics;
@@ -64,6 +65,8 @@ class _PlayerLyricsStageState extends State<PlayerLyricsStage>
 
   Future<void> _loadLyrics() async {
     _loadedSongId = widget.song.id;
+    _lineKeys.clear();
+    _lastActiveIndex = -1;
     setState(() => _isLoading = true);
 
     try {
@@ -73,7 +76,9 @@ class _PlayerLyricsStageState extends State<PlayerLyricsStage>
           _lyrics = res;
           _isLoading = false;
         });
-        _autoScrollToActiveLine();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _autoScrollToActiveLine(force: true);
+        });
       }
     } catch (_) {
       if (mounted) setState(() => _isLoading = false);
@@ -102,25 +107,24 @@ class _PlayerLyricsStageState extends State<PlayerLyricsStage>
     }
   }
 
-  void _autoScrollToActiveLine() {
+  void _autoScrollToActiveLine({bool force = false}) {
     final activeIndex = _calculateActiveIndex();
-    if (activeIndex == -1 || activeIndex == _lastActiveIndex) return;
+    if (activeIndex == -1) return;
+    if (!force && activeIndex == _lastActiveIndex) return;
     _lastActiveIndex = activeIndex;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_scrollController.hasClients) return;
-      // Center the active item in the 265px container
-      final targetOffset = (activeIndex * 48.0) - (265 / 2) + 24.0;
-      final clampedOffset = targetOffset.clamp(
-        0.0,
-        _scrollController.position.maxScrollExtent,
-      );
-
-      _scrollController.animateTo(
-        clampedOffset,
-        duration: const Duration(milliseconds: 320),
-        curve: Curves.easeOutCubic,
-      );
+      if (!mounted) return;
+      final key = _lineKeys[activeIndex];
+      final ctx = key?.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(
+          ctx,
+          alignment: 0.5, // Exactly centers the active line vertically
+          duration: const Duration(milliseconds: 550),
+          curve: Curves.easeOutCubic,
+        );
+      }
     });
   }
 
@@ -135,200 +139,167 @@ class _PlayerLyricsStageState extends State<PlayerLyricsStage>
   Widget build(BuildContext context) {
     final activeIndex = _calculateActiveIndex();
 
-    return Container(
-      width: 285,
-      height: 265,
-      decoration: BoxDecoration(
-        color: const Color(0xF20B0F0C), // Deep obsidian minimal glass
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.1),
-          width: 1.0,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.65),
-            blurRadius: 36,
-            spreadRadius: 2,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(23),
-        child: Stack(
-          children: [
-            // 1. Content Area
-            if (_isLoading)
-              const Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SizedBox(
-                      width: 26,
-                      height: 26,
-                      child: CircularProgressIndicator(
-                        color: AppTheme.musicLime,
-                        strokeWidth: 2.2,
-                      ),
-                    ),
-                    SizedBox(height: 12),
-                    Text(
-                      'Syncing lyrics...',
-                      style: TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.w600),
-                    ),
-                  ],
-                ),
-              )
-            else if (_lyrics == null || _lyrics!.lines.isEmpty)
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final viewportHeight = constraints.maxHeight.isFinite ? constraints.maxHeight : 300.0;
+        final verticalPadding = viewportHeight * 0.44;
+
+        return SizedBox(
+          width: double.infinity,
+          height: viewportHeight,
+          child: Stack(
+            children: [
+              // 1. Content Area
+              if (_isLoading)
+                const Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.subtitles_off_rounded, color: Colors.white.withValues(alpha: 0.25), size: 36),
-                      const SizedBox(height: 10),
-                      const Text(
-                        'Lyrics not available for this track',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.white54, fontSize: 13, fontWeight: FontWeight.w500),
+                      SizedBox(
+                        width: 26,
+                        height: 26,
+                        child: CircularProgressIndicator(
+                          color: AppTheme.musicLime,
+                          strokeWidth: 2.2,
+                        ),
+                      ),
+                      SizedBox(height: 12),
+                      Text(
+                        'Loading lyrics...',
+                        style: TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.w600),
                       ),
                     ],
                   ),
-                ),
-              )
-            else
-              ShaderMask(
-                shaderCallback: (rect) {
-                  return const LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      Colors.black,
-                      Colors.black,
-                      Colors.transparent,
-                    ],
-                    stops: [0.0, 0.16, 0.84, 1.0],
-                  ).createShader(rect);
-                },
-                blendMode: BlendMode.dstIn,
-                child: ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 16),
-                  itemCount: _lyrics!.lines.length,
-                  itemBuilder: (context, index) {
-                    final line = _lyrics!.lines[index];
-                    final isActive = index == activeIndex;
-                    final isInstrumental = line.text.contains('♪') || line.text.contains('♫');
-
-                    return GestureDetector(
-                      onTap: () {
-                        if (line.timestamp != null) {
-                          widget.onSeek(line.timestamp!);
-                        }
-                      },
-                      behavior: HitTestBehavior.opaque,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 250),
-                        curve: Curves.easeOut,
-                        padding: EdgeInsets.symmetric(vertical: isActive ? 10 : 6),
-                        alignment: Alignment.center,
-                        child: isInstrumental
-                            ? _buildInstrumentalItem(isActive)
-                            : AnimatedDefaultTextStyle(
-                                duration: const Duration(milliseconds: 260),
-                                curve: Curves.easeOutCubic,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: isActive
-                                      ? Colors.white
-                                      : Colors.white.withValues(alpha: 0.32),
-                                  fontSize: isActive ? 19.5 : 14.5,
-                                  fontWeight: isActive ? FontWeight.w800 : FontWeight.w500,
-                                  letterSpacing: isActive ? -0.2 : 0,
-                                  height: 1.35,
-                                  shadows: isActive
-                                      ? [
-                                          Shadow(
-                                            color: AppTheme.musicLime.withValues(alpha: 0.75),
-                                            blurRadius: 18,
-                                          ),
-                                          Shadow(
-                                            color: Colors.black.withValues(alpha: 0.8),
-                                            blurRadius: 4,
-                                            offset: const Offset(0, 1),
-                                          ),
-                                        ]
-                                      : null,
-                                ),
-                                child: Text(line.text),
-                              ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-
-            // 2. Minimalist Header Badge (Live Sync Status)
-            Positioned(
-              top: 10,
-              left: 14,
-              child: Row(
-                children: [
-                  Container(
-                    width: 6.5,
-                    height: 6.5,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppTheme.musicLime,
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppTheme.musicLime.withValues(alpha: 0.8),
-                          blurRadius: 6,
-                          spreadRadius: 1,
+                )
+              else if (_lyrics == null || _lyrics!.lines.isEmpty)
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.subtitles_off_rounded, color: Colors.white.withValues(alpha: 0.25), size: 36),
+                        const SizedBox(height: 10),
+                        const Text(
+                          'Lyrics not available for this track',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.white54, fontSize: 13, fontWeight: FontWeight.w500),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 6),
-                  Text(
-                    _lyrics?.isSynced == true ? 'SYNCED' : 'LYRICS',
-                    style: const TextStyle(
-                      color: AppTheme.musicLime,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.2,
+                )
+              else
+                ShaderMask(
+                  shaderCallback: (rect) {
+                    return const LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black,
+                        Colors.black,
+                        Colors.transparent,
+                      ],
+                      stops: [0.0, 0.24, 0.76, 1.0],
+                    ).createShader(rect);
+                  },
+                  blendMode: BlendMode.dstIn,
+                  child: SingleChildScrollView(
+                    controller: _scrollController,
+                    physics: const BouncingScrollPhysics(),
+                    padding: EdgeInsets.symmetric(
+                      vertical: verticalPadding,
+                      horizontal: 20,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: List.generate(_lyrics!.lines.length, (index) {
+                        final line = _lyrics!.lines[index];
+                        final isActive = index == activeIndex;
+                        final isInstrumental = line.text.contains('♪') || line.text.contains('♫');
+                        final key = _lineKeys.putIfAbsent(index, () => GlobalKey());
+
+                        return GestureDetector(
+                          key: key,
+                          onTap: () {
+                            if (line.timestamp != null) {
+                              widget.onSeek(line.timestamp!);
+                            }
+                            _autoScrollToActiveLine(force: true);
+                          },
+                          behavior: HitTestBehavior.opaque,
+                          child: AnimatedPadding(
+                            duration: const Duration(milliseconds: 400),
+                            curve: Curves.easeOutCubic,
+                            padding: EdgeInsets.symmetric(vertical: isActive ? 10 : 5),
+                            child: AnimatedScale(
+                              duration: const Duration(milliseconds: 400),
+                              curve: Curves.easeOutCubic,
+                              scale: isActive ? 1.08 : 0.88,
+                              child: AnimatedOpacity(
+                                duration: const Duration(milliseconds: 400),
+                                curve: Curves.easeOutCubic,
+                                opacity: isActive ? 1.0 : 0.30,
+                                child: isInstrumental
+                                    ? _buildInstrumentalItem(isActive)
+                                    : Text(
+                                        line.text,
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 22.0,
+                                          fontWeight: isActive ? FontWeight.w900 : FontWeight.w600,
+                                          letterSpacing: isActive ? -0.3 : 0,
+                                          height: 1.35,
+                                          shadows: isActive
+                                              ? [
+                                                  Shadow(
+                                                    color: AppTheme.musicLime.withValues(alpha: 0.85),
+                                                    blurRadius: 22,
+                                                  ),
+                                                  Shadow(
+                                                    color: Colors.black.withValues(alpha: 0.9),
+                                                    blurRadius: 6,
+                                                    offset: const Offset(0, 2),
+                                                  ),
+                                                ]
+                                              : null,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
                     ),
                   ),
-                ],
-              ),
-            ),
+                ),
 
-            // 3. Top-Right Dismiss Icon Button
-            Positioned(
-              top: 8,
-              right: 8,
-              child: GestureDetector(
-                onTap: widget.onClose,
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.08),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.close_rounded,
-                    color: Colors.white70,
-                    size: 16,
+              // 2. Top-Right Subtle Dismiss Button
+              Positioned(
+                top: 4,
+                right: 16,
+                child: GestureDetector(
+                  onTap: widget.onClose,
+                  child: Container(
+                    padding: const EdgeInsets.all(7),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.close_rounded,
+                      color: Colors.white70,
+                      size: 18,
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
-        ),
-      ),
+            ],
+          ),
+        );
+      },
     );
   }
 

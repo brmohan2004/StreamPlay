@@ -253,6 +253,34 @@ class ProfileMusicTab extends StatelessWidget {
                     ),
                   ],
                 ),
+                const Divider(color: Colors.white10, height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.palette_rounded, color: AppTheme.musicLime, size: 20),
+                        SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Poster Dynamic Background', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+                            SizedBox(height: 2),
+                            Text('Adapts player background to album art', style: TextStyle(color: Colors.white38, fontSize: 10.5)),
+                          ],
+                        ),
+                      ],
+                    ),
+                    Switch(
+                      value: media.isDynamicPlayerBgEnabled,
+                      activeThumbColor: AppTheme.musicLime,
+                      onChanged: (val) {
+                        media.setDynamicPlayerBgEnabled(val);
+                        onShowToast(val ? 'Dynamic poster background enabled' : 'Pure black background enabled');
+                      },
+                    ),
+                  ],
+                ),
               ],
             ),
           ),

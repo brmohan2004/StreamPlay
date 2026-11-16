@@ -70,6 +70,13 @@ class MediaProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  // Dynamic Poster Background in Music Player
+  bool get isDynamicPlayerBgEnabled => _storage.getDynamicPlayerBgEnabled();
+  void setDynamicPlayerBgEnabled(bool val) {
+    _storage.setDynamicPlayerBgEnabled(val);
+    notifyListeners();
+  }
+
   void reloadStoredData() => _loadStoredData();
 
   String _songKey(SongItem s) {

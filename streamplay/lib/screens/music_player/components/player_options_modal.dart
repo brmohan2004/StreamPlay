@@ -106,6 +106,270 @@ class PlayerOptionsModal extends StatelessWidget {
     }
   }
 
+  String _formatDuration(int seconds) {
+    final m = seconds ~/ 60;
+    final s = seconds % 60;
+    return '$m:${s.toString().padLeft(2, '0')}';
+  }
+
+  void _showSongDetailsSheet(BuildContext context, SongItem song) {
+    final durStr = _formatDuration(song.duration);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(ctx).size.height * 0.85,
+          ),
+          decoration: const BoxDecoration(
+            color: Color(0xFF111713),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            border: Border(
+              top: BorderSide(color: Colors.white12, width: 1),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              // Drag Handle
+              Container(
+                width: 38,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Title Header Row
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: AppTheme.musicLime.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.info_rounded,
+                        color: AppTheme.musicLime,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'Song Details',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, color: Colors.white60),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+              ),
+
+              const Divider(color: Colors.white10, height: 20),
+
+              // Scrollable Details Body
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Album Art + Main Title Card
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.04),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
+                        ),
+                        child: Row(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: CachedNetworkImage(
+                                imageUrl: song.image,
+                                width: 68,
+                                height: 68,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    song.title,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    song.artist,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: AppTheme.musicLime,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  if (song.album.isNotEmpty) ...[
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      song.album,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Colors.white54,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 18),
+
+                      // Audio Specifications Pill Banner
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: AppTheme.musicLime.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppTheme.musicLime.withValues(alpha: 0.25)),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.graphic_eq_rounded, color: AppTheme.musicLime, size: 20),
+                            SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '320 kbps Ultra-HD • CD Quality',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Lossless AAC stream • 44.1 kHz Stereo',
+                                    style: TextStyle(color: Colors.white54, fontSize: 11),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 18),
+
+                      const Text(
+                        'METADATA & CREDITS',
+                        style: TextStyle(
+                          color: Colors.white38,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+
+                      // Structured details list
+                      _buildDetailRow(Icons.music_note_rounded, 'Track Name', song.title),
+                      _buildDetailRow(Icons.album_rounded, 'Album', song.album),
+                      _buildDetailRow(Icons.person_rounded, 'Singers / Artists', (song.singers != null && song.singers!.isNotEmpty) ? song.singers! : song.artist),
+                      if (song.composer != null && song.composer!.isNotEmpty)
+                        _buildDetailRow(Icons.piano_rounded, 'Composer / Music', song.composer!),
+                      if (song.starring != null && song.starring!.isNotEmpty)
+                        _buildDetailRow(Icons.star_rounded, 'Starring', song.starring!),
+                      _buildDetailRow(Icons.timer_rounded, 'Duration', '$durStr (${song.duration} seconds)'),
+                      _buildDetailRow(Icons.calendar_today_rounded, 'Release Year', song.year ?? 'Original Release'),
+                      _buildDetailRow(Icons.translate_rounded, 'Language', song.language ?? 'Universal'),
+                      _buildDetailRow(Icons.high_quality_rounded, 'Stream Quality', song.quality),
+                      _buildDetailRow(Icons.cloud_done_rounded, 'Audio Engine', '${song.source} Hi-Fi CDN'),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDetailRow(IconData icon, String label, String value) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.035),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: AppTheme.musicLime, size: 18),
+          const SizedBox(width: 12),
+          SizedBox(
+            width: 110,
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white54,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -164,7 +428,19 @@ class PlayerOptionsModal extends StatelessWidget {
           const SizedBox(height: 20),
           const Divider(color: Colors.white10),
 
-          // 1. Playback Speed Selector
+          // 1. Song Details (Full Metadata Sheet)
+          ListTile(
+            leading: const Icon(Icons.info_outline_rounded, color: AppTheme.musicLime),
+            title: const Text('Song Details', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+            subtitle: const Text('Metadata, bitrate specs, album & audio credits', style: TextStyle(color: Colors.white38, fontSize: 11)),
+            trailing: const Icon(Icons.chevron_right_rounded, color: Colors.white38, size: 20),
+            onTap: () {
+              Navigator.pop(context);
+              _showSongDetailsSheet(context, song);
+            },
+          ),
+
+          // 2. Playback Speed Selector
           ListTile(
             leading: const Icon(Icons.speed_rounded, color: AppTheme.musicLime),
             title: const Text('Playback Speed', style: TextStyle(color: Colors.white, fontSize: 14)),
@@ -185,7 +461,7 @@ class PlayerOptionsModal extends StatelessWidget {
             ),
           ),
 
-          // 2. Drive Mode Toggle
+          // 3. Drive Mode Toggle
           ListTile(
             leading: const Icon(Icons.directions_car_rounded, color: Colors.white70),
             title: const Text('Drive Mode', style: TextStyle(color: Colors.white, fontSize: 14)),
@@ -195,7 +471,7 @@ class PlayerOptionsModal extends StatelessWidget {
             },
           ),
 
-          // 3. Set as Ringtone / Audio Share
+          // 4. Set as Ringtone / Audio Share
           ListTile(
             leading: const Icon(Icons.share_rounded, color: Colors.white70),
             title: const Text('Share Song Stream', style: TextStyle(color: Colors.white, fontSize: 14)),
@@ -210,7 +486,7 @@ class PlayerOptionsModal extends StatelessWidget {
             },
           ),
 
-          // 4. Download 320kbps CD Quality Audio
+          // 5. Download 320kbps CD Quality Audio
           ListTile(
             leading: const Icon(Icons.download_rounded, color: Colors.white70),
             title: const Text('Download (320kbps Lossless)', style: TextStyle(color: Colors.white, fontSize: 14)),

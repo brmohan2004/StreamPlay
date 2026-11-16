@@ -27,6 +27,7 @@ class StorageService {
   static const String _keyNotifications = 'streamplay_setting_notifications';
   static const String _keyAutoPlayEpisode = 'streamplay_setting_autoplay_episode';
   static const String _keySubtitlePref = 'streamplay_setting_subtitles';
+  static const String _keyDynamicPlayerBg = 'streamplay_setting_dynamic_player_bg';
 
   final SharedPreferences _prefs;
 
@@ -157,8 +158,8 @@ class StorageService {
   bool isAudioPlayerDismissed() => _prefs.getBool(_keyAudioPlayerDismissed) ?? false;
   Future<void> setAudioPlayerDismissed(bool dismissed) => _prefs.setBool(_keyAudioPlayerDismissed, dismissed);
 
-  // 5s Song Switch Delay
-  bool getSongSwitchDelayEnabled() => _prefs.getBool(_keySongSwitchDelay) ?? true;
+  // 5s Song Switch Delay (Disabled by default for seamless instant transition)
+  bool getSongSwitchDelayEnabled() => _prefs.getBool(_keySongSwitchDelay) ?? false;
   Future<void> setSongSwitchDelayEnabled(bool val) => _prefs.setBool(_keySongSwitchDelay, val);
 
   // Recent Searches
@@ -197,6 +198,10 @@ class StorageService {
 
   String getSubtitlePref() => _prefs.getString(_keySubtitlePref) ?? 'auto';
   Future<void> setSubtitlePref(String pref) => _prefs.setString(_keySubtitlePref, pref);
+
+  // Dynamic Player Background (Poster-based dynamic background)
+  bool getDynamicPlayerBgEnabled() => _prefs.getBool(_keyDynamicPlayerBg) ?? true;
+  Future<void> setDynamicPlayerBgEnabled(bool val) => _prefs.setBool(_keyDynamicPlayerBg, val);
 
   // Preference Profile
   UserPreferenceProfile getPreferenceProfile() {

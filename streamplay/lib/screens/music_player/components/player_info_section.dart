@@ -40,33 +40,36 @@ class PlayerInfoSection extends StatelessWidget {
           ),
           const SizedBox(height: 8),
 
-          // Main Center Title with non-overlapping background preview titles (Point 2.1)
+          // Main Center Title with non-overlapping background preview titles
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               // Left Previous Song Preview
               if (prevSong != null)
                 Expanded(
-                  child: Text(
-                    prevSong!.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.22),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: Text(
+                      prevSong!.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.18),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 )
               else
                 const Spacer(),
 
-              const SizedBox(width: 14),
+              const SizedBox(width: 24),
 
               // Active Centered Track Title
               ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 220),
+                constraints: const BoxConstraints(maxWidth: 200),
                 child: Text(
                   song.title,
                   textAlign: TextAlign.center,
@@ -74,45 +77,36 @@ class PlayerInfoSection extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 19,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.2,
                   ),
                 ),
               ),
 
-              const SizedBox(width: 14),
+              const SizedBox(width: 24),
 
               // Right Next Song Preview
               if (nextSong != null)
                 Expanded(
-                  child: Text(
-                    nextSong!.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.left,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.22),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: Text(
+                      nextSong!.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.left,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.18),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 )
               else
                 const Spacer(),
             ],
-          ),
-          const SizedBox(height: 4),
-
-          // Artist & Album Info
-          Text(
-            '${song.artist} • ${song.album}',
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppTheme.textMuted,
-              fontSize: 13,
-            ),
           ),
         ],
       ),

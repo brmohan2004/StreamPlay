@@ -18,13 +18,16 @@ class DailyMixFannedDeck extends StatefulWidget {
 }
 
 class _DailyMixFannedDeckState extends State<DailyMixFannedDeck> {
+  static const int _kInfiniteRange = 100000;
   late final PageController _pageController;
   double _currentPage = 0.0;
 
   @override
   void initState() {
     super.initState();
-    final initial = widget.songs.length > 2 ? 1 : 0;
+    final total = widget.songs.isNotEmpty ? widget.songs.length : 1;
+    final mid = _kInfiniteRange ~/ 2;
+    final initial = mid - (mid % total) + (widget.songs.length > 2 ? 1 : 0);
     _currentPage = initial.toDouble();
     _pageController = PageController(
       viewportFraction: 0.54,
@@ -55,7 +58,7 @@ class _DailyMixFannedDeckState extends State<DailyMixFannedDeck> {
     }
 
     final total = widget.songs.length;
-    final activeIndex = _currentPage.round().clamp(0, total - 1);
+    final activeIndex = (_currentPage.round() % total + total) % total;
     final activeSong = widget.songs[activeIndex];
 
     return Column(
@@ -81,16 +84,21 @@ class _DailyMixFannedDeckState extends State<DailyMixFannedDeck> {
                 ),
               ),
 
-              // 2. Interactive 3D Fanning Deck PageView
+              // 2. Interactive 3D Fanning Deck PageView (Infinite Scrolling)
               PageView.builder(
                 controller: _pageController,
                 physics: const BouncingScrollPhysics(),
-                itemCount: total,
+                itemCount: _kInfiniteRange,
                 clipBehavior: Clip.none,
                 itemBuilder: (context, index) {
-                  final song = widget.songs[index];
+                  final song = widget.songs[index % total];
                   final diff = index - _currentPage;
                   final absDiff = diff.abs();
+
+                  // Skip rendering items far outside the visible viewport for performance
+                  if (absDiff > 2.5) {
+                    return const SizedBox.shrink();
+                  }
 
                   // Smooth 3D geometry transformations
                   final scale = (1.0 - (absDiff * 0.15)).clamp(0.78, 1.0);

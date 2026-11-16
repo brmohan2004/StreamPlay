@@ -1,4 +1,6 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import '../../config/app_theme.dart';
 import '../../models/media_item.dart';
@@ -159,12 +161,49 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
       behavior: HitTestBehavior.translucent,
       child: Scaffold(
         backgroundColor: AppTheme.pureBlack,
-        body: SafeArea(
-          top: true,
-          bottom: true,
-          child: Column(
+        body: Stack(
           children: [
-            // 1. Top Header Bar (Screenshot 12)
+            // Dynamic Poster Ambient Background
+            if (media.isDynamicPlayerBgEnabled && song.image.isNotEmpty)
+              Positioned.fill(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 650),
+                  child: Stack(
+                    key: ValueKey(song.id),
+                    fit: StackFit.expand,
+                    children: [
+                      CachedNetworkImage(
+                        imageUrl: song.image,
+                        fit: BoxFit.cover,
+                        errorWidget: (context, url, error) => const SizedBox.shrink(),
+                      ),
+                      BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 65, sigmaY: 65),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.black.withValues(alpha: 0.65),
+                                Colors.black.withValues(alpha: 0.85),
+                                Colors.black.withValues(alpha: 0.95),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            SafeArea(
+              top: true,
+              bottom: true,
+              child: Column(
+                children: [
+                  // 1. Top Header Bar (Screenshot 12)
             PlayerHeader(
               isVideoMode: _isVideoMode,
               onToggleVideoMode: () {
@@ -182,16 +221,18 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
               onOpenOptions: () => _openOptionsMenu(context, song, media),
             ),
 
-            const Spacer(flex: 1),
+            if (!_showLyrics) const Spacer(flex: 1),
 
             // 2. Center Stage: In-Poster Synced Lyrics OR Video Mode OR Disc Stage
             if (_showLyrics)
-              PlayerLyricsStage(
-                song: song,
-                currentPosition: media.songPosition,
-                songDuration: media.songDuration,
-                onSeek: (pos) => media.seek(pos),
-                onClose: () => setState(() => _showLyrics = false),
+              Expanded(
+                child: PlayerLyricsStage(
+                  song: song,
+                  currentPosition: media.songPosition,
+                  songDuration: media.songDuration,
+                  onSeek: (pos) => media.seek(pos),
+                  onClose: () => setState(() => _showLyrics = false),
+                ),
               )
             else
               PlayerDiskStage(
@@ -201,72 +242,42 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
                 onSwipeRight: () => media.prevSong(),
               ),
 
-            const Spacer(flex: 1),
+            if (!_showLyrics) const Spacer(flex: 1),
 
-                  // 3. Track Info (Track #, non-overlapping titles, artist/album)
-                  PlayerInfoSection(
-                    song: song,
-                    prevSong: prevSong,
-                    nextSong: nextSong,
-                    trackNumber: currentIndex >= 0 ? currentIndex + 1 : 1,
-                  ),
+            // 3. Track Info (Track #, non-overlapping titles, artist/album)
+            PlayerInfoSection(
+              song: song,
+              prevSong: prevSong,
+              nextSong: nextSong,
+              trackNumber: currentIndex >= 0 ? currentIndex + 1 : 1,
+            ),
 
-                  const SizedBox(height: 10),
+            const SizedBox(height: 10),
 
-                  // 4. Arc Scrubber with glowing progress dot & time counters
-                  StreamBuilder<Duration>(
-                    stream: media.positionStream,
-                    builder: (context, posSnap) {
-                      final pos = posSnap.data ?? Duration.zero;
-                      return StreamBuilder<Duration?>(
-                        stream: media.durationStream,
-                        builder: (context, durSnap) {
-                          final dur = durSnap.data ?? (song.duration > 0 ? Duration(seconds: song.duration) : Duration.zero);
-                          return PlayerArcScrubber(
-                            position: pos,
-                            duration: dur,
-                            isLiked: isLiked,
-                            onSeek: (newPos) => media.seek(newPos),
-                            onToggleLike: () => media.toggleLikeSong(song.id),
-                          );
-                        },
-                      );
-                    },
-                  ),
+            // 4. Arc Scrubber with glowing progress dot & time counters
+            StreamBuilder<Duration>(
+              stream: media.positionStream,
+              builder: (context, posSnap) {
+                final pos = posSnap.data ?? Duration.zero;
+                return StreamBuilder<Duration?>(
+                  stream: media.durationStream,
+                  builder: (context, durSnap) {
+                    final dur = durSnap.data ?? (song.duration > 0 ? Duration(seconds: song.duration) : Duration.zero);
+                    return PlayerArcScrubber(
+                      position: pos,
+                      duration: dur,
+                      isLiked: isLiked,
+                      onSeek: (newPos) => media.seek(newPos),
+                      onToggleLike: () => media.toggleLikeSong(song.id),
+                    );
+                  },
+                );
+              },
+            ),
 
-                  const SizedBox(height: 4),
+            const SizedBox(height: 4),
 
-                  // 5s Transition Delay Pill Indicator (with instant tap-to-play)
-                  if (media.isSwitchingSong)
-                    GestureDetector(
-                      onTap: () => media.skipDelayAndPlay(),
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFB703).withValues(alpha: 0.16),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: const Color(0xFFFFB703).withValues(alpha: 0.5)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.timer_outlined, size: 14, color: Color(0xFFFFB703)),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Next track in ${media.switchDelaySecondsRemaining}s • Tap to play now',
-                              style: const TextStyle(
-                                color: Color(0xFFFFB703),
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                  // 5. Primary Playback Controls
+            // 5. Primary Playback Controls
                   PlayerPlaybackControls(
                     isPlaying: isPlaying,
                     isShuffle: media.isShuffle,
@@ -293,7 +304,9 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
                 ],
               ),
             ),
-          ),
-        );
+          ],
+        ),
+      ),
+    );
   }
 }
