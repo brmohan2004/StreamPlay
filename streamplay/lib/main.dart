@@ -1,12 +1,14 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:media_kit/media_kit.dart';
 import 'package:provider/provider.dart';
 
 import 'config/app_theme.dart';
 import 'providers/media_provider.dart';
 import 'providers/navigation_provider.dart';
 import 'providers/recommendation_provider.dart';
+import 'providers/video_playback_provider.dart';
 import 'screens/common/audio_player_bar.dart';
 import 'screens/common/floating_nav_bar.dart';
 import 'screens/home/home_screen.dart';
@@ -23,9 +25,11 @@ import 'screens/watchlist/watchlist_screen.dart';
 import 'services/audio_player_handler.dart';
 import 'services/recommendation_engine.dart';
 import 'services/storage_service.dart';
+import 'services/video_source_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  MediaKit.ensureInitialized();
 
   if (!kIsWeb) {
     await JustAudioBackground.init(
@@ -50,15 +54,20 @@ void main() async {
   final storage = await StorageService.init();
   final audioHandler = AudioPlayerHandler();
   final recommendationEngine = RecommendationEngine(storage);
+  final videoSourceService = VideoSourceService();
 
   runApp(
     MultiProvider(
       providers: [
         Provider<StorageService>.value(value: storage),
         Provider<AudioPlayerHandler>.value(value: audioHandler),
+        Provider<VideoSourceService>.value(value: videoSourceService),
         ChangeNotifierProvider(create: (_) => NavigationProvider(storage)),
         ChangeNotifierProvider(create: (_) => MediaProvider(storage, audioHandler)),
         ChangeNotifierProvider(create: (_) => RecommendationProvider(recommendationEngine)),
+        ChangeNotifierProvider(
+          create: (_) => VideoPlaybackProvider(storage, videoSourceService),
+        ),
       ],
       child: const StreamPlayApp(),
     ),

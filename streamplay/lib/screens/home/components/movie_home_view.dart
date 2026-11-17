@@ -5,6 +5,7 @@ import '../../../models/media_item.dart';
 import '../../../models/recommendation.dart';
 import '../../../providers/media_provider.dart';
 import '../../../providers/recommendation_provider.dart';
+import '../../../providers/video_playback_provider.dart';
 import '../../../services/movie_service.dart';
 import 'top_app_header.dart';
 import 'movie_trending_fanned_deck.dart';
@@ -411,26 +412,138 @@ class _MovieHomeViewState extends State<MovieHomeView> {
     );
   }
 
-  // Continue Watching horizontal cards with dynamic user history (Real items only)
+  // Continue Watching horizontal cards with real saved playback progress
   Widget _buildContinueWatchingShelf(MediaProvider media) {
+    final playback = context.watch<VideoPlaybackProvider>();
+    final watchHistory = playback.recentWatchProgress.where((p) => p.canResume).take(8).toList();
+
+    if (watchHistory.isNotEmpty) {
+      return MediaRow(
+        title: 'Continue Watching',
+        child: SizedBox(
+          height: 125,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: watchHistory.length,
+            itemBuilder: (context, idx) {
+              final wp = watchHistory[idx];
+              final movieItem = MovieItem(
+                id: wp.contentId,
+                name: wp.title,
+                type: wp.mediaType,
+                poster: wp.poster,
+                background: wp.background,
+              );
+
+              return GestureDetector(
+                onTap: () => _onSelectMovie(movieItem),
+                child: Container(
+                  width: 170,
+                  margin: const EdgeInsets.only(right: 12),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    color: AppTheme.cardDark,
+                    border: Border.all(color: Colors.white10, width: 0.8),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(13),
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: Image.network(
+                            (wp.background != null && wp.background!.isNotEmpty)
+                                ? wp.background!
+                                : wp.poster,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                Container(color: AppTheme.cardDark),
+                          ),
+                        ),
+                        Positioned.fill(
+                          child: Container(
+                            decoration: const BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [Colors.transparent, Color(0xDD000000)],
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.7),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              wp.formattedPosition,
+                              style: const TextStyle(
+                                color: AppTheme.movieCyan,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          bottom: 10,
+                          left: 10,
+                          right: 10,
+                          child: Text(
+                            wp.season != null && wp.episode != null
+                                ? '${wp.title} • S${wp.season}E${wp.episode}'
+                                : wp.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          child: LinearProgressIndicator(
+                            value: wp.progressRatio,
+                            backgroundColor: Colors.white12,
+                            valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.movieCyan),
+                            minHeight: 3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+    }
+
     final recentWatchItems = media.watchlist.take(5).toList();
     if (recentWatchItems.isEmpty) {
       return const SizedBox.shrink();
     }
 
-    final displayItems = recentWatchItems;
-
     return MediaRow(
-      title: 'Continue Watching',
+      title: 'Saved to Watch Later',
       child: SizedBox(
         height: 125,
         child: ListView.builder(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          itemCount: displayItems.length,
+          itemCount: recentWatchItems.length,
           itemBuilder: (context, idx) {
-            final item = displayItems[idx];
-            const progress = 0.55;
+            final item = recentWatchItems[idx];
 
             return GestureDetector(
               onTap: () => _onSelectMovie(item),
@@ -446,7 +559,6 @@ class _MovieHomeViewState extends State<MovieHomeView> {
                   borderRadius: BorderRadius.circular(13),
                   child: Stack(
                     children: [
-                      // Backdrop / Poster Image
                       Positioned.fill(
                         child: Image.network(
                           (item.background != null && item.background!.isNotEmpty)
@@ -467,7 +579,6 @@ class _MovieHomeViewState extends State<MovieHomeView> {
                           ),
                         ),
                       ),
-                      // Title
                       Positioned(
                         bottom: 10,
                         left: 10,
@@ -481,18 +592,6 @@ class _MovieHomeViewState extends State<MovieHomeView> {
                             fontSize: 12.5,
                             fontWeight: FontWeight.bold,
                           ),
-                        ),
-                      ),
-                      // Cyan Resume Progress Bar (Screenshot 6)
-                      const Positioned(
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
-                        child: LinearProgressIndicator(
-                          value: progress,
-                          backgroundColor: Colors.white12,
-                          valueColor: AlwaysStoppedAnimation<Color>(AppTheme.movieCyan),
-                          minHeight: 3,
                         ),
                       ),
                     ],

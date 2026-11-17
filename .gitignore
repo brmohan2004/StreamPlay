@@ -1,0 +1,17 @@
+# Dependencies
+**/node_modules/
+node_modules/
+
+# Environment & secrets
+.env
+**/.env
+!.env.example
+!**/.env.example
+
+# Build & tool caches
+.vite/
+*.log
+npm-debug.log*
+streamplay/build/
+streamplay/.dart_tool/
+streamplay/.tmp/

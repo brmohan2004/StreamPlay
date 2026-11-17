@@ -13,5 +13,9 @@
 -keep class androidx.media3.** { *; }
 -dontwarn com.ryanheise.**
 
+# media_kit native video rendering
+-keep class com.alexmercerind.** { *; }
+-dontwarn com.alexmercerind.**
+
 # Google Play Core deferred components
 -dontwarn com.google.android.play.core.**

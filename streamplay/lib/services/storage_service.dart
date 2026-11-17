@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/media_item.dart';
 import '../models/recommendation.dart';
+import '../models/video_playback_models.dart';
 
 class StorageService {
   static const String _keyOnboarding = 'streamplay_onboarding_completed';
@@ -28,6 +29,8 @@ class StorageService {
   static const String _keyAutoPlayEpisode = 'streamplay_setting_autoplay_episode';
   static const String _keySubtitlePref = 'streamplay_setting_subtitles';
   static const String _keyDynamicPlayerBg = 'streamplay_setting_dynamic_player_bg';
+  static const String _keyVideoWatchProgress = 'streamplay_video_watch_progress_v1';
+  static const String _keyPreferredVideoProvider = 'streamplay_setting_video_provider';
 
   final SharedPreferences _prefs;
 
@@ -202,6 +205,69 @@ class StorageService {
   // Dynamic Player Background (Poster-based dynamic background)
   bool getDynamicPlayerBgEnabled() => _prefs.getBool(_keyDynamicPlayerBg) ?? true;
   Future<void> setDynamicPlayerBgEnabled(bool val) => _prefs.setBool(_keyDynamicPlayerBg, val);
+
+  // Preferred Authorized Video Provider ('auto' or specific providerId)
+  String getPreferredVideoProvider() => _prefs.getString(_keyPreferredVideoProvider) ?? 'auto';
+  Future<void> setPreferredVideoProvider(String providerId) =>
+      _prefs.setString(_keyPreferredVideoProvider, providerId);
+
+  // Video Watch Progress & Resume Positions
+  Map<String, WatchProgress> getAllWatchProgress() {
+    try {
+      final raw = _prefs.getString(_keyVideoWatchProgress);
+      if (raw != null && raw.isNotEmpty) {
+        final decoded = json.decode(raw);
+        if (decoded is Map) {
+          final result = <String, WatchProgress>{};
+          decoded.forEach((key, value) {
+            if (key != null && value is Map) {
+              result[key.toString()] = WatchProgress.fromJson(Map<String, dynamic>.from(value));
+            }
+          });
+          return result;
+        }
+      }
+    } catch (_) {}
+    return {};
+  }
+
+  WatchProgress? getWatchProgress(String contentId, {int? season, int? episode}) {
+    final all = getAllWatchProgress();
+    final key = WatchProgress.buildKey(contentId, season: season, episode: episode);
+    return all[key];
+  }
+
+  List<WatchProgress> getRecentWatchProgress({int limit = 20}) {
+    final items = getAllWatchProgress().values.toList()
+      ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    return items.take(limit).toList();
+  }
+
+  Future<void> saveWatchProgress(WatchProgress progress) async {
+    final all = getAllWatchProgress();
+    all[progress.storageKey] = progress;
+    // Keep most recent 50 progress entries
+    if (all.length > 50) {
+      final sortedKeys = all.entries.toList()
+        ..sort((a, b) => b.value.updatedAt.compareTo(a.value.updatedAt));
+      final trimmed = <String, WatchProgress>{};
+      for (final entry in sortedKeys.take(50)) {
+        trimmed[entry.key] = entry.value;
+      }
+      final encoded = json.encode(trimmed.map((k, v) => MapEntry(k, v.toJson())));
+      await _prefs.setString(_keyVideoWatchProgress, encoded);
+      return;
+    }
+    final encoded = json.encode(all.map((k, v) => MapEntry(k, v.toJson())));
+    await _prefs.setString(_keyVideoWatchProgress, encoded);
+  }
+
+  Future<void> removeWatchProgress(String contentId, {int? season, int? episode}) async {
+    final all = getAllWatchProgress();
+    all.remove(WatchProgress.buildKey(contentId, season: season, episode: episode));
+    final encoded = json.encode(all.map((k, v) => MapEntry(k, v.toJson())));
+    await _prefs.setString(_keyVideoWatchProgress, encoded);
+  }
 
   // Preference Profile
   UserPreferenceProfile getPreferenceProfile() {

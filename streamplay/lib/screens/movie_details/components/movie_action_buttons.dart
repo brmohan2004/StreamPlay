@@ -5,6 +5,8 @@ import '../../../models/media_item.dart';
 class MovieActionButtons extends StatelessWidget {
   final MovieItem movie;
   final bool isSaved;
+  final String playLabel;
+  final bool isLoading;
   final VoidCallback onPlayFullScreen;
   final VoidCallback onToggleWatchLater;
   final VoidCallback onShare;
@@ -13,6 +15,8 @@ class MovieActionButtons extends StatelessWidget {
     super.key,
     required this.movie,
     required this.isSaved,
+    this.playLabel = 'Play Movie Full Screen',
+    this.isLoading = false,
     required this.onPlayFullScreen,
     required this.onToggleWatchLater,
     required this.onShare,
@@ -26,7 +30,7 @@ class MovieActionButtons extends StatelessWidget {
         children: [
           // 1. Big Full-Width White Play Button (Screenshot 11)
           GestureDetector(
-            onTap: onPlayFullScreen,
+            onTap: isLoading ? null : onPlayFullScreen,
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 14),
@@ -41,14 +45,26 @@ class MovieActionButtons extends StatelessWidget {
                   ),
                 ],
               ),
-              child: const Row(
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.play_arrow_rounded, color: Colors.black, size: 24),
-                  SizedBox(width: 8),
+                  if (isLoading) ...[
+                    const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        color: Colors.black,
+                        strokeWidth: 2.2,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                  ] else ...[
+                    const Icon(Icons.play_arrow_rounded, color: Colors.black, size: 24),
+                    const SizedBox(width: 8),
+                  ],
                   Text(
-                    'Play Movie Full Screen',
-                    style: TextStyle(
+                    isLoading ? 'Checking Authorized Sources...' : playLabel,
+                    style: const TextStyle(
                       color: Colors.black,
                       fontSize: 15,
                       fontWeight: FontWeight.w800,

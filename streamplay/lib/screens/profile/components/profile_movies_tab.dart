@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../config/app_theme.dart';
 import '../../../config/constants.dart';
+import '../../../models/video_playback_models.dart';
 import '../../../providers/media_provider.dart';
 import '../../../providers/navigation_provider.dart';
+import '../../../providers/video_playback_provider.dart';
 
 class ProfileMoviesTab extends StatefulWidget {
   final NavigationProvider nav;
@@ -21,13 +24,35 @@ class ProfileMoviesTab extends StatefulWidget {
 }
 
 class _ProfileMoviesTabState extends State<ProfileMoviesTab> {
-  int _videoServerIndex = 0;
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<VideoPlaybackProvider>().loadProviders();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final nav = widget.nav;
     final media = widget.media;
+    final playback = context.watch<VideoPlaybackProvider>();
     final videoQuality = media.videoQuality;
+    final selectedProvider = playback.preferredVideoProvider;
+
+    final providerOptions = <ProviderInfo>[
+      const ProviderInfo(
+        id: 'auto',
+        name: 'Auto (All Authorized Providers)',
+        description: 'Ranks verified MP4, HLS & MPEG-DASH streams automatically',
+        enabled: true,
+        priority: 0,
+        supportedFormats: ['hls', 'dash', 'mp4'],
+      ),
+      ...playback.providers.where((p) => p.enabled),
+    ];
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -86,28 +111,21 @@ class _ProfileMoviesTabState extends State<ProfileMoviesTab> {
           ),
           const SizedBox(height: 28),
 
-          // STREAMING SERVER NODES
+          // AUTHORIZED VIDEO PROVIDERS
           const Text(
-            'STREAMING SERVER NODE',
+            'AUTHORIZED VIDEO PROVIDER',
             style: TextStyle(color: AppTheme.textMuted, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 0.8),
           ),
           const SizedBox(height: 12),
           Column(
-            children: [
-              {'name': 'Server 1: SuperStream Ultra', 'ping': '12ms CDN'},
-              {'name': 'Server 2: VidSrc VIP Mirror', 'ping': '24ms CDN'},
-              {'name': 'Server 3: Multi-CDN Resolver', 'ping': '18ms CDN'},
-            ].asMap().entries.map((entry) {
-              final idx = entry.key;
-              final srv = entry.value;
-              final isSel = _videoServerIndex == idx;
+            children: providerOptions.map((prov) {
+              final isSel = selectedProvider == prov.id;
+              final formatTag = prov.supportedFormats.map((f) => f.toUpperCase()).join(' • ');
 
               return GestureDetector(
                 onTap: () {
-                  setState(() {
-                    _videoServerIndex = idx;
-                  });
-                  widget.onShowToast('Active Server: ${srv['name']}');
+                  playback.setPreferredVideoProvider(prov.id);
+                  widget.onShowToast('Provider: ${prov.name}');
                 },
                 child: Container(
                   margin: const EdgeInsets.only(bottom: 8),
@@ -120,25 +138,39 @@ class _ProfileMoviesTabState extends State<ProfileMoviesTab> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: AppTheme.musicLime,
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: AppTheme.musicLime,
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(srv['name']!, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
-                              Text(srv['ping']!, style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
-                            ],
-                          ),
-                        ],
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    prov.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                                  ),
+                                  Text(
+                                    formatTag.isNotEmpty ? formatTag : prov.description,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(color: AppTheme.textMuted, fontSize: 11),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                       if (isSel) const Icon(Icons.check_circle, color: AppTheme.movieCyan, size: 16),
                     ],

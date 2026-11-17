@@ -4,6 +4,16 @@ class AppConstants {
   static const String saavnApiBase = 'https://www.jiosaavn.com/api.php';
   static const String audiusApiBase = 'https://discoveryprovider.audius.co';
 
+  // Modular Authorized Video Playback Resolver API
+  // Override at build/run time via: --dart-define=PLAYBACK_API_BASE=https://your-backend.example.com
+  static const String playbackApiBaseUrl = String.fromEnvironment(
+    'PLAYBACK_API_BASE',
+    defaultValue: 'http://127.0.0.1:4100',
+  );
+  static const Duration playbackApiTimeout = Duration(seconds: 12);
+  static const Duration playbackSourceCacheTtl = Duration(minutes: 5);
+  static const List<double> videoPlaybackSpeeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
+
   // DES ECB Key for JioSaavn Audio Decryption
   static const String saavnDesKey = '38346591';
 
