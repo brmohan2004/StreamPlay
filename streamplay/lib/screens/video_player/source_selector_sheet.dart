@@ -189,6 +189,17 @@ class SourceSelectorSheet extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: TextStyle(color: AppTheme.textMuted, fontSize: 12.5, height: 1.4),
               ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: onRetry,
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: const Text('Refresh Sources'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.movieCyan,
+                  foregroundColor: Colors.black,
+                  textStyle: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+              ),
             ],
           ),
         ),

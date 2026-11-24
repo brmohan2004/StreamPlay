@@ -307,14 +307,18 @@ class VideoSourceService {
       fromCache: false,
     );
 
-    DateTime cacheExpiry = now.add(cacheTtl);
-    for (final src in parsedSources) {
-      if (src.expiresAt.isBefore(cacheExpiry)) {
-        cacheExpiry = src.expiresAt;
+    if (parsedSources.isNotEmpty) {
+      DateTime cacheExpiry = now.add(cacheTtl);
+      for (final src in parsedSources) {
+        if (src.expiresAt.isBefore(cacheExpiry)) {
+          cacheExpiry = src.expiresAt;
+        }
       }
-    }
-    if (cacheExpiry.isAfter(now)) {
-      _cache[cacheKey] = _CachedResolution(result, cacheExpiry);
+      if (cacheExpiry.isAfter(now)) {
+        _cache[cacheKey] = _CachedResolution(result, cacheExpiry);
+      }
+    } else {
+      _cache.remove(cacheKey);
     }
 
     return result;
